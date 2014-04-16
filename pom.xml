@@ -3,11 +3,11 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.codelibs</groupId>
-	<artifactId>elasticsearch-recommender</artifactId>
+	<artifactId>elasticsearch-taste</artifactId>
 	<version>0.1.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
-	<name>Elasticsearch Recommender Plugin</name>
-	<description>Recommender Engine for Elasticsearch</description>
+	<name>Elasticsearch Mahout Taste Plugin</name>
+	<description>Mahout Taste Implementation for Elasticsearch</description>
 	<inceptionYear>2011</inceptionYear>
 	<licenses>
 		<license>
@@ -17,9 +17,9 @@
 		</license>
 	</licenses>
 	<scm>
-		<connection>scm:git:git@github.com:codelibs/elasticsearch-recommender.git</connection>
-		<developerConnection>scm:git:git@github.com:codelibs/elasticsearch-recommender.git</developerConnection>
-		<url>git@github.com:codelibs/elasticsearch-recommender.git</url>
+		<connection>scm:git:git@github.com:codelibs/elasticsearch-taste.git</connection>
+		<developerConnection>scm:git:git@github.com:codelibs/elasticsearch-taste.git</developerConnection>
+		<url>git@github.com:codelibs/elasticsearch-taste.git</url>
 	</scm>
 	<parent>
 		<groupId>org.sonatype.oss</groupId>
@@ -28,6 +28,7 @@
 	</parent>
 	<properties>
 		<elasticsearch.version>1.1.0</elasticsearch.version>
+		<mahout.version>0.9</mahout.version>
 	</properties>
 	<build>
 		<plugins>
@@ -36,8 +37,8 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>2.3.2</version>
 				<configuration>
-					<source>1.6</source>
-					<target>1.6</target>
+					<source>1.7</source>
+					<target>1.7</target>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -88,6 +89,11 @@
 			<artifactId>elasticsearch</artifactId>
 			<version>${elasticsearch.version}</version>
 			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.mahout</groupId>
+			<artifactId>mahout-core</artifactId>
+			<version>${mahout.version}</version>
 		</dependency>
 	</dependencies>
 </project>

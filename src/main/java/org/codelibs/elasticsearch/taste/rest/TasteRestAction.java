@@ -1,4 +1,4 @@
-package org.codelibs.elasticsearch.rcmd.rest;
+package org.codelibs.elasticsearch.taste.rest;
 
 import static org.elasticsearch.rest.RestStatus.OK;
 
@@ -17,17 +17,17 @@ import org.elasticsearch.rest.XContentRestResponse;
 import org.elasticsearch.rest.XContentThrowableRestResponse;
 import org.elasticsearch.rest.action.support.RestXContentBuilder;
 
-public class RecommenderRestAction extends BaseRestHandler {
+public class TasteRestAction extends BaseRestHandler {
 
     @Inject
-    public RecommenderRestAction(final Settings settings, final Client client,
+    public TasteRestAction(final Settings settings, final Client client,
             final RestController restController) {
         super(settings, client);
 
         restController.registerHandler(RestRequest.Method.GET,
-                "/{index}/{type}/_recommender", this);
+                "/{index}/{type}/_taste", this);
         restController.registerHandler(RestRequest.Method.GET,
-                "/{index}/_recommender", this);
+                "/{index}/_taste", this);
     }
 
     @Override
@@ -40,7 +40,7 @@ public class RecommenderRestAction extends BaseRestHandler {
             builder.field("index", request.param("index"));
             builder.field("type", request.param("type"));
             builder.field("description",
-                    "This is a elasticsearch-recommender response: "
+                    "This is a elasticsearch-taste response: "
                             + new Date().toString());
             builder.endObject();
             channel.sendResponse(new XContentRestResponse(request, OK, builder));

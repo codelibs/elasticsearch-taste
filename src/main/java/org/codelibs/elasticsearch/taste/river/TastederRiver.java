@@ -1,4 +1,4 @@
-package org.codelibs.elasticsearch.rcmd.river;
+package org.codelibs.elasticsearch.taste.river;
 
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
@@ -7,18 +7,18 @@ import org.elasticsearch.river.River;
 import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
 
-public class RecommenderRiver extends AbstractRiverComponent implements River {
+public class TastederRiver extends AbstractRiverComponent implements River {
     private final Client client;
 
     private RecommenderRiverLogic riverLogic;
 
     @Inject
-    public RecommenderRiver(final RiverName riverName,
+    public TastederRiver(final RiverName riverName,
             final RiverSettings settings, final Client client) {
         super(riverName, settings);
         this.client = client;
 
-        logger.info("CREATE RecommenderRiver");
+        logger.info("CREATE TastederRiver");
 
         // TODO Your code..
 
@@ -26,7 +26,7 @@ public class RecommenderRiver extends AbstractRiverComponent implements River {
 
     @Override
     public void start() {
-        logger.info("START RecommenderRiver");
+        logger.info("START TastederRiver");
 
         riverLogic = new RecommenderRiverLogic();
         new Thread(riverLogic).start();
@@ -34,7 +34,7 @@ public class RecommenderRiver extends AbstractRiverComponent implements River {
 
     @Override
     public void close() {
-        logger.info("CLOSE RecommenderRiver");
+        logger.info("CLOSE TastederRiver");
 
         // TODO Your code..
     }

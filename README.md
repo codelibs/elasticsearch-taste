@@ -1,2 +1,2 @@
-elasticsearch-recommender
+Mahout Taste for Elasticsearch
 =========================
