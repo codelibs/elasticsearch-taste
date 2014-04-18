@@ -4,7 +4,7 @@ import java.util.Collection;
 
 import org.codelibs.elasticsearch.taste.module.TasteModule;
 import org.codelibs.elasticsearch.taste.module.TasteRiverModule;
-import org.codelibs.elasticsearch.taste.rest.TasteRestAction;
+import org.codelibs.elasticsearch.taste.rest.TasteEventRestAction;
 import org.codelibs.elasticsearch.taste.service.TasteService;
 import org.elasticsearch.common.collect.Lists;
 import org.elasticsearch.common.component.LifecycleComponent;
@@ -26,7 +26,7 @@ public class TastePlugin extends AbstractPlugin {
 
     // for Rest API
     public void onModule(final RestModule module) {
-        module.addRestAction(TasteRestAction.class);
+        module.addRestAction(TasteEventRestAction.class);
     }
 
     // for River

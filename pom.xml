@@ -27,7 +27,7 @@
 		<version>7</version>
 	</parent>
 	<properties>
-		<elasticsearch.version>1.1.0</elasticsearch.version>
+		<elasticsearch.version>1.1.1</elasticsearch.version>
 		<mahout.version>0.9</mahout.version>
 	</properties>
 	<build>

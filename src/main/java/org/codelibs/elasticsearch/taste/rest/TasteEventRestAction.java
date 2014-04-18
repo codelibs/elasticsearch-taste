@@ -17,17 +17,15 @@ import org.elasticsearch.rest.XContentRestResponse;
 import org.elasticsearch.rest.XContentThrowableRestResponse;
 import org.elasticsearch.rest.action.support.RestXContentBuilder;
 
-public class TasteRestAction extends BaseRestHandler {
+public class TasteEventRestAction extends BaseRestHandler {
 
     @Inject
-    public TasteRestAction(final Settings settings, final Client client,
+    public TasteEventRestAction(final Settings settings, final Client client,
             final RestController restController) {
         super(settings, client);
 
-        restController.registerHandler(RestRequest.Method.GET,
-                "/{index}/{type}/_taste", this);
-        restController.registerHandler(RestRequest.Method.GET,
-                "/{index}/_taste", this);
+        restController.registerHandler(RestRequest.Method.POST,
+                "/{index}/_taste/event", this);
     }
 
     @Override
@@ -39,7 +37,8 @@ public class TasteRestAction extends BaseRestHandler {
             builder.startObject();
             builder.field("index", request.param("index"));
             builder.field("type", request.param("type"));
-            builder.field("description",
+            builder.field(
+                    "description",
                     "This is a elasticsearch-taste response: "
                             + new Date().toString());
             builder.endObject();
