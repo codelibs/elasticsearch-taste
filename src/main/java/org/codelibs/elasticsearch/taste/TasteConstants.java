@@ -10,7 +10,7 @@ public class TasteConstants {
 
     public static final String ITEM_SIMILARITY_TYPE = "item_similarity";
 
-    public static final String USER_SIMILARITY_TYPE = "user_similarity";
+    public static final String RECOMMENDATION_TYPE = "recommendation";
 
     public static final String VALUE_FIELD = "value";
 
@@ -19,4 +19,6 @@ public class TasteConstants {
     public static final String USER_ID_FIELD = "user_id";
 
     public static final String TIMESTAMP_FIELD = "@timestamp";
+
+    public static final String ITEMS_FILED = "items";
 }

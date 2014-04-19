@@ -5,48 +5,48 @@ import java.util.NoSuchElementException;
 
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
-import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
-import org.codelibs.elasticsearch.taste.similarity.precompute.SimilarItemsWriter;
+import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
+import org.codelibs.elasticsearch.taste.similarity.precompute.RecommendedItemsWriter;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 
-public class SimilarItemsWorker implements Runnable {
+public class RecommendedItemsWorker implements Runnable {
     private static final ESLogger logger = Loggers
-            .getLogger(SimilarItemsWorker.class);
+            .getLogger(RecommendedItemsWorker.class);
 
     protected int number;
 
-    protected ItemBasedRecommender recommender;
+    protected UserBasedRecommender recommender;
 
-    protected LongPrimitiveIterator itemIDs;
+    protected LongPrimitiveIterator userIDs;
 
-    protected int numOfMostSimilarItems;
+    protected int numOfRecommendedItems;
 
-    protected SimilarItemsWriter writer;
+    protected RecommendedItemsWriter writer;
 
-    public SimilarItemsWorker(final int number,
-            final ItemBasedRecommender recommender,
-            final LongPrimitiveIterator itemIDs,
-            final int numOfMostSimilarItems, final SimilarItemsWriter writer) {
+    public RecommendedItemsWorker(final int number,
+            final UserBasedRecommender recommender,
+            final LongPrimitiveIterator userIDs,
+            final int numOfRecommendedItems, final RecommendedItemsWriter writer) {
         this.number = number;
         this.recommender = recommender;
-        this.itemIDs = itemIDs;
-        this.numOfMostSimilarItems = numOfMostSimilarItems;
+        this.userIDs = userIDs;
+        this.numOfRecommendedItems = numOfRecommendedItems;
         this.writer = writer;
     }
 
     @Override
     public void run() {
         logger.info("Worker {} is started.", number);
-        long itemID;
-        while ((itemID = nextId(itemIDs)) != -1) {
+        long userID;
+        while ((userID = nextId(userIDs)) != -1) {
             try {
                 final List<RecommendedItem> recommendedItems = recommender
-                        .mostSimilarItems(itemID, numOfMostSimilarItems);
-                writer.write(itemID, recommendedItems);
+                        .recommend(userID, numOfRecommendedItems);
+                writer.write(userID, recommendedItems);
             } catch (final TasteException e) {
-                logger.error("Item {} could not be processed.", e, itemID);
+                logger.error("Item {} could not be processed.", e, userID);
             }
         }
         logger.info("Worker {} is complated.", number);
