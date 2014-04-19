@@ -5,7 +5,7 @@ import java.util.Collection;
 import org.codelibs.elasticsearch.taste.module.TasteModule;
 import org.codelibs.elasticsearch.taste.module.TasteRiverModule;
 import org.codelibs.elasticsearch.taste.rest.TasteEventRestAction;
-import org.codelibs.elasticsearch.taste.service.TasteService;
+import org.codelibs.elasticsearch.taste.service.PrecomputeService;
 import org.elasticsearch.common.collect.Lists;
 import org.elasticsearch.common.component.LifecycleComponent;
 import org.elasticsearch.common.inject.Module;
@@ -49,7 +49,7 @@ public class TastePlugin extends AbstractPlugin {
     public Collection<Class<? extends LifecycleComponent>> services() {
         final Collection<Class<? extends LifecycleComponent>> services = Lists
                 .newArrayList();
-        services.add(TasteService.class);
+        services.add(PrecomputeService.class);
         return services;
     }
 }
