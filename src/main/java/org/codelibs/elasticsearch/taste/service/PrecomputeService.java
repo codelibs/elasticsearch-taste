@@ -9,7 +9,7 @@ import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
-import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
+import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.codelibs.elasticsearch.taste.similarity.precompute.RecommendedItemsWriter;
 import org.codelibs.elasticsearch.taste.similarity.precompute.SimilarItemsWriter;
 import org.codelibs.elasticsearch.taste.similarity.worker.RecommendedItemsWorker;
@@ -43,7 +43,7 @@ public class PrecomputeService extends
         logger.info("CLOSE PrecomputeService");
     }
 
-    public void compute(final UserBasedRecommender recommender,
+    public void compute(final Recommender recommender,
             final RecommendedItemsWriter writer,
             final int numOfRecommendedItems, final int degreeOfParallelism,
             final int maxDurationInHours) {
@@ -51,7 +51,6 @@ public class PrecomputeService extends
         final ExecutorService executorService = Executors
                 .newFixedThreadPool(degreeOfParallelism + 1);
         try {
-
             final DataModel dataModel = recommender.getDataModel();
             final LongPrimitiveIterator userIDs = dataModel.getUserIDs();
 

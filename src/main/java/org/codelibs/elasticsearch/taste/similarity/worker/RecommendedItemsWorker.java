@@ -6,7 +6,7 @@ import java.util.NoSuchElementException;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
-import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
+import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.codelibs.elasticsearch.taste.similarity.precompute.RecommendedItemsWriter;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
@@ -17,7 +17,7 @@ public class RecommendedItemsWorker implements Runnable {
 
     protected int number;
 
-    protected UserBasedRecommender recommender;
+    protected Recommender recommender;
 
     protected LongPrimitiveIterator userIDs;
 
@@ -26,8 +26,7 @@ public class RecommendedItemsWorker implements Runnable {
     protected RecommendedItemsWriter writer;
 
     public RecommendedItemsWorker(final int number,
-            final UserBasedRecommender recommender,
-            final LongPrimitiveIterator userIDs,
+            final Recommender recommender, final LongPrimitiveIterator userIDs,
             final int numOfRecommendedItems, final RecommendedItemsWriter writer) {
         this.number = number;
         this.recommender = recommender;

@@ -23,7 +23,7 @@ public class RecommendedItemsWriter implements Closeable {
 
     protected String index;
 
-    protected String typpe = TasteConstants.RECOMMENDATION_TYPE;
+    protected String type = TasteConstants.RECOMMENDATION_TYPE;
 
     protected String userIDField = TasteConstants.USER_ID_FIELD;
 
@@ -56,7 +56,7 @@ public class RecommendedItemsWriter implements Closeable {
         }
         rootObj.put(itemsField, itemList);
 
-        client.prepareIndex(index, typpe, Long.toString(userID))
+        client.prepareIndex(index, type, Long.toString(userID))
                 .setSource(rootObj)
                 .execute(new ActionListener<IndexResponse>() {
 
@@ -72,6 +72,26 @@ public class RecommendedItemsWriter implements Closeable {
                         logger.error("Failed to write " + rootObj, e);
                     }
                 });
+    }
+
+    public void setType(final String type) {
+        this.type = type;
+    }
+
+    public void setUserIDField(final String userIDField) {
+        this.userIDField = userIDField;
+    }
+
+    public void setItemIDField(final String itemIDField) {
+        this.itemIDField = itemIDField;
+    }
+
+    public void setValueField(final String valueField) {
+        this.valueField = valueField;
+    }
+
+    public void setItemsField(final String itemsField) {
+        this.itemsField = itemsField;
     }
 
 }

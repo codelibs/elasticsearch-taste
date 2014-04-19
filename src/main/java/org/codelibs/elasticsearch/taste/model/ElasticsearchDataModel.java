@@ -48,7 +48,11 @@ public class ElasticsearchDataModel implements DataModel {
 
     protected Client client;
 
-    protected String index;
+    protected String preferenceIndex;
+
+    protected String userIndex;
+
+    protected String itemIndex;
 
     protected String preferenceType = TasteConstants.PREFERENCE_TYPE;
 
@@ -229,7 +233,7 @@ public class ElasticsearchDataModel implements DataModel {
         SearchResponse response;
         try {
             response = client
-                    .prepareSearch(index)
+                    .prepareSearch(preferenceIndex)
                     .setTypes(preferenceType)
                     .setSearchType(SearchType.SCAN)
                     .setScroll(scrollKeepAlive)
@@ -277,7 +281,7 @@ public class ElasticsearchDataModel implements DataModel {
         SearchResponse response;
         try {
             response = client
-                    .prepareSearch(index)
+                    .prepareSearch(preferenceIndex)
                     .setTypes(preferenceType)
                     .setSearchType(SearchType.SCAN)
                     .setScroll(scrollKeepAlive)
@@ -339,7 +343,7 @@ public class ElasticsearchDataModel implements DataModel {
     @Override
     public int getNumUsersWithPreferenceFor(final long itemID)
             throws TasteException {
-        return getNumByQuery(userType,
+        return getNumByQuery(userIndex, userType,
                 QueryBuilders.termQuery(itemIDField, itemID));
     }
 
@@ -347,6 +351,7 @@ public class ElasticsearchDataModel implements DataModel {
     public int getNumUsersWithPreferenceFor(final long itemID1,
             final long itemID2) throws TasteException {
         return getNumByQuery(
+                userIndex,
                 userType,
                 QueryBuilders.boolQuery()
                         .must(QueryBuilders.termQuery(itemIDField, itemID1))
@@ -362,12 +367,14 @@ public class ElasticsearchDataModel implements DataModel {
         source.put(valueField, value);
         source.put(timestampField, "now");
         try {
-            client.prepareIndex(index, preferenceType).setSource(source)
-                    .setRefresh(true).execute().actionGet();
+            client.prepareIndex(preferenceIndex, preferenceType)
+                    .setSource(source).setRefresh(true).execute().actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to set (" + userID + "," + itemID
                     + "," + value + ")", e);
         }
+
+        // TODO add user and item
     }
 
     @Override
@@ -376,7 +383,7 @@ public class ElasticsearchDataModel implements DataModel {
         DeleteByQueryResponse response;
         try {
             response = client
-                    .prepareDeleteByQuery(index)
+                    .prepareDeleteByQuery(preferenceIndex)
                     .setTypes(preferenceType)
                     .setQuery(
                             QueryBuilders.filteredQuery(
@@ -409,6 +416,8 @@ public class ElasticsearchDataModel implements DataModel {
                         + buf.toString());
             }
         }
+
+        // TODO add user and item
     }
 
     @Override
@@ -439,7 +448,7 @@ public class ElasticsearchDataModel implements DataModel {
             final String... resultFields) throws TasteException {
         try {
             return client
-                    .prepareSearch(index)
+                    .prepareSearch(preferenceIndex)
                     .setTypes(preferenceType)
                     .setSearchType(SearchType.SCAN)
                     .setScroll(scrollKeepAlive)
@@ -490,7 +499,7 @@ public class ElasticsearchDataModel implements DataModel {
         SearchResponse response;
         try {
             response = client
-                    .prepareSearch(index)
+                    .prepareSearch(userIndex)
                     .setTypes(userType)
                     .setQuery(
                             QueryBuilders.filteredQuery(
@@ -545,7 +554,7 @@ public class ElasticsearchDataModel implements DataModel {
         SearchResponse response;
         try {
             response = client
-                    .prepareSearch(index)
+                    .prepareSearch(itemIndex)
                     .setTypes(itemType)
                     .setQuery(
                             QueryBuilders.filteredQuery(
@@ -596,8 +605,8 @@ public class ElasticsearchDataModel implements DataModel {
         return FilterBuilders.rangeFilter(timestampField).to(lastAccessed);
     }
 
-    protected int getNumByQuery(final String type, final QueryBuilder query)
-            throws TasteException {
+    protected int getNumByQuery(final String index, final String type,
+            final QueryBuilder query) throws TasteException {
         CountResponse response;
         try {
             response = client
@@ -639,7 +648,7 @@ public class ElasticsearchDataModel implements DataModel {
             return;
         }
         final SearchResponse response = client
-                .prepareSearch(index)
+                .prepareSearch(preferenceIndex)
                 .setTypes(preferenceType)
                 .setQuery(
                         QueryBuilders.filteredQuery(
@@ -651,5 +660,65 @@ public class ElasticsearchDataModel implements DataModel {
                 .execute().actionGet();
         final Aggregations aggregations = response.getAggregations();
         stats = aggregations.get(valueField);
+    }
+
+    public Date getLastAccessed() {
+        return lastAccessed;
+    }
+
+    public void setLastAccessed(final Date lastAccessed) {
+        this.lastAccessed = lastAccessed;
+    }
+
+    public void setClient(final Client client) {
+        this.client = client;
+    }
+
+    public void setPreferenceIndex(final String preferenceIndex) {
+        this.preferenceIndex = preferenceIndex;
+    }
+
+    public void setUserIndex(final String userIndex) {
+        this.userIndex = userIndex;
+    }
+
+    public void setItemIndex(final String itemIndex) {
+        this.itemIndex = itemIndex;
+    }
+
+    public void setPreferenceType(final String preferenceType) {
+        this.preferenceType = preferenceType;
+    }
+
+    public void setUserType(final String userType) {
+        this.userType = userType;
+    }
+
+    public void setItemType(final String itemType) {
+        this.itemType = itemType;
+    }
+
+    public void setUserIDField(final String userIDField) {
+        this.userIDField = userIDField;
+    }
+
+    public void setItemIDField(final String itemIDField) {
+        this.itemIDField = itemIDField;
+    }
+
+    public void setValueField(final String valueField) {
+        this.valueField = valueField;
+    }
+
+    public void setTimestampField(final String timestampField) {
+        this.timestampField = timestampField;
+    }
+
+    public void setScrollKeepAlive(final Scroll scrollKeepAlive) {
+        this.scrollKeepAlive = scrollKeepAlive;
+    }
+
+    public void setScrollSize(final int scrollSize) {
+        this.scrollSize = scrollSize;
     }
 }

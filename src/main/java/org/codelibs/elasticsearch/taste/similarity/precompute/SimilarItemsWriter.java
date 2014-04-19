@@ -73,4 +73,20 @@ public class SimilarItemsWriter implements Closeable {
                 });
     }
 
+    public void setType(final String type) {
+        this.type = type;
+    }
+
+    public void setItemIDField(final String itemIDField) {
+        this.itemIDField = itemIDField;
+    }
+
+    public void setValueField(final String valueField) {
+        this.valueField = valueField;
+    }
+
+    public void setItemsField(final String itemsField) {
+        this.itemsField = itemsField;
+    }
+
 }
