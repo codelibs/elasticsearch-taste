@@ -1,14 +1,15 @@
 package org.codelibs.elasticsearch.taste.similarity;
 
 import org.apache.mahout.cf.taste.impl.similarity.LogLikelihoodSimilarity;
-import org.apache.mahout.cf.taste.similarity.UserSimilarity;
 
-public class LogLikelihoodSimilarityFactory extends
-        AbstractUserSimilarityFactory {
+public class LogLikelihoodSimilarityFactory<T> extends
+        AbstractUserSimilarityFactory<T> {
 
     @Override
-    public UserSimilarity create() {
-        return new LogLikelihoodSimilarity(dataModel);
+    public T create() {
+        @SuppressWarnings("unchecked")
+        final T t = (T) new LogLikelihoodSimilarity(dataModel);
+        return t;
     }
 
 }

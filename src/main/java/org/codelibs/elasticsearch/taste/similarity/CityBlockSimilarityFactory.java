@@ -1,12 +1,14 @@
 package org.codelibs.elasticsearch.taste.similarity;
 
 import org.apache.mahout.cf.taste.impl.similarity.CityBlockSimilarity;
-import org.apache.mahout.cf.taste.similarity.UserSimilarity;
 
-public class CityBlockSimilarityFactory extends AbstractUserSimilarityFactory {
+public class CityBlockSimilarityFactory<T> extends
+        AbstractUserSimilarityFactory<T> {
     @Override
-    public UserSimilarity create() {
-        return new CityBlockSimilarity(dataModel);
+    public T create() {
+        @SuppressWarnings("unchecked")
+        final T t = (T) new CityBlockSimilarity(dataModel);
+        return t;
     }
 
 }

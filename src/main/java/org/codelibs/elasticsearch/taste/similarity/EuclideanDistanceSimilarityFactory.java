@@ -5,12 +5,11 @@ import java.util.Map;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.common.Weighting;
 import org.apache.mahout.cf.taste.impl.similarity.EuclideanDistanceSimilarity;
-import org.apache.mahout.cf.taste.similarity.UserSimilarity;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
 import org.codelibs.elasticsearch.util.SettingsUtils;
 
-public class EuclideanDistanceSimilarityFactory extends
-        AbstractUserSimilarityFactory {
+public class EuclideanDistanceSimilarityFactory<T> extends
+        AbstractUserSimilarityFactory<T> {
 
     protected Weighting weighting;
 
@@ -26,9 +25,12 @@ public class EuclideanDistanceSimilarityFactory extends
     }
 
     @Override
-    public UserSimilarity create() {
+    public T create() {
         try {
-            return new EuclideanDistanceSimilarity(dataModel, weighting);
+            @SuppressWarnings("unchecked")
+            final T t = (T) new EuclideanDistanceSimilarity(dataModel,
+                    weighting);
+            return t;
         } catch (final TasteException e) {
             throw new TasteSystemException("Failed to create an instance.", e);
         }

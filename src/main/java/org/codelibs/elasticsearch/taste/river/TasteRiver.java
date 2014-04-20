@@ -3,15 +3,21 @@ package org.codelibs.elasticsearch.taste.river;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.mahout.cf.taste.impl.recommender.GenericItemBasedRecommender;
 import org.apache.mahout.cf.taste.impl.recommender.GenericUserBasedRecommender;
 import org.apache.mahout.cf.taste.neighborhood.UserNeighborhood;
+import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
+import org.apache.mahout.cf.taste.recommender.Recommender;
+import org.apache.mahout.cf.taste.similarity.ItemSimilarity;
 import org.apache.mahout.cf.taste.similarity.UserSimilarity;
 import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.neighborhood.UserNeighborhoodFactory;
 import org.codelibs.elasticsearch.taste.service.PrecomputeService;
-import org.codelibs.elasticsearch.taste.similarity.UserSimilarityFactory;
+import org.codelibs.elasticsearch.taste.similarity.SimilarityFactory;
+import org.codelibs.elasticsearch.taste.similarity.precompute.RecommendedItemsWriter;
+import org.codelibs.elasticsearch.taste.similarity.precompute.SimilarItemsWriter;
 import org.codelibs.elasticsearch.util.SettingsUtils;
 import org.codelibs.elasticsearch.util.StringUtils;
 import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingResponse;
@@ -27,54 +33,172 @@ import org.elasticsearch.search.Scroll;
 public class TasteRiver extends AbstractRiverComponent implements River {
     private final Client client;
 
+    private PrecomputeService precomputeService;
+
+    private Thread riverThread;
+
     @Inject
     public TasteRiver(final RiverName riverName, final RiverSettings settings,
             final Client client, final PrecomputeService precomputeService) {
         super(riverName, settings);
         this.client = client;
+        this.precomputeService = precomputeService;
+
         logger.info("CREATE TasteRiver");
     }
 
     @Override
     public void start() {
         logger.info("START TasteRiver");
+        try {
+            final Map<String, Object> rootSettings = settings.settings();
+            final Object actionObj = rootSettings.get("action");
+            if ("user".equals(actionObj)) {
+                final int numOfItems = SettingsUtils.get(rootSettings,
+                        "num_of_items", 10);
+                final int maxDuration = SettingsUtils.get(rootSettings,
+                        "max_duration", 0);
 
-        final Map<String, Object> rootSettings = settings.settings();
-        final Object actionObj = rootSettings.get("action");
-        if ("user".equals(actionObj)) {
-            SettingsUtils.get(rootSettings, "num_of_items", 10);
-            final IndexInfo indexInfo = new IndexInfo(
-                    (Map<String, Object>) SettingsUtils.get(rootSettings,
-                            "index_info"));
-            final ElasticsearchDataModel dataModel = createDataModel(client,
-                    indexInfo, (Map<String, Object>) SettingsUtils.get(
-                            rootSettings, "data_model"));
+                final Map<String, Object> indexInfoSettings = SettingsUtils
+                        .get(rootSettings, "index_info");
+                final IndexInfo indexInfo = new IndexInfo(indexInfoSettings);
 
-            final Map<String, Object> similaritySettings = SettingsUtils.get(
-                    rootSettings, "similarity", new HashMap<String, Object>());
-            similaritySettings.put("similaritySettings", dataModel);
-            final UserSimilarity similarity = createUserSimilarity(similaritySettings);
+                final Map<String, Object> modelInfoSettings = SettingsUtils
+                        .get(rootSettings, "data_model");
+                final ElasticsearchDataModel dataModel = createDataModel(
+                        client, indexInfo, modelInfoSettings);
 
-            final Map<String, Object> neighborhoodSettings = SettingsUtils
-                    .get(rootSettings, "neighborhood",
-                            new HashMap<String, Object>());
-            neighborhoodSettings.put("dataModel", dataModel);
-            neighborhoodSettings.put("userSimilarity", similarity);
-            final UserNeighborhood neighborhood = createUserNeighborhood(neighborhoodSettings);
+                final Map<String, Object> similaritySettings = SettingsUtils
+                        .get(rootSettings, "similarity",
+                                new HashMap<String, Object>());
+                similaritySettings.put("dataModel", dataModel);
+                final UserSimilarity similarity = createSimilarity(similaritySettings);
 
-            new GenericUserBasedRecommender(dataModel, neighborhood, similarity);
+                final Map<String, Object> neighborhoodSettings = SettingsUtils
+                        .get(rootSettings, "neighborhood",
+                                new HashMap<String, Object>());
+                neighborhoodSettings.put("dataModel", dataModel);
+                neighborhoodSettings.put("userSimilarity", similarity);
+                final UserNeighborhood neighborhood = createUserNeighborhood(neighborhoodSettings);
 
-        } else if ("item".equals(actionObj)) {
+                final RecommendedItemsWriter writer = createRecommendedItemsWriter(indexInfo);
 
-        } else {
-            logger.info("River {} has no actions. Deleting...",
-                    riverName.name());
-            delete();
+                final int degreeOfParallelism = getDegreeOfParallelism();
+
+                final Recommender recommender = new GenericUserBasedRecommender(
+                        dataModel, neighborhood, similarity);
+
+                startRiverThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            precomputeService.compute(recommender, writer,
+                                    numOfItems, degreeOfParallelism,
+                                    maxDuration);
+                        } catch (final Exception e) {
+                            logger.error("River {} is failed.", e,
+                                    riverName.name());
+                        } finally {
+                            deleteRiver();
+                        }
+                    }
+                }, "River" + riverName.name());
+            } else if ("item".equals(actionObj)) {
+                final int numOfItems = SettingsUtils.get(rootSettings,
+                        "num_of_items", 10);
+                final int maxDuration = SettingsUtils.get(rootSettings,
+                        "max_duration", 0);
+
+                final Map<String, Object> indexInfoSettings = SettingsUtils
+                        .get(rootSettings, "index_info");
+                final IndexInfo indexInfo = new IndexInfo(indexInfoSettings);
+
+                final Map<String, Object> modelInfoSettings = SettingsUtils
+                        .get(rootSettings, "data_model");
+                final ElasticsearchDataModel dataModel = createDataModel(
+                        client, indexInfo, modelInfoSettings);
+
+                final Map<String, Object> similaritySettings = SettingsUtils
+                        .get(rootSettings, "similarity",
+                                new HashMap<String, Object>());
+                similaritySettings.put("dataModel", dataModel);
+                final ItemSimilarity similarity = createSimilarity(similaritySettings);
+
+                final ItemBasedRecommender recommender = new GenericItemBasedRecommender(
+                        dataModel, similarity);
+
+                final RecommendedItemsWriter writer = createRecommendedItemsWriter(indexInfo);
+
+                final int degreeOfParallelism = getDegreeOfParallelism();
+
+                startRiverThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            precomputeService.compute(recommender, writer,
+                                    numOfItems, degreeOfParallelism,
+                                    maxDuration);
+                        } catch (final Exception e) {
+                            logger.error("River {} is failed.", e,
+                                    riverName.name());
+                        } finally {
+                            deleteRiver();
+                        }
+                    }
+                }, "River" + riverName.name());
+            } else {
+                logger.info("River {} has no actions. Deleting...",
+                        riverName.name());
+            }
+        } finally {
+            if (riverThread == null) {
+                deleteRiver();
+            }
         }
-
     }
 
-    private UserNeighborhood createUserNeighborhood(
+    protected void startRiverThread(final Runnable runnable, final String name) {
+        riverThread = new Thread(runnable, name);
+        try {
+            riverThread.start();
+        } catch (final Exception e) {
+            logger.error("Failed to start {}.", e, name);
+            riverThread = null;
+        }
+    }
+
+    private int getDegreeOfParallelism() {
+        int degreeOfParallelism = Runtime.getRuntime().availableProcessors() - 1;
+        if (degreeOfParallelism < 1) {
+            degreeOfParallelism = 1;
+        }
+        return degreeOfParallelism;
+    }
+
+    protected RecommendedItemsWriter createRecommendedItemsWriter(
+            final IndexInfo indexInfo) {
+        final RecommendedItemsWriter writer = new RecommendedItemsWriter(
+                client, indexInfo.getRecommendationIndex());
+        writer.setType(indexInfo.getRecommendationType());
+        writer.setItemIDField(indexInfo.getItemIdField());
+        writer.setItemsField(indexInfo.getItemsField());
+        writer.setUserIDField(indexInfo.getUserIdField());
+        writer.setValueField(indexInfo.getValueField());
+        return writer;
+    }
+
+    protected SimilarItemsWriter createSimilarItemsWriter(
+            final IndexInfo indexInfo) {
+        final SimilarItemsWriter writer = new SimilarItemsWriter(client,
+                indexInfo.getItemSimilarityIndex());
+        writer.setType(indexInfo.getItemSimilarityType());
+        writer.setItemIDField(indexInfo.getItemIdField());
+        writer.setItemsField(indexInfo.getItemsField());
+        writer.setValueField(indexInfo.getValueField());
+        return writer;
+    }
+
+    protected UserNeighborhood createUserNeighborhood(
             final Map<String, Object> neighborhoodSettings) {
         final String factoryName = SettingsUtils
                 .get(neighborhoodSettings, "factory",
@@ -92,17 +216,18 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         }
     }
 
-    private UserSimilarity createUserSimilarity(
+    protected <T> T createSimilarity(
             final Map<String, Object> similaritySettings) {
         final String factoryName = SettingsUtils
                 .get(similaritySettings, "factory",
                         "org.codelibs.elasticsearch.taste.similarity.LogLikelihoodSimilarityFactory");
         try {
             final Class<?> clazz = Class.forName(factoryName);
-            final UserSimilarityFactory userSimilarityFactory = (UserSimilarityFactory) clazz
+            @SuppressWarnings("unchecked")
+            final SimilarityFactory<T> similarityFactory = (SimilarityFactory<T>) clazz
                     .newInstance();
-            userSimilarityFactory.init(similaritySettings);
-            return userSimilarityFactory.create();
+            similarityFactory.init(similaritySettings);
+            return similarityFactory.create();
         } catch (ClassNotFoundException | InstantiationException
                 | IllegalAccessException e) {
             throw new TasteSystemException("Could not create an instance of "
@@ -113,11 +238,9 @@ public class TasteRiver extends AbstractRiverComponent implements River {
     @Override
     public void close() {
         logger.info("CLOSE TasteRiver");
-
-        // TODO Your code..
     }
 
-    protected void delete() {
+    protected void deleteRiver() {
         final DeleteMappingResponse deleteMappingResponse = client.admin()
                 .indices().prepareDeleteMapping("_river")
                 .setType(riverName.name()).execute().actionGet();
@@ -195,6 +318,10 @@ public class TasteRiver extends AbstractRiverComponent implements River {
 
         private String recommendationType;
 
+        private String itemSimilarityIndex;
+
+        private String itemSimilarityType;
+
         private String userIdField;
 
         private String itemIdField;
@@ -234,6 +361,13 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                     "index", defaultIndex);
             recommendationType = SettingsUtils.get(recommendationSettings,
                     "type", TasteConstants.RECOMMENDATION_TYPE);
+
+            final Map<String, Object> itemSimilaritySettings = SettingsUtils
+                    .get(indexInfoSettings, "item_similarity");
+            itemSimilarityIndex = SettingsUtils.get(itemSimilaritySettings,
+                    "index", defaultIndex);
+            itemSimilarityType = SettingsUtils.get(itemSimilaritySettings,
+                    "type", TasteConstants.ITEM_SIMILARITY_TYPE);
 
             final Map<String, Object> fieldSettings = SettingsUtils.get(
                     indexInfoSettings, "field");
@@ -279,6 +413,14 @@ public class TasteRiver extends AbstractRiverComponent implements River {
 
         public String getRecommendationType() {
             return recommendationType;
+        }
+
+        public String getItemSimilarityIndex() {
+            return itemSimilarityIndex;
+        }
+
+        public String getItemSimilarityType() {
+            return itemSimilarityType;
         }
 
         public String getUserIdField() {

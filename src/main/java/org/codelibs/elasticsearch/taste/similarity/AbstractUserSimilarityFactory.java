@@ -5,8 +5,8 @@ import java.util.Map;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.codelibs.elasticsearch.util.SettingsUtils;
 
-public abstract class AbstractUserSimilarityFactory implements
-        UserSimilarityFactory {
+public abstract class AbstractUserSimilarityFactory<T> implements
+        SimilarityFactory<T> {
 
     protected DataModel dataModel;
 

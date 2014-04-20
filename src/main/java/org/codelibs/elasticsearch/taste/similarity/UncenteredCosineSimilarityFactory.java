@@ -5,12 +5,11 @@ import java.util.Map;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.common.Weighting;
 import org.apache.mahout.cf.taste.impl.similarity.UncenteredCosineSimilarity;
-import org.apache.mahout.cf.taste.similarity.UserSimilarity;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
 import org.codelibs.elasticsearch.util.SettingsUtils;
 
-public class UncenteredCosineSimilarityFactory extends
-        AbstractUserSimilarityFactory {
+public class UncenteredCosineSimilarityFactory<T> extends
+        AbstractUserSimilarityFactory<T> {
 
     protected Weighting weighting;
 
@@ -26,9 +25,11 @@ public class UncenteredCosineSimilarityFactory extends
     }
 
     @Override
-    public UserSimilarity create() {
+    public T create() {
         try {
-            return new UncenteredCosineSimilarity(dataModel, weighting);
+            @SuppressWarnings("unchecked")
+            final T t = (T) new UncenteredCosineSimilarity(dataModel, weighting);
+            return t;
         } catch (final TasteException e) {
             throw new TasteSystemException("Failed to create an instance.", e);
         }

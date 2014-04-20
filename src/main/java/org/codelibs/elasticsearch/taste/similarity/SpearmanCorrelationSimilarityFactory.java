@@ -1,14 +1,15 @@
 package org.codelibs.elasticsearch.taste.similarity;
 
 import org.apache.mahout.cf.taste.impl.similarity.SpearmanCorrelationSimilarity;
-import org.apache.mahout.cf.taste.similarity.UserSimilarity;
 
-public class SpearmanCorrelationSimilarityFactory extends
-        AbstractUserSimilarityFactory {
+public class SpearmanCorrelationSimilarityFactory<T> extends
+        AbstractUserSimilarityFactory<T> {
 
     @Override
-    public UserSimilarity create() {
-        return new SpearmanCorrelationSimilarity(dataModel);
+    public T create() {
+        @SuppressWarnings("unchecked")
+        final T t = (T) new SpearmanCorrelationSimilarity(dataModel);
+        return t;
     }
 
 }

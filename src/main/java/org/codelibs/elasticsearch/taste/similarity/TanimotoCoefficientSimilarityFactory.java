@@ -1,14 +1,15 @@
 package org.codelibs.elasticsearch.taste.similarity;
 
 import org.apache.mahout.cf.taste.impl.similarity.TanimotoCoefficientSimilarity;
-import org.apache.mahout.cf.taste.similarity.UserSimilarity;
 
-public class TanimotoCoefficientSimilarityFactory extends
-        AbstractUserSimilarityFactory {
+public class TanimotoCoefficientSimilarityFactory<T> extends
+        AbstractUserSimilarityFactory<T> {
 
     @Override
-    public UserSimilarity create() {
-        return new TanimotoCoefficientSimilarity(dataModel);
+    public T create() {
+        @SuppressWarnings("unchecked")
+        final T t = (T) new TanimotoCoefficientSimilarity(dataModel);
+        return t;
     }
 
 }
