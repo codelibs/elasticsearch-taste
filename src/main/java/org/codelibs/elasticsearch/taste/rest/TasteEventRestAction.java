@@ -4,8 +4,10 @@ import static org.elasticsearch.rest.RestStatus.OK;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.codelibs.elasticsearch.taste.TasteConstants;
@@ -13,6 +15,9 @@ import org.codelibs.elasticsearch.taste.rest.exception.MissingShardsException;
 import org.codelibs.elasticsearch.taste.rest.exception.OperationFailedException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ShardOperationFailedException;
+import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
+import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
+import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.action.index.IndexRequest.OpType;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
@@ -38,6 +43,8 @@ import org.elasticsearch.search.sort.SortOrder;
 
 public class TasteEventRestAction extends BaseRestHandler {
 
+    private static final String ERROR_LIST = "error.list";
+
     private static final String FIELD_TIMESTAMP = "field.timestamp";
 
     private static final String FIELD_VALUE = "field.value";
@@ -46,10 +53,14 @@ public class TasteEventRestAction extends BaseRestHandler {
 
     private static final String FIELD_USER_ID = "field.user_id";
 
+    private int maxRetryCount;
+
     @Inject
     public TasteEventRestAction(final Settings settings, final Client client,
             final RestController restController) {
         super(settings, client);
+
+        maxRetryCount = settings.getAsInt("taste.rest.retry", 3);
 
         restController.registerHandler(RestRequest.Method.POST,
                 "/{index}/_taste/event", this);
@@ -77,7 +88,8 @@ public class TasteEventRestAction extends BaseRestHandler {
     private void handleUserRequest(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap) {
-        final String index = request.param("index");
+        final String index = request
+                .param("user_index", request.param("index"));
         final String userType = request.param("user_type",
                 TasteConstants.USER_TYPE);
         final String userIdField = request.param(FIELD_USER_ID,
@@ -101,23 +113,24 @@ public class TasteEventRestAction extends BaseRestHandler {
                 .setSize(1).execute(new ActionListener<SearchResponse>() {
 
                     @Override
-                    public void onResponse(SearchResponse response) {
+                    public void onResponse(final SearchResponse response) {
                         try {
                             validateRespose(response);
 
-                            SearchHits hits = response.getHits();
+                            final SearchHits hits = response.getHits();
                             if (hits.getTotalHits() == 0) {
                                 handleUserCreation(request, channel,
                                         requestMap, paramMap, userMap, index,
                                         userType, userIdField);
                             } else {
-                                SearchHit[] searchHits = hits.getHits();
-                                SearchHitField field = searchHits[0]
+                                final SearchHit[] searchHits = hits.getHits();
+                                final SearchHitField field = searchHits[0]
                                         .getFields().get(userIdField);
                                 if (field != null) {
-                                    Long userId = field.getValue();
+                                    final Number userId = field.getValue();
                                     if (userId != null) {
-                                        paramMap.put(userIdField, userId);
+                                        paramMap.put(userIdField,
+                                                userId.longValue());
                                         handleItemRequest(request, channel,
                                                 requestMap, paramMap);
                                         return;
@@ -127,16 +140,151 @@ public class TasteEventRestAction extends BaseRestHandler {
                                         "User does not have " + userIdField
                                                 + ": " + searchHits[0]);
                             }
-                        } catch (Exception e) {
+                        } catch (final Exception e) {
                             onFailure(e);
                         }
                     }
 
                     @Override
-                    public void onFailure(Throwable t) {
+                    public void onFailure(final Throwable t) {
+                        @SuppressWarnings("unchecked")
+                        List<Throwable> errorList = (List<Throwable>) paramMap
+                                .get(ERROR_LIST);
+                        if (errorList == null) {
+                            errorList = new ArrayList<>();
+                            paramMap.put(ERROR_LIST, errorList);
+                        }
+                        if (errorList.size() >= maxRetryCount) {
+                            sendErrorResponse(request, channel, t);
+                        } else {
+                            errorList.add(t);
+                            handleUserIndexCreation(request, channel,
+                                    requestMap, paramMap);
+                        }
+                    }
+                });
+    }
+
+    private void handleUserIndexCreation(final RestRequest request,
+            final RestChannel channel, final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap) {
+        final String index = request
+                .param("user_index", request.param("index"));
+
+        client.admin().indices().prepareExists(index)
+                .execute(new ActionListener<IndicesExistsResponse>() {
+
+                    @Override
+                    public void onResponse(
+                            final IndicesExistsResponse indicesExistsResponse) {
+                        if (indicesExistsResponse.isExists()) {
+                            handleUserMappingCreation(request, channel,
+                                    requestMap, paramMap);
+                        } else {
+                            client.admin()
+                                    .indices()
+                                    .prepareCreate(index)
+                                    .execute(
+                                            new ActionListener<CreateIndexResponse>() {
+
+                                                @Override
+                                                public void onResponse(
+                                                        final CreateIndexResponse createIndexResponse) {
+                                                    if (createIndexResponse
+                                                            .isAcknowledged()) {
+                                                        handleUserMappingCreation(
+                                                                request,
+                                                                channel,
+                                                                requestMap,
+                                                                paramMap);
+                                                    } else {
+                                                        onFailure(new OperationFailedException(
+                                                                "Failed to create "
+                                                                        + index));
+                                                    }
+                                                }
+
+                                                @Override
+                                                public void onFailure(
+                                                        final Throwable t) {
+                                                    sendErrorResponse(request,
+                                                            channel, t);
+                                                }
+                                            });
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(final Throwable t) {
                         sendErrorResponse(request, channel, t);
                     }
                 });
+    }
+
+    private void handleUserMappingCreation(final RestRequest request,
+            final RestChannel channel, final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap) {
+        final String index = request
+                .param("user_index", request.param("index"));
+        final String type = request
+                .param("user_type", TasteConstants.USER_TYPE);
+        final String userIdField = request.param(FIELD_USER_ID,
+                TasteConstants.USER_ID_FIELD);
+        final String timestampField = request.param(FIELD_TIMESTAMP,
+                TasteConstants.TIMESTAMP_FIELD);
+
+        try {
+            final XContentBuilder builder = XContentFactory.jsonBuilder()//
+                    .startObject()//
+                    .startObject(type)//
+                    .startObject("properties")//
+
+                    // @timestamp
+                    .startObject(timestampField)//
+                    .field("type", "date")//
+                    .field("format", "dateOptionalTime")//
+                    .endObject()//
+
+                    // user_id
+                    .startObject(userIdField)//
+                    .field("type", "long")//
+                    .endObject()//
+
+                    // id
+                    .startObject("id")//
+                    .field("type", "string")//
+                    .field("index", "not_analyzed")//
+                    .endObject()//
+
+                    .endObject()//
+                    .endObject()//
+                    .endObject();
+
+            client.admin().indices().preparePutMapping(index).setType(type)
+                    .setSource(builder)
+                    .execute(new ActionListener<PutMappingResponse>() {
+
+                        @Override
+                        public void onResponse(
+                                final PutMappingResponse queueMappingResponse) {
+                            if (queueMappingResponse.isAcknowledged()) {
+                                handleUserRequest(request, channel, requestMap,
+                                        paramMap);
+                            } else {
+                                onFailure(new OperationFailedException(
+                                        "Failed to create mapping for " + index
+                                                + "/" + type));
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(final Throwable t) {
+                            sendErrorResponse(request, channel, t);
+                        }
+                    });
+        } catch (final Exception e) {
+            sendErrorResponse(request, channel, e);
+        }
     }
 
     private void handleUserCreation(final RestRequest request,
@@ -149,15 +297,15 @@ public class TasteEventRestAction extends BaseRestHandler {
                 .addSort(userIdField, SortOrder.DESC).setSize(1)
                 .execute(new ActionListener<SearchResponse>() {
                     @Override
-                    public void onResponse(SearchResponse response) {
+                    public void onResponse(final SearchResponse response) {
                         try {
                             validateRespose(response);
 
-                            Long currentId = null;
-                            SearchHits hits = response.getHits();
+                            Number currentId = null;
+                            final SearchHits hits = response.getHits();
                             if (hits.getTotalHits() != 0) {
-                                SearchHit[] searchHits = hits.getHits();
-                                SearchHitField field = searchHits[0]
+                                final SearchHit[] searchHits = hits.getHits();
+                                final SearchHitField field = searchHits[0]
                                         .getFields().get(userIdField);
                                 if (field != null) {
                                     currentId = field.getValue();
@@ -169,6 +317,7 @@ public class TasteEventRestAction extends BaseRestHandler {
                             } else {
                                 userId = Long.valueOf(currentId.longValue() + 1);
                             }
+                            userMap.put(userIdField, userId);
                             client.prepareIndex(index, type, userId.toString())
                                     .setSource(userMap)
                                     .setRefresh(true)
@@ -178,7 +327,7 @@ public class TasteEventRestAction extends BaseRestHandler {
 
                                                 @Override
                                                 public void onResponse(
-                                                        IndexResponse response) {
+                                                        final IndexResponse response) {
                                                     if (response.isCreated()) {
                                                         paramMap.put(
                                                                 userIdField,
@@ -197,18 +346,18 @@ public class TasteEventRestAction extends BaseRestHandler {
 
                                                 @Override
                                                 public void onFailure(
-                                                        Throwable t) {
+                                                        final Throwable t) {
                                                     sendErrorResponse(request,
                                                             channel, t);
                                                 }
                                             });
-                        } catch (Exception e) {
+                        } catch (final Exception e) {
                             sendErrorResponse(request, channel, e);
                         }
                     }
 
                     @Override
-                    public void onFailure(Throwable t) {
+                    public void onFailure(final Throwable t) {
                         sendErrorResponse(request, channel, t);
                     }
                 });
@@ -217,7 +366,8 @@ public class TasteEventRestAction extends BaseRestHandler {
     private void handleItemRequest(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap) {
-        final String index = request.param("index");
+        final String index = request
+                .param("item_index", request.param("index"));
         final String itemType = request.param("item_type",
                 TasteConstants.ITEM_TYPE);
         final String itemIdField = request.param(FIELD_ITEM_ID,
@@ -241,25 +391,26 @@ public class TasteEventRestAction extends BaseRestHandler {
                 .setSize(1).execute(new ActionListener<SearchResponse>() {
 
                     @Override
-                    public void onResponse(SearchResponse response) {
+                    public void onResponse(final SearchResponse response) {
                         try {
                             validateRespose(response);
 
-                            SearchHits hits = response.getHits();
+                            final SearchHits hits = response.getHits();
                             if (hits.getTotalHits() == 0) {
                                 handleItemCreation(request, channel,
                                         requestMap, paramMap, itemMap, index,
                                         itemType, itemIdField);
                             } else {
-                                SearchHit[] searchHits = hits.getHits();
-                                SearchHitField field = searchHits[0]
+                                final SearchHit[] searchHits = hits.getHits();
+                                final SearchHitField field = searchHits[0]
                                         .getFields().get(itemIdField);
                                 if (field != null) {
-                                    Long itemId = field.getValue();
+                                    final Number itemId = field.getValue();
                                     if (itemId != null) {
-                                        paramMap.put(itemIdField, itemId);
-                                        handleValueRequest(request, channel,
-                                                requestMap, paramMap);
+                                        paramMap.put(itemIdField,
+                                                itemId.longValue());
+                                        handlePreferenceRequest(request,
+                                                channel, requestMap, paramMap);
                                         return;
                                     }
                                 }
@@ -267,16 +418,151 @@ public class TasteEventRestAction extends BaseRestHandler {
                                         "Item does not have " + itemIdField
                                                 + ": " + searchHits[0]);
                             }
-                        } catch (Exception e) {
+                        } catch (final Exception e) {
                             onFailure(e);
                         }
                     }
 
                     @Override
-                    public void onFailure(Throwable t) {
+                    public void onFailure(final Throwable t) {
+                        @SuppressWarnings("unchecked")
+                        List<Throwable> errorList = (List<Throwable>) paramMap
+                                .get(ERROR_LIST);
+                        if (errorList == null) {
+                            errorList = new ArrayList<>();
+                            paramMap.put(ERROR_LIST, errorList);
+                        }
+                        if (errorList.size() >= maxRetryCount) {
+                            sendErrorResponse(request, channel, t);
+                        } else {
+                            errorList.add(t);
+                            handleItemIndexCreation(request, channel,
+                                    requestMap, paramMap);
+                        }
+                    }
+                });
+    }
+
+    private void handleItemIndexCreation(final RestRequest request,
+            final RestChannel channel, final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap) {
+        final String index = request
+                .param("item_index", request.param("index"));
+
+        client.admin().indices().prepareExists(index)
+                .execute(new ActionListener<IndicesExistsResponse>() {
+
+                    @Override
+                    public void onResponse(
+                            final IndicesExistsResponse indicesExistsResponse) {
+                        if (indicesExistsResponse.isExists()) {
+                            handleItemMappingCreation(request, channel,
+                                    requestMap, paramMap);
+                        } else {
+                            client.admin()
+                                    .indices()
+                                    .prepareCreate(index)
+                                    .execute(
+                                            new ActionListener<CreateIndexResponse>() {
+
+                                                @Override
+                                                public void onResponse(
+                                                        final CreateIndexResponse createIndexResponse) {
+                                                    if (createIndexResponse
+                                                            .isAcknowledged()) {
+                                                        handleItemMappingCreation(
+                                                                request,
+                                                                channel,
+                                                                requestMap,
+                                                                paramMap);
+                                                    } else {
+                                                        onFailure(new OperationFailedException(
+                                                                "Failed to create "
+                                                                        + index));
+                                                    }
+                                                }
+
+                                                @Override
+                                                public void onFailure(
+                                                        final Throwable t) {
+                                                    sendErrorResponse(request,
+                                                            channel, t);
+                                                }
+                                            });
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(final Throwable t) {
                         sendErrorResponse(request, channel, t);
                     }
                 });
+    }
+
+    private void handleItemMappingCreation(final RestRequest request,
+            final RestChannel channel, final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap) {
+        final String index = request
+                .param("item_index", request.param("index"));
+        final String type = request
+                .param("item_type", TasteConstants.ITEM_TYPE);
+        final String itemIdField = request.param(FIELD_ITEM_ID,
+                TasteConstants.ITEM_ID_FIELD);
+        final String timestampField = request.param(FIELD_TIMESTAMP,
+                TasteConstants.TIMESTAMP_FIELD);
+
+        try {
+            final XContentBuilder builder = XContentFactory.jsonBuilder()//
+                    .startObject()//
+                    .startObject(type)//
+                    .startObject("properties")//
+
+                    // @timestamp
+                    .startObject(timestampField)//
+                    .field("type", "date")//
+                    .field("format", "dateOptionalTime")//
+                    .endObject()//
+
+                    // item_id
+                    .startObject(itemIdField)//
+                    .field("type", "long")//
+                    .endObject()//
+
+                    // id
+                    .startObject("id")//
+                    .field("type", "string")//
+                    .field("index", "not_analyzed")//
+                    .endObject()//
+
+                    .endObject()//
+                    .endObject()//
+                    .endObject();
+
+            client.admin().indices().preparePutMapping(index).setType(type)
+                    .setSource(builder)
+                    .execute(new ActionListener<PutMappingResponse>() {
+
+                        @Override
+                        public void onResponse(
+                                final PutMappingResponse queueMappingResponse) {
+                            if (queueMappingResponse.isAcknowledged()) {
+                                handleItemRequest(request, channel, requestMap,
+                                        paramMap);
+                            } else {
+                                onFailure(new OperationFailedException(
+                                        "Failed to create mapping for " + index
+                                                + "/" + type));
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(final Throwable t) {
+                            sendErrorResponse(request, channel, t);
+                        }
+                    });
+        } catch (final Exception e) {
+            sendErrorResponse(request, channel, e);
+        }
     }
 
     private void handleItemCreation(final RestRequest request,
@@ -289,15 +575,15 @@ public class TasteEventRestAction extends BaseRestHandler {
                 .addSort(itemIdField, SortOrder.DESC).setSize(1)
                 .execute(new ActionListener<SearchResponse>() {
                     @Override
-                    public void onResponse(SearchResponse response) {
+                    public void onResponse(final SearchResponse response) {
                         try {
                             validateRespose(response);
 
-                            Long currentId = null;
-                            SearchHits hits = response.getHits();
+                            Number currentId = null;
+                            final SearchHits hits = response.getHits();
                             if (hits.getTotalHits() != 0) {
-                                SearchHit[] searchHits = hits.getHits();
-                                SearchHitField field = searchHits[0]
+                                final SearchHit[] searchHits = hits.getHits();
+                                final SearchHitField field = searchHits[0]
                                         .getFields().get(itemIdField);
                                 if (field != null) {
                                     currentId = field.getValue();
@@ -309,6 +595,7 @@ public class TasteEventRestAction extends BaseRestHandler {
                             } else {
                                 itemId = Long.valueOf(currentId.longValue() + 1);
                             }
+                            itemMap.put(itemIdField, itemId);
                             client.prepareIndex(index, type, itemId.toString())
                                     .setSource(itemMap)
                                     .setRefresh(true)
@@ -318,12 +605,12 @@ public class TasteEventRestAction extends BaseRestHandler {
 
                                                 @Override
                                                 public void onResponse(
-                                                        IndexResponse response) {
+                                                        final IndexResponse response) {
                                                     if (response.isCreated()) {
                                                         paramMap.put(
                                                                 itemIdField,
                                                                 itemId);
-                                                        handleValueRequest(
+                                                        handlePreferenceRequest(
                                                                 request,
                                                                 channel,
                                                                 requestMap,
@@ -337,24 +624,24 @@ public class TasteEventRestAction extends BaseRestHandler {
 
                                                 @Override
                                                 public void onFailure(
-                                                        Throwable t) {
+                                                        final Throwable t) {
                                                     sendErrorResponse(request,
                                                             channel, t);
                                                 }
                                             });
-                        } catch (Exception e) {
+                        } catch (final Exception e) {
                             sendErrorResponse(request, channel, e);
                         }
                     }
 
                     @Override
-                    public void onFailure(Throwable t) {
+                    public void onFailure(final Throwable t) {
                         sendErrorResponse(request, channel, t);
                     }
                 });
     }
 
-    private void handleValueRequest(final RestRequest request,
+    private void handlePreferenceRequest(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap) {
         final String index = request.param("index");
@@ -404,8 +691,7 @@ public class TasteEventRestAction extends BaseRestHandler {
                             final XContentBuilder builder = RestXContentBuilder
                                     .restContentBuilder(request);
                             builder.startObject();
-                            builder.field(userIdField, userId);
-                            builder.field(itemIdField, itemId);
+                            builder.field("acknowledged", true);
                             builder.endObject();
                             channel.sendResponse(new XContentRestResponse(
                                     request, OK, builder));
@@ -416,12 +702,153 @@ public class TasteEventRestAction extends BaseRestHandler {
 
                     @Override
                     public void onFailure(final Throwable t) {
+                        @SuppressWarnings("unchecked")
+                        List<Throwable> errorList = (List<Throwable>) paramMap
+                                .get(ERROR_LIST);
+                        if (errorList == null) {
+                            errorList = new ArrayList<>();
+                            paramMap.put(ERROR_LIST, errorList);
+                        }
+                        if (errorList.size() >= maxRetryCount) {
+                            sendErrorResponse(request, channel, t);
+                        } else {
+                            errorList.add(t);
+                            handlePreferenceIndexCreation(request, channel,
+                                    requestMap, paramMap);
+                        }
+                    }
+                });
+    }
+
+    private void handlePreferenceIndexCreation(final RestRequest request,
+            final RestChannel channel, final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap) {
+        final String index = request.param("index");
+
+        client.admin().indices().prepareExists(index)
+                .execute(new ActionListener<IndicesExistsResponse>() {
+
+                    @Override
+                    public void onResponse(
+                            final IndicesExistsResponse indicesExistsResponse) {
+                        if (indicesExistsResponse.isExists()) {
+                            handlePreferenceMappingCreation(request, channel,
+                                    requestMap, paramMap);
+                        } else {
+                            client.admin()
+                                    .indices()
+                                    .prepareCreate(index)
+                                    .execute(
+                                            new ActionListener<CreateIndexResponse>() {
+
+                                                @Override
+                                                public void onResponse(
+                                                        final CreateIndexResponse createIndexResponse) {
+                                                    if (createIndexResponse
+                                                            .isAcknowledged()) {
+                                                        handlePreferenceMappingCreation(
+                                                                request,
+                                                                channel,
+                                                                requestMap,
+                                                                paramMap);
+                                                    } else {
+                                                        onFailure(new OperationFailedException(
+                                                                "Failed to create "
+                                                                        + index));
+                                                    }
+                                                }
+
+                                                @Override
+                                                public void onFailure(
+                                                        final Throwable t) {
+                                                    sendErrorResponse(request,
+                                                            channel, t);
+                                                }
+                                            });
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(final Throwable t) {
                         sendErrorResponse(request, channel, t);
                     }
                 });
     }
 
-    private void validateRespose(SearchResponse response) {
+    private void handlePreferenceMappingCreation(final RestRequest request,
+            final RestChannel channel, final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap) {
+        final String index = request.param("index");
+        final String type = request.param("type",
+                TasteConstants.PREFERENCE_TYPE);
+        final String userIdField = request.param(FIELD_USER_ID,
+                TasteConstants.USER_ID_FIELD);
+        final String itemIdField = request.param(FIELD_ITEM_ID,
+                TasteConstants.ITEM_ID_FIELD);
+        final String valueField = request.param(FIELD_VALUE,
+                TasteConstants.VALUE_FIELD);
+        final String timestampField = request.param(FIELD_TIMESTAMP,
+                TasteConstants.TIMESTAMP_FIELD);
+
+        try {
+            final XContentBuilder builder = XContentFactory.jsonBuilder()//
+                    .startObject()//
+                    .startObject(type)//
+                    .startObject("properties")//
+
+                    // @timestamp
+                    .startObject(timestampField)//
+                    .field("type", "date")//
+                    .field("format", "dateOptionalTime")//
+                    .endObject()//
+
+                    // user_id
+                    .startObject(userIdField)//
+                    .field("type", "long")//
+                    .endObject()//
+
+                    // item_id
+                    .startObject(itemIdField)//
+                    .field("type", "long")//
+                    .endObject()//
+
+                    // value
+                    .startObject(valueField)//
+                    .field("type", "double")//
+                    .endObject()//
+
+                    .endObject()//
+                    .endObject()//
+                    .endObject();
+
+            client.admin().indices().preparePutMapping(index).setType(type)
+                    .setSource(builder)
+                    .execute(new ActionListener<PutMappingResponse>() {
+
+                        @Override
+                        public void onResponse(
+                                final PutMappingResponse queueMappingResponse) {
+                            if (queueMappingResponse.isAcknowledged()) {
+                                handlePreferenceRequest(request, channel,
+                                        requestMap, paramMap);
+                            } else {
+                                onFailure(new OperationFailedException(
+                                        "Failed to create mapping for " + index
+                                                + "/" + type));
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(final Throwable t) {
+                            sendErrorResponse(request, channel, t);
+                        }
+                    });
+        } catch (final Exception e) {
+            sendErrorResponse(request, channel, e);
+        }
+    }
+
+    private void validateRespose(final SearchResponse response) {
         final int totalShards = response.getTotalShards();
         final int successfulShards = response.getSuccessfulShards();
         if (totalShards != successfulShards) {
