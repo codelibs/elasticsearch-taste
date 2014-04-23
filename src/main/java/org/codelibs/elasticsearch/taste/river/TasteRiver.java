@@ -24,6 +24,7 @@ import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingRespon
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.AbstractRiverComponent;
 import org.elasticsearch.river.River;
 import org.elasticsearch.river.RiverName;
@@ -289,8 +290,8 @@ public class TasteRiver extends AbstractRiverComponent implements River {
             model.setUserType(indexInfo.getUserType());
             model.setItemIndex(indexInfo.getItemIndex());
             model.setItemType(indexInfo.getItemType());
-            model.setUserIDField(indexInfo.getUserIdField());
-            model.setItemIDField(indexInfo.getItemIdField());
+            model.setUserIdField(indexInfo.getUserIdField());
+            model.setItemIdField(indexInfo.getItemIdField());
             model.setValueField(indexInfo.getValueField());
             model.setTimestampField(indexInfo.getTimestampField());
 
@@ -300,6 +301,17 @@ public class TasteRiver extends AbstractRiverComponent implements River {
             model.setScrollKeepAlive(new Scroll(TimeValue
                     .timeValueSeconds(SettingsUtils.get(scrollSettings,
                             "keep_alive", 60))));
+
+            final Map<String, Object> querySettings = SettingsUtils.get(
+                    modelInfoSettings, "query");
+            final String userQuery = SettingsUtils.get(querySettings, "user");
+            if (StringUtils.isNotBlank(userQuery)) {
+                model.setUserQueryBuilder(QueryBuilders.queryString(userQuery));
+            }
+            final String itemQuery = SettingsUtils.get(querySettings, "item");
+            if (StringUtils.isNotBlank(itemQuery)) {
+                model.setUserQueryBuilder(QueryBuilders.queryString(itemQuery));
+            }
 
             return model;
         } catch (ClassNotFoundException | InstantiationException
