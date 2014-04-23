@@ -121,7 +121,7 @@ public class TasteEventRestAction extends BaseRestHandler {
                             if (hits.getTotalHits() == 0) {
                                 handleUserCreation(request, channel,
                                         requestMap, paramMap, userMap, index,
-                                        userType, userIdField);
+                                        userType, userIdField, timestampField);
                             } else {
                                 final SearchHit[] searchHits = hits.getHits();
                                 final SearchHitField field = searchHits[0]
@@ -291,7 +291,8 @@ public class TasteEventRestAction extends BaseRestHandler {
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap,
             final Map<String, Object> userMap, final String index,
-            final String type, final String userIdField) {
+            final String type, final String userIdField,
+            final String timestampField) {
         client.prepareSearch(index).setTypes(type)
                 .setQuery(QueryBuilders.matchAllQuery()).addField(userIdField)
                 .addSort(userIdField, SortOrder.DESC).setSize(1)
@@ -318,6 +319,7 @@ public class TasteEventRestAction extends BaseRestHandler {
                                 userId = Long.valueOf(currentId.longValue() + 1);
                             }
                             userMap.put(userIdField, userId);
+                            userMap.put(timestampField, new Date());
                             client.prepareIndex(index, type, userId.toString())
                                     .setSource(userMap)
                                     .setRefresh(true)
@@ -399,7 +401,7 @@ public class TasteEventRestAction extends BaseRestHandler {
                             if (hits.getTotalHits() == 0) {
                                 handleItemCreation(request, channel,
                                         requestMap, paramMap, itemMap, index,
-                                        itemType, itemIdField);
+                                        itemType, itemIdField, timestampField);
                             } else {
                                 final SearchHit[] searchHits = hits.getHits();
                                 final SearchHitField field = searchHits[0]
@@ -569,7 +571,8 @@ public class TasteEventRestAction extends BaseRestHandler {
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap,
             final Map<String, Object> itemMap, final String index,
-            final String type, final String itemIdField) {
+            final String type, final String itemIdField,
+            final String timestampField) {
         client.prepareSearch(index).setTypes(type)
                 .setQuery(QueryBuilders.matchAllQuery()).addField(itemIdField)
                 .addSort(itemIdField, SortOrder.DESC).setSize(1)
@@ -596,6 +599,7 @@ public class TasteEventRestAction extends BaseRestHandler {
                                 itemId = Long.valueOf(currentId.longValue() + 1);
                             }
                             itemMap.put(itemIdField, itemId);
+                            itemMap.put(timestampField, new Date());
                             client.prepareIndex(index, type, itemId.toString())
                                     .setSource(itemMap)
                                     .setRefresh(true)

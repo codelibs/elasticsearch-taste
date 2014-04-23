@@ -3,7 +3,6 @@ package org.codelibs.elasticsearch.taste.similarity.worker;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
@@ -44,17 +43,17 @@ public class RecommendedItemsWorker implements Runnable {
                 final List<RecommendedItem> recommendedItems = recommender
                         .recommend(userID, numOfRecommendedItems);
                 writer.write(userID, recommendedItems);
-            } catch (final TasteException e) {
+            } catch (final Exception e) {
                 logger.error("Item {} could not be processed.", e, userID);
             }
         }
         logger.info("Worker {} is complated.", number);
     }
 
-    private long nextId(final LongPrimitiveIterator itemIDs) {
-        synchronized (itemIDs) {
+    private long nextId(final LongPrimitiveIterator userIDs) {
+        synchronized (userIDs) {
             try {
-                return itemIDs.nextLong();
+                return userIDs.nextLong();
             } catch (final NoSuchElementException e) {
                 return -1;
             }

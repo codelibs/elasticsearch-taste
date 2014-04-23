@@ -235,8 +235,6 @@ public class ElasticsearchDataModel implements DataModel {
             response = client
                     .prepareSearch(preferenceIndex)
                     .setTypes(preferenceType)
-                    .setSearchType(SearchType.SCAN)
-                    .setScroll(scrollKeepAlive)
                     .setQuery(
                             QueryBuilders.filteredQuery(
                                     QueryBuilders
@@ -268,7 +266,8 @@ public class ElasticsearchDataModel implements DataModel {
         if (searchHits.length > 0) {
             final SearchHitField result = searchHits[0].field(valueField);
             if (result != null) {
-                return result.getValue();
+                final Number value = result.getValue();
+                return value.floatValue();
             }
         }
 
@@ -283,8 +282,6 @@ public class ElasticsearchDataModel implements DataModel {
             response = client
                     .prepareSearch(preferenceIndex)
                     .setTypes(preferenceType)
-                    .setSearchType(SearchType.SCAN)
-                    .setScroll(scrollKeepAlive)
                     .setQuery(
                             QueryBuilders.filteredQuery(
                                     QueryBuilders
@@ -471,7 +468,7 @@ public class ElasticsearchDataModel implements DataModel {
         if (result == null) {
             throw new TasteException(field + " is not found.");
         }
-        final Long longValue = result.getValue();
+        final Number longValue = result.getValue();
         if (longValue == null) {
             throw new TasteException("The result of " + field + " is null.");
         }
@@ -484,7 +481,7 @@ public class ElasticsearchDataModel implements DataModel {
         if (result == null) {
             throw new TasteException(field + " is not found.");
         }
-        final Float floatValue = result.getValue();
+        final Number floatValue = result.getValue();
         if (floatValue == null) {
             throw new TasteException("The result of " + field + " is null.");
         }
@@ -501,6 +498,8 @@ public class ElasticsearchDataModel implements DataModel {
             response = client
                     .prepareSearch(userIndex)
                     .setTypes(userType)
+                    .setSearchType(SearchType.SCAN)
+                    .setScroll(scrollKeepAlive)
                     .setQuery(
                             QueryBuilders.filteredQuery(
                                     QueryBuilders.matchAllQuery(),
@@ -547,7 +546,7 @@ public class ElasticsearchDataModel implements DataModel {
     }
 
     protected synchronized void loadItemIDs() throws TasteException {
-        if (userIDs != null) {
+        if (itemIDs != null) {
             return;
         }
 
@@ -556,6 +555,8 @@ public class ElasticsearchDataModel implements DataModel {
             response = client
                     .prepareSearch(itemIndex)
                     .setTypes(itemType)
+                    .setSearchType(SearchType.SCAN)
+                    .setScroll(scrollKeepAlive)
                     .setQuery(
                             QueryBuilders.filteredQuery(
                                     QueryBuilders.matchAllQuery(),
@@ -598,7 +599,7 @@ public class ElasticsearchDataModel implements DataModel {
             throw new TasteException("The total size " + size
                     + " and the result " + index + " are not matched");
         }
-        userIDs = ids;
+        itemIDs = ids;
     }
 
     private RangeFilterBuilder getLastAccessedFilterQuery() {

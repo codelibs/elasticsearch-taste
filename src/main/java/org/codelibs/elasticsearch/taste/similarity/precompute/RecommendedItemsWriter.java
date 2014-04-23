@@ -3,17 +3,23 @@ package org.codelibs.elasticsearch.taste.similarity.precompute;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.codelibs.elasticsearch.taste.TasteConstants;
+import org.codelibs.elasticsearch.taste.TasteSystemException;
 import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
+import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.XContentFactory;
 
 public class RecommendedItemsWriter implements Closeable {
     private static final ESLogger logger = Loggers
@@ -25,17 +31,76 @@ public class RecommendedItemsWriter implements Closeable {
 
     protected String type = TasteConstants.RECOMMENDATION_TYPE;
 
-    protected String userIDField = TasteConstants.USER_ID_FIELD;
+    protected String userIdField = TasteConstants.USER_ID_FIELD;
 
-    protected String itemIDField = TasteConstants.ITEM_ID_FIELD;
+    protected String itemIdField = TasteConstants.ITEM_ID_FIELD;
 
     protected String valueField = TasteConstants.VALUE_FIELD;
 
     protected String itemsField = TasteConstants.ITEMS_FILED;
 
+    protected String timestampField = TasteConstants.TIMESTAMP_FIELD;
+
     public RecommendedItemsWriter(final Client client, final String index) {
         this.client = client;
         this.index = index;
+    }
+
+    public void open() {
+        final GetMappingsResponse response = client.admin().indices()
+                .prepareGetMappings(index).setTypes(type).execute().actionGet();
+        if (response.mappings().isEmpty()) {
+            try {
+                final XContentBuilder builder = XContentFactory.jsonBuilder()//
+                        .startObject()//
+                        .startObject(type)//
+                        .startObject("properties")//
+
+                        // @timestamp
+                        .startObject(timestampField)//
+                        .field("type", "date")//
+                        .field("format", "dateOptionalTime")//
+                        .endObject()//
+
+                        // user_id
+                        .startObject(userIdField)//
+                        .field("type", "long")//
+                        .endObject()//
+
+                        // items
+                        .startObject(itemsField)//
+                        .startObject("properties")//
+
+                        // item_id
+                        .startObject(itemIdField)//
+                        .field("type", "long")//
+                        .endObject()//
+
+                        // value
+                        .startObject(valueField)//
+                        .field("type", "double")//
+                        .endObject()//
+
+                        .endObject()//
+                        .endObject()//
+
+                        .endObject()//
+                        .endObject()//
+                        .endObject();
+
+                final PutMappingResponse putMappingResponse = client.admin()
+                        .indices().preparePutMapping(index).setType(type)
+                        .setSource(builder).execute().actionGet();
+                if (!putMappingResponse.isAcknowledged()) {
+                    throw new TasteSystemException(
+                            "Failed to create a mapping of" + index + "/"
+                                    + type);
+                }
+            } catch (final IOException e) {
+                throw new TasteSystemException("Failed to create a mapping of"
+                        + index + "/" + type, e);
+            }
+        }
     }
 
     @Override
@@ -46,15 +111,16 @@ public class RecommendedItemsWriter implements Closeable {
     public void write(final long userID,
             final List<RecommendedItem> recommendedItems) {
         final Map<String, Object> rootObj = new HashMap<>();
-        rootObj.put(userIDField, userID);
+        rootObj.put(userIdField, userID);
         final List<Map<String, Object>> itemList = new ArrayList<>();
         for (final RecommendedItem recommendedItem : recommendedItems) {
             final Map<String, Object> item = new HashMap<>();
-            item.put(itemIDField, recommendedItem.getItemID());
+            item.put(itemIdField, recommendedItem.getItemID());
             item.put(valueField, recommendedItem.getValue());
             itemList.add(item);
         }
         rootObj.put(itemsField, itemList);
+        rootObj.put(timestampField, new Date());
 
         client.prepareIndex(index, type, Long.toString(userID))
                 .setSource(rootObj)
@@ -78,12 +144,12 @@ public class RecommendedItemsWriter implements Closeable {
         this.type = type;
     }
 
-    public void setUserIDField(final String userIDField) {
-        this.userIDField = userIDField;
+    public void setUserIdField(final String userIdField) {
+        this.userIdField = userIdField;
     }
 
-    public void setItemIDField(final String itemIDField) {
-        this.itemIDField = itemIDField;
+    public void setItemIdField(final String itemIdField) {
+        this.itemIdField = itemIdField;
     }
 
     public void setValueField(final String valueField) {
@@ -92,6 +158,10 @@ public class RecommendedItemsWriter implements Closeable {
 
     public void setItemsField(final String itemsField) {
         this.itemsField = itemsField;
+    }
+
+    public void setTimestampField(final String timestampField) {
+        this.timestampField = timestampField;
     }
 
 }

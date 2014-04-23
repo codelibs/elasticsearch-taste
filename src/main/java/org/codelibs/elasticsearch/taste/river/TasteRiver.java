@@ -127,7 +127,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                 final ItemBasedRecommender recommender = new GenericItemBasedRecommender(
                         dataModel, similarity);
 
-                final RecommendedItemsWriter writer = createRecommendedItemsWriter(indexInfo);
+                final SimilarItemsWriter writer = createSimilarItemsWriter(indexInfo);
 
                 final int degreeOfParallelism = getDegreeOfParallelism();
 
@@ -180,10 +180,14 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         final RecommendedItemsWriter writer = new RecommendedItemsWriter(
                 client, indexInfo.getRecommendationIndex());
         writer.setType(indexInfo.getRecommendationType());
-        writer.setItemIDField(indexInfo.getItemIdField());
+        writer.setItemIdField(indexInfo.getItemIdField());
         writer.setItemsField(indexInfo.getItemsField());
-        writer.setUserIDField(indexInfo.getUserIdField());
+        writer.setUserIdField(indexInfo.getUserIdField());
         writer.setValueField(indexInfo.getValueField());
+        writer.setTimestampField(indexInfo.getTimestampField());
+
+        writer.open();
+
         return writer;
     }
 
@@ -192,9 +196,13 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         final SimilarItemsWriter writer = new SimilarItemsWriter(client,
                 indexInfo.getItemSimilarityIndex());
         writer.setType(indexInfo.getItemSimilarityType());
-        writer.setItemIDField(indexInfo.getItemIdField());
+        writer.setItemIdField(indexInfo.getItemIdField());
         writer.setItemsField(indexInfo.getItemsField());
         writer.setValueField(indexInfo.getValueField());
+        writer.setTimestampField(indexInfo.getTimestampField());
+
+        writer.open();
+
         return writer;
     }
 
