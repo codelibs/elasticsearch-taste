@@ -116,9 +116,12 @@ public class TasteEventRestAction extends BaseRestHandler {
                     public void onResponse(final SearchResponse response) {
                         try {
                             validateRespose(response);
+                            final String updateType = request.param("update");
 
                             final SearchHits hits = response.getHits();
-                            if (hits.getTotalHits() == 0) {
+                            if (hits.getTotalHits() == 0
+                                    || "all".equals(updateType)
+                                    || "user".equals(updateType)) {
                                 handleUserCreation(request, channel,
                                         requestMap, paramMap, userMap, index,
                                         userType, userIdField, timestampField);
@@ -396,9 +399,12 @@ public class TasteEventRestAction extends BaseRestHandler {
                     public void onResponse(final SearchResponse response) {
                         try {
                             validateRespose(response);
+                            final String updateType = request.param("update");
 
                             final SearchHits hits = response.getHits();
-                            if (hits.getTotalHits() == 0) {
+                            if (hits.getTotalHits() == 0
+                                    || "all".equals(updateType)
+                                    || "item".equals(updateType)) {
                                 handleItemCreation(request, channel,
                                         requestMap, paramMap, itemMap, index,
                                         itemType, itemIdField, timestampField);
