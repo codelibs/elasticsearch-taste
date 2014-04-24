@@ -119,9 +119,7 @@ public class TasteEventRestAction extends BaseRestHandler {
                             final String updateType = request.param("update");
 
                             final SearchHits hits = response.getHits();
-                            if (hits.getTotalHits() == 0
-                                    || "all".equals(updateType)
-                                    || "user".equals(updateType)) {
+                            if (hits.getTotalHits() == 0) {
                                 handleUserCreation(request, channel,
                                         requestMap, paramMap, userMap, index,
                                         userType, userIdField, timestampField);
@@ -132,10 +130,21 @@ public class TasteEventRestAction extends BaseRestHandler {
                                 if (field != null) {
                                     final Number userId = field.getValue();
                                     if (userId != null) {
-                                        paramMap.put(userIdField,
-                                                userId.longValue());
-                                        handleItemRequest(request, channel,
-                                                requestMap, paramMap);
+                                        if ("all".equals(updateType)
+                                                || "user".equals(updateType)) {
+                                            handleUserUpdate(request, channel,
+                                                    requestMap, paramMap,
+                                                    userMap, index, userType,
+                                                    userIdField,
+                                                    timestampField,
+                                                    userId.longValue());
+
+                                        } else {
+                                            paramMap.put(userIdField,
+                                                    userId.longValue());
+                                            handleItemRequest(request, channel,
+                                                    requestMap, paramMap);
+                                        }
                                         return;
                                     }
                                 }
@@ -321,43 +330,42 @@ public class TasteEventRestAction extends BaseRestHandler {
                             } else {
                                 userId = Long.valueOf(currentId.longValue() + 1);
                             }
-                            userMap.put(userIdField, userId);
-                            userMap.put(timestampField, new Date());
-                            client.prepareIndex(index, type, userId.toString())
-                                    .setSource(userMap)
-                                    .setRefresh(true)
-                                    .setOpType(OpType.CREATE)
-                                    .execute(
-                                            new ActionListener<IndexResponse>() {
-
-                                                @Override
-                                                public void onResponse(
-                                                        final IndexResponse response) {
-                                                    if (response.isCreated()) {
-                                                        paramMap.put(
-                                                                userIdField,
-                                                                userId);
-                                                        handleItemRequest(
-                                                                request,
-                                                                channel,
-                                                                requestMap,
-                                                                paramMap);
-                                                    } else {
-                                                        onFailure(new OperationFailedException(
-                                                                "Failed to create "
-                                                                        + userMap));
-                                                    }
-                                                }
-
-                                                @Override
-                                                public void onFailure(
-                                                        final Throwable t) {
-                                                    sendErrorResponse(request,
-                                                            channel, t);
-                                                }
-                                            });
+                            handleUserUpdate(request, channel, requestMap,
+                                    paramMap, userMap, index, type,
+                                    userIdField, timestampField, userId);
                         } catch (final Exception e) {
                             sendErrorResponse(request, channel, e);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(final Throwable t) {
+                        sendErrorResponse(request, channel, t);
+                    }
+                });
+    }
+
+    private void handleUserUpdate(final RestRequest request,
+            final RestChannel channel, final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap,
+            final Map<String, Object> userMap, final String index,
+            final String type, final String userIdField,
+            final String timestampField, final Long userId) {
+        userMap.put(userIdField, userId);
+        userMap.put(timestampField, new Date());
+        client.prepareIndex(index, type, userId.toString()).setSource(userMap)
+                .setRefresh(true).setOpType(OpType.CREATE)
+                .execute(new ActionListener<IndexResponse>() {
+
+                    @Override
+                    public void onResponse(final IndexResponse response) {
+                        if (response.isCreated()) {
+                            paramMap.put(userIdField, userId);
+                            handleItemRequest(request, channel, requestMap,
+                                    paramMap);
+                        } else {
+                            onFailure(new OperationFailedException(
+                                    "Failed to create " + userMap));
                         }
                     }
 
@@ -402,9 +410,7 @@ public class TasteEventRestAction extends BaseRestHandler {
                             final String updateType = request.param("update");
 
                             final SearchHits hits = response.getHits();
-                            if (hits.getTotalHits() == 0
-                                    || "all".equals(updateType)
-                                    || "item".equals(updateType)) {
+                            if (hits.getTotalHits() == 0) {
                                 handleItemCreation(request, channel,
                                         requestMap, paramMap, itemMap, index,
                                         itemType, itemIdField, timestampField);
@@ -415,10 +421,21 @@ public class TasteEventRestAction extends BaseRestHandler {
                                 if (field != null) {
                                     final Number itemId = field.getValue();
                                     if (itemId != null) {
-                                        paramMap.put(itemIdField,
-                                                itemId.longValue());
-                                        handlePreferenceRequest(request,
-                                                channel, requestMap, paramMap);
+                                        if ("all".equals(updateType)
+                                                || "item".equals(updateType)) {
+                                            handleItemUpdate(request, channel,
+                                                    requestMap, paramMap,
+                                                    itemMap, index, itemType,
+                                                    itemIdField,
+                                                    timestampField,
+                                                    itemId.longValue());
+                                        } else {
+                                            paramMap.put(itemIdField,
+                                                    itemId.longValue());
+                                            handlePreferenceRequest(request,
+                                                    channel, requestMap,
+                                                    paramMap);
+                                        }
                                         return;
                                     }
                                 }
@@ -604,43 +621,42 @@ public class TasteEventRestAction extends BaseRestHandler {
                             } else {
                                 itemId = Long.valueOf(currentId.longValue() + 1);
                             }
-                            itemMap.put(itemIdField, itemId);
-                            itemMap.put(timestampField, new Date());
-                            client.prepareIndex(index, type, itemId.toString())
-                                    .setSource(itemMap)
-                                    .setRefresh(true)
-                                    .setOpType(OpType.CREATE)
-                                    .execute(
-                                            new ActionListener<IndexResponse>() {
-
-                                                @Override
-                                                public void onResponse(
-                                                        final IndexResponse response) {
-                                                    if (response.isCreated()) {
-                                                        paramMap.put(
-                                                                itemIdField,
-                                                                itemId);
-                                                        handlePreferenceRequest(
-                                                                request,
-                                                                channel,
-                                                                requestMap,
-                                                                paramMap);
-                                                    } else {
-                                                        onFailure(new OperationFailedException(
-                                                                "Failed to create "
-                                                                        + itemMap));
-                                                    }
-                                                }
-
-                                                @Override
-                                                public void onFailure(
-                                                        final Throwable t) {
-                                                    sendErrorResponse(request,
-                                                            channel, t);
-                                                }
-                                            });
+                            handleItemUpdate(request, channel, requestMap,
+                                    paramMap, itemMap, index, type,
+                                    itemIdField, timestampField, itemId);
                         } catch (final Exception e) {
                             sendErrorResponse(request, channel, e);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(final Throwable t) {
+                        sendErrorResponse(request, channel, t);
+                    }
+                });
+    }
+
+    private void handleItemUpdate(final RestRequest request,
+            final RestChannel channel, final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap,
+            final Map<String, Object> itemMap, final String index,
+            final String type, final String itemIdField,
+            final String timestampField, final Long itemId) {
+        itemMap.put(itemIdField, itemId);
+        itemMap.put(timestampField, new Date());
+        client.prepareIndex(index, type, itemId.toString()).setSource(itemMap)
+                .setRefresh(true).setOpType(OpType.CREATE)
+                .execute(new ActionListener<IndexResponse>() {
+
+                    @Override
+                    public void onResponse(final IndexResponse response) {
+                        if (response.isCreated()) {
+                            paramMap.put(itemIdField, itemId);
+                            handlePreferenceRequest(request, channel,
+                                    requestMap, paramMap);
+                        } else {
+                            onFailure(new OperationFailedException(
+                                    "Failed to create " + itemMap));
                         }
                     }
 
