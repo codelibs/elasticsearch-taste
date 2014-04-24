@@ -6,7 +6,7 @@ import java.util.NoSuchElementException;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
-import org.codelibs.elasticsearch.taste.similarity.precompute.RecommendedItemsWriter;
+import org.codelibs.elasticsearch.taste.similarity.writer.RecommendedItemsWriter;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 
@@ -43,8 +43,11 @@ public class RecommendedItemsWorker implements Runnable {
                 final List<RecommendedItem> recommendedItems = recommender
                         .recommend(userID, numOfRecommendedItems);
                 writer.write(userID, recommendedItems);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("User {}: {}", userID, recommendedItems);
+                }
             } catch (final Exception e) {
-                logger.error("Item {} could not be processed.", e, userID);
+                logger.error("User {} could not be processed.", e, userID);
             }
         }
         logger.info("Worker {} is complated.", number);

@@ -16,8 +16,8 @@ import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.neighborhood.UserNeighborhoodFactory;
 import org.codelibs.elasticsearch.taste.service.PrecomputeService;
 import org.codelibs.elasticsearch.taste.similarity.SimilarityFactory;
-import org.codelibs.elasticsearch.taste.similarity.precompute.RecommendedItemsWriter;
-import org.codelibs.elasticsearch.taste.similarity.precompute.SimilarItemsWriter;
+import org.codelibs.elasticsearch.taste.similarity.writer.RecommendedItemsWriter;
+import org.codelibs.elasticsearch.taste.similarity.writer.SimilarItemsWriter;
 import org.codelibs.elasticsearch.util.SettingsUtils;
 import org.codelibs.elasticsearch.util.StringUtils;
 import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingResponse;
@@ -313,6 +313,12 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                 model.setUserQueryBuilder(QueryBuilders.queryString(itemQuery));
             }
 
+            final Map<String, Object> cacheSettings = SettingsUtils.get(
+                    modelInfoSettings, "cache");
+            final Number weight = SettingsUtils.get(cacheSettings, "weight");
+            if (weight != null) {
+                model.setMaxCacheWeight(weight.longValue());
+            }
             return model;
         } catch (ClassNotFoundException | InstantiationException
                 | IllegalAccessException e) {

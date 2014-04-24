@@ -15,6 +15,8 @@ import org.apache.mahout.cf.taste.impl.model.GenericUserPreferenceArray;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.codelibs.elasticsearch.taste.TasteConstants;
+import org.codelibs.elasticsearch.taste.model.cache.DmKey;
+import org.codelibs.elasticsearch.taste.model.cache.DmValue;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.count.CountResponse;
@@ -23,6 +25,9 @@ import org.elasticsearch.action.deletebyquery.IndexDeleteByQueryResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.cache.Cache;
+import org.elasticsearch.common.cache.CacheBuilder;
+import org.elasticsearch.common.cache.Weigher;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.TimeValue;
@@ -84,9 +89,21 @@ public class ElasticsearchDataModel implements DataModel {
 
     protected QueryBuilder itemQueryBuilder = QueryBuilders.matchAllQuery();
 
+    protected Cache<DmKey, DmValue> cache;
+
     @Override
     public void refresh(final Collection<Refreshable> alreadyRefreshed) {
         // TODO
+    }
+
+    public void setMaxCacheWeight(final long weight) {
+        cache = CacheBuilder.newBuilder().maximumWeight(weight)
+                .weigher(new Weigher<DmKey, DmValue>() {
+                    @Override
+                    public int weigh(final DmKey key, final DmValue value) {
+                        return 24 + value.getSize();
+                    }
+                }).build();
     }
 
     @Override
@@ -100,6 +117,14 @@ public class ElasticsearchDataModel implements DataModel {
     @Override
     public PreferenceArray getPreferencesFromUser(final long userID)
             throws TasteException {
+        if (cache != null) {
+            final DmValue dmValue = cache.getIfPresent(DmKey.key(
+                    DmKey.PREFERENCES_FROM_USER, userID));
+            if (dmValue != null) {
+                return dmValue.getValue();
+            }
+        }
+
         SearchResponse response = getPreferenceSearchResponse(userIdField,
                 userID, itemIdField, valueField);
 
@@ -140,12 +165,25 @@ public class ElasticsearchDataModel implements DataModel {
             throw new TasteException("The total size " + size
                     + " and the result " + index + " are not matched");
         }
+
+        if (cache != null) {
+            cache.put(DmKey.create(DmKey.PREFERENCES_FROM_USER, userID),
+                    new DmValue(preferenceArray, size * 4 * 8 + 100));
+        }
         return preferenceArray;
     }
 
     @Override
     public FastIDSet getItemIDsFromUser(final long userID)
             throws TasteException {
+        if (cache != null) {
+            final DmValue dmValue = cache.getIfPresent(DmKey.key(
+                    DmKey.ITEMIDS_FROM_USER, userID));
+            if (dmValue != null) {
+                return dmValue.getValue();
+            }
+        }
+
         SearchResponse response = getPreferenceSearchResponse(userIdField,
                 userID, itemIdField);
 
@@ -156,6 +194,7 @@ public class ElasticsearchDataModel implements DataModel {
             totalHits = Integer.MAX_VALUE;
         }
 
+        final int size = (int) totalHits;
         final FastIDSet result = new FastIDSet((int) totalHits);
         try {
             while (true) {
@@ -174,6 +213,10 @@ public class ElasticsearchDataModel implements DataModel {
                     "Failed to scroll the result by " + userID, e);
         }
 
+        if (cache != null) {
+            cache.put(DmKey.create(DmKey.ITEMIDS_FROM_USER, userID),
+                    new DmValue(result, size * 8 + 100));
+        }
         return result;
     }
 
@@ -188,6 +231,14 @@ public class ElasticsearchDataModel implements DataModel {
     @Override
     public PreferenceArray getPreferencesForItem(final long itemID)
             throws TasteException {
+        if (cache != null) {
+            final DmValue dmValue = cache.getIfPresent(DmKey.key(
+                    DmKey.PREFERENCES_FROM_ITEM, itemID));
+            if (dmValue != null) {
+                return dmValue.getValue();
+            }
+        }
+
         SearchResponse response = getPreferenceSearchResponse(itemIdField,
                 itemID, userIdField, valueField);
 
@@ -228,12 +279,25 @@ public class ElasticsearchDataModel implements DataModel {
             throw new TasteException("The total size " + size
                     + " and the result " + index + " are not matched");
         }
+
+        if (cache != null) {
+            cache.put(DmKey.create(DmKey.PREFERENCES_FROM_ITEM, itemID),
+                    new DmValue(preferenceArray, size * 4 * 8 + 100));
+        }
         return preferenceArray;
     }
 
     @Override
     public Float getPreferenceValue(final long userID, final long itemID)
             throws TasteException {
+        if (cache != null) {
+            final DmValue dmValue = cache.getIfPresent(DmKey.key(
+                    DmKey.PREFERENCE_VALUE, userID, itemID));
+            if (dmValue != null) {
+                return dmValue.getValue();
+            }
+        }
+
         SearchResponse response;
         try {
             response = client
@@ -271,7 +335,12 @@ public class ElasticsearchDataModel implements DataModel {
             final SearchHitField result = searchHits[0].field(valueField);
             if (result != null) {
                 final Number value = result.getValue();
-                return value.floatValue();
+                final float floatValue = value.floatValue();
+                if (cache != null) {
+                    cache.put(DmKey.create(DmKey.PREFERENCE_VALUE, itemID,
+                            itemID), new DmValue(floatValue, 16));
+                }
+                return floatValue;
             }
         }
 
@@ -281,6 +350,14 @@ public class ElasticsearchDataModel implements DataModel {
     @Override
     public Long getPreferenceTime(final long userID, final long itemID)
             throws TasteException {
+        if (cache != null) {
+            final DmValue dmValue = cache.getIfPresent(DmKey.key(
+                    DmKey.PREFERENCE_TIME, userID, itemID));
+            if (dmValue != null) {
+                return dmValue.getValue();
+            }
+        }
+
         SearchResponse response;
         try {
             response = client
@@ -318,7 +395,13 @@ public class ElasticsearchDataModel implements DataModel {
             final SearchHitField result = searchHits[0].field(timestampField);
             if (result != null) {
                 final Date date = result.getValue();
-                return date.getTime();
+                final long time = date.getTime();
+                if (cache != null) {
+                    cache.put(
+                            DmKey.create(DmKey.PREFERENCE_TIME, itemID, itemID),
+                            new DmValue(time, 16));
+                }
+                return time;
             }
         }
 

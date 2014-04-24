@@ -6,7 +6,7 @@ import java.util.NoSuchElementException;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
-import org.codelibs.elasticsearch.taste.similarity.precompute.SimilarItemsWriter;
+import org.codelibs.elasticsearch.taste.similarity.writer.SimilarItemsWriter;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 
@@ -44,6 +44,9 @@ public class SimilarItemsWorker implements Runnable {
                 final List<RecommendedItem> recommendedItems = recommender
                         .mostSimilarItems(itemID, numOfMostSimilarItems);
                 writer.write(itemID, recommendedItems);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Item {}: {}", itemID, recommendedItems);
+                }
             } catch (final Exception e) {
                 logger.error("Item {} could not be processed.", e, itemID);
             }

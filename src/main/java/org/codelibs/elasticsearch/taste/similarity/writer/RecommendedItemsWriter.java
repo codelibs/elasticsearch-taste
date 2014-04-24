@@ -1,4 +1,4 @@
-package org.codelibs.elasticsearch.taste.similarity.precompute;
+package org.codelibs.elasticsearch.taste.similarity.writer;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -21,8 +21,7 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 
-public class SimilarItemsWriter implements Closeable {
-
+public class RecommendedItemsWriter implements Closeable {
     private static final ESLogger logger = Loggers
             .getLogger(SimilarItemsWriter.class);
 
@@ -30,7 +29,9 @@ public class SimilarItemsWriter implements Closeable {
 
     protected String index;
 
-    protected String type = TasteConstants.ITEM_SIMILARITY_TYPE;
+    protected String type = TasteConstants.RECOMMENDATION_TYPE;
+
+    protected String userIdField = TasteConstants.USER_ID_FIELD;
 
     protected String itemIdField = TasteConstants.ITEM_ID_FIELD;
 
@@ -40,7 +41,7 @@ public class SimilarItemsWriter implements Closeable {
 
     protected String timestampField = TasteConstants.TIMESTAMP_FIELD;
 
-    public SimilarItemsWriter(final Client client, final String index) {
+    public RecommendedItemsWriter(final Client client, final String index) {
         this.client = client;
         this.index = index;
     }
@@ -61,8 +62,8 @@ public class SimilarItemsWriter implements Closeable {
                         .field("format", "dateOptionalTime")//
                         .endObject()//
 
-                        // item_id
-                        .startObject(itemIdField)//
+                        // user_id
+                        .startObject(userIdField)//
                         .field("type", "long")//
                         .endObject()//
 
@@ -107,10 +108,10 @@ public class SimilarItemsWriter implements Closeable {
         // nothing
     }
 
-    public void write(final long itemId,
+    public void write(final long userID,
             final List<RecommendedItem> recommendedItems) {
         final Map<String, Object> rootObj = new HashMap<>();
-        rootObj.put(itemIdField, itemId);
+        rootObj.put(userIdField, userID);
         final List<Map<String, Object>> itemList = new ArrayList<>();
         for (final RecommendedItem recommendedItem : recommendedItems) {
             final Map<String, Object> item = new HashMap<>();
@@ -121,7 +122,7 @@ public class SimilarItemsWriter implements Closeable {
         rootObj.put(itemsField, itemList);
         rootObj.put(timestampField, new Date());
 
-        client.prepareIndex(index, type, Long.toString(itemId))
+        client.prepareIndex(index, type, Long.toString(userID))
                 .setSource(rootObj)
                 .execute(new ActionListener<IndexResponse>() {
 
@@ -141,6 +142,10 @@ public class SimilarItemsWriter implements Closeable {
 
     public void setType(final String type) {
         this.type = type;
+    }
+
+    public void setUserIdField(final String userIdField) {
+        this.userIdField = userIdField;
     }
 
     public void setItemIdField(final String itemIdField) {
