@@ -137,7 +137,8 @@ public class TasteEventRestAction extends BaseRestHandler {
                                                     userMap, index, userType,
                                                     userIdField,
                                                     timestampField,
-                                                    userId.longValue());
+                                                    userId.longValue(),
+                                                    OpType.INDEX);
 
                                         } else {
                                             paramMap.put(userIdField,
@@ -332,7 +333,8 @@ public class TasteEventRestAction extends BaseRestHandler {
                             }
                             handleUserUpdate(request, channel, requestMap,
                                     paramMap, userMap, index, type,
-                                    userIdField, timestampField, userId);
+                                    userIdField, timestampField, userId,
+                                    OpType.CREATE);
                         } catch (final Exception e) {
                             sendErrorResponse(request, channel, e);
                         }
@@ -350,23 +352,18 @@ public class TasteEventRestAction extends BaseRestHandler {
             final Map<String, Object> paramMap,
             final Map<String, Object> userMap, final String index,
             final String type, final String userIdField,
-            final String timestampField, final Long userId) {
+            final String timestampField, final Long userId, final OpType opType) {
         userMap.put(userIdField, userId);
         userMap.put(timestampField, new Date());
         client.prepareIndex(index, type, userId.toString()).setSource(userMap)
-                .setRefresh(true).setOpType(OpType.CREATE)
+                .setRefresh(true).setOpType(opType)
                 .execute(new ActionListener<IndexResponse>() {
 
                     @Override
                     public void onResponse(final IndexResponse response) {
-                        if (response.isCreated()) {
-                            paramMap.put(userIdField, userId);
-                            handleItemRequest(request, channel, requestMap,
-                                    paramMap);
-                        } else {
-                            onFailure(new OperationFailedException(
-                                    "Failed to create " + userMap));
-                        }
+                        paramMap.put(userIdField, userId);
+                        handleItemRequest(request, channel, requestMap,
+                                paramMap);
                     }
 
                     @Override
@@ -428,7 +425,8 @@ public class TasteEventRestAction extends BaseRestHandler {
                                                     itemMap, index, itemType,
                                                     itemIdField,
                                                     timestampField,
-                                                    itemId.longValue());
+                                                    itemId.longValue(),
+                                                    OpType.INDEX);
                                         } else {
                                             paramMap.put(itemIdField,
                                                     itemId.longValue());
@@ -623,7 +621,8 @@ public class TasteEventRestAction extends BaseRestHandler {
                             }
                             handleItemUpdate(request, channel, requestMap,
                                     paramMap, itemMap, index, type,
-                                    itemIdField, timestampField, itemId);
+                                    itemIdField, timestampField, itemId,
+                                    OpType.CREATE);
                         } catch (final Exception e) {
                             sendErrorResponse(request, channel, e);
                         }
@@ -641,23 +640,18 @@ public class TasteEventRestAction extends BaseRestHandler {
             final Map<String, Object> paramMap,
             final Map<String, Object> itemMap, final String index,
             final String type, final String itemIdField,
-            final String timestampField, final Long itemId) {
+            final String timestampField, final Long itemId, final OpType opType) {
         itemMap.put(itemIdField, itemId);
         itemMap.put(timestampField, new Date());
         client.prepareIndex(index, type, itemId.toString()).setSource(itemMap)
-                .setRefresh(true).setOpType(OpType.CREATE)
+                .setRefresh(true).setOpType(opType)
                 .execute(new ActionListener<IndexResponse>() {
 
                     @Override
                     public void onResponse(final IndexResponse response) {
-                        if (response.isCreated()) {
-                            paramMap.put(itemIdField, itemId);
-                            handlePreferenceRequest(request, channel,
-                                    requestMap, paramMap);
-                        } else {
-                            onFailure(new OperationFailedException(
-                                    "Failed to create " + itemMap));
-                        }
+                        paramMap.put(itemIdField, itemId);
+                        handlePreferenceRequest(request, channel, requestMap,
+                                paramMap);
                     }
 
                     @Override
