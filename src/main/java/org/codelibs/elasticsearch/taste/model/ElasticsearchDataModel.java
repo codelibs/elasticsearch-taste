@@ -84,7 +84,7 @@ public class ElasticsearchDataModel implements DataModel {
 
     protected int scrollSize = 1000;
 
-    protected int maxPreferenceSize = 1000;
+    protected int maxPreferenceSize = 10000;
 
     protected volatile long[] userIDs;
 

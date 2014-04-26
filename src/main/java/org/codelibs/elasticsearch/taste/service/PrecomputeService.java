@@ -4,7 +4,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.model.DataModel;
@@ -14,6 +13,7 @@ import org.codelibs.elasticsearch.taste.similarity.worker.RecommendedItemsWorker
 import org.codelibs.elasticsearch.taste.similarity.worker.SimilarItemsWorker;
 import org.codelibs.elasticsearch.taste.similarity.writer.RecommendedItemsWriter;
 import org.codelibs.elasticsearch.taste.similarity.writer.SimilarItemsWriter;
+import org.codelibs.elasticsearch.util.IOUtils;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
@@ -46,7 +46,10 @@ public class PrecomputeService extends
     public void compute(final Recommender recommender,
             final RecommendedItemsWriter writer,
             final int numOfRecommendedItems, final int degreeOfParallelism,
-            final int maxDurationInHours) {
+            final int maxDuration) {
+        logger.info("Recommender: ", recommender.toString());
+        logger.info("NumOfRecommendedItems: ", numOfRecommendedItems);
+        logger.info("MaxDuration: ", maxDuration);
 
         final ExecutorService executorService = Executors
                 .newFixedThreadPool(degreeOfParallelism + 1);
@@ -58,18 +61,16 @@ public class PrecomputeService extends
                 executorService.execute(new RecommendedItemsWorker(n,
                         recommender, userIDs, numOfRecommendedItems, writer));
             }
-        } catch (final TasteException e) {
-            logger.error("Recommender {} is failed.", e, recommender);
-        } finally {
+
             executorService.shutdown();
             boolean succeeded = false;
             try {
-                succeeded = executorService.awaitTermination(
-                        maxDurationInHours, TimeUnit.HOURS);
+                succeeded = executorService.awaitTermination(maxDuration,
+                        TimeUnit.MINUTES);
                 if (!succeeded) {
                     logger.warn(
-                            "Unable to complete the computation in {} hours!",
-                            maxDurationInHours);
+                            "Unable to complete the computation in {} minutes!",
+                            maxDuration);
                 }
             } catch (final InterruptedException e) {
                 logger.warn("Interrupted a executor.", e);
@@ -77,7 +78,9 @@ public class PrecomputeService extends
             if (!succeeded) {
                 executorService.shutdownNow();
             }
-
+        } catch (final TasteException e) {
+            logger.error("Recommender {} is failed.", e, recommender);
+        } finally {
             IOUtils.closeQuietly(writer);
         }
 
@@ -85,7 +88,10 @@ public class PrecomputeService extends
 
     public void compute(final ItemBasedRecommender recommender,
             final SimilarItemsWriter writer, final int numOfMostSimilarItems,
-            final int degreeOfParallelism, final int maxDurationInHours) {
+            final int degreeOfParallelism, final int maxDuration) {
+        logger.info("Recommender: ", recommender.toString());
+        logger.info("NumOfMostSimilarItems: ", numOfMostSimilarItems);
+        logger.info("MaxDuration: ", maxDuration);
 
         final ExecutorService executorService = Executors
                 .newFixedThreadPool(degreeOfParallelism + 1);
@@ -97,18 +103,16 @@ public class PrecomputeService extends
                 executorService.execute(new SimilarItemsWorker(n, recommender,
                         itemIDs, numOfMostSimilarItems, writer));
             }
-        } catch (final TasteException e) {
-            logger.error("Recommender {} is failed.", e, recommender);
-        } finally {
+
             executorService.shutdown();
             boolean succeeded = false;
             try {
-                succeeded = executorService.awaitTermination(
-                        maxDurationInHours, TimeUnit.HOURS);
+                succeeded = executorService.awaitTermination(maxDuration,
+                        TimeUnit.MINUTES);
                 if (!succeeded) {
                     logger.warn(
-                            "Unable to complete the computation in {} hours!",
-                            maxDurationInHours);
+                            "Unable to complete the computation in {} minutes!",
+                            maxDuration);
                 }
             } catch (final InterruptedException e) {
                 logger.warn("Interrupted a executor.", e);
@@ -116,7 +120,9 @@ public class PrecomputeService extends
             if (!succeeded) {
                 executorService.shutdownNow();
             }
-
+        } catch (final TasteException e) {
+            logger.error("Recommender {} is failed.", e, recommender);
+        } finally {
             IOUtils.closeQuietly(writer);
         }
 

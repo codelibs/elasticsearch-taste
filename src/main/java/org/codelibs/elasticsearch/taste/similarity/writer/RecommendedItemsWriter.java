@@ -129,7 +129,11 @@ public class RecommendedItemsWriter implements Closeable {
                     @Override
                     public void onResponse(final IndexResponse response) {
                         if (logger.isDebugEnabled()) {
-                            logger.debug("Response: {}", response);
+                            logger.debug(
+                                    "Response: {}/{}/{}, Created: {}, Version: {}",
+                                    response.getIndex(), response.getType(),
+                                    response.getId(), response.getVersion(),
+                                    response.isCreated());
                         }
                     }
 
