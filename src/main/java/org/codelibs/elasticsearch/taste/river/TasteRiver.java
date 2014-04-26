@@ -1,6 +1,7 @@
 package org.codelibs.elasticsearch.taste.river;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.mahout.cf.taste.impl.recommender.GenericItemBasedRecommender;
@@ -20,6 +21,7 @@ import org.codelibs.elasticsearch.taste.similarity.writer.RecommendedItemsWriter
 import org.codelibs.elasticsearch.taste.similarity.writer.SimilarItemsWriter;
 import org.codelibs.elasticsearch.util.SettingsUtils;
 import org.codelibs.elasticsearch.util.StringUtils;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
@@ -50,6 +52,8 @@ public class TasteRiver extends AbstractRiverComponent implements River {
 
     @Override
     public void start() {
+        waitForClusterStatus();
+
         logger.info("START TasteRiver");
         try {
             final Map<String, Object> rootSettings = settings.settings();
@@ -68,6 +72,11 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                         .get(rootSettings, "data_model");
                 final ElasticsearchDataModel dataModel = createDataModel(
                         client, indexInfo, modelInfoSettings);
+
+                waitForClusterStatus(indexInfo.getUserIndex(),
+                        indexInfo.getItemIndex(),
+                        indexInfo.getPreferenceIndex(),
+                        indexInfo.getRecommendationIndex());
 
                 final Map<String, Object> similaritySettings = SettingsUtils
                         .get(rootSettings, "similarity",
@@ -119,6 +128,11 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                 final ElasticsearchDataModel dataModel = createDataModel(
                         client, indexInfo, modelInfoSettings);
 
+                waitForClusterStatus(indexInfo.getUserIndex(),
+                        indexInfo.getItemIndex(),
+                        indexInfo.getPreferenceIndex(),
+                        indexInfo.getItemSimilarityIndex());
+
                 final Map<String, Object> similaritySettings = SettingsUtils
                         .get(rootSettings, "similarity",
                                 new HashMap<String, Object>());
@@ -155,6 +169,17 @@ public class TasteRiver extends AbstractRiverComponent implements River {
             if (riverThread == null) {
                 deleteRiver();
             }
+        }
+    }
+
+    protected void waitForClusterStatus(final String... indices) {
+        final ClusterHealthResponse response = client.admin().cluster()
+                .prepareHealth(indices).setWaitForYellowStatus().execute()
+                .actionGet();
+        final List<String> failures = response.getAllValidationFailures();
+        if (!failures.isEmpty()) {
+            throw new TasteSystemException("Cluster is not available: "
+                    + failures.toString());
         }
     }
 
@@ -315,9 +340,14 @@ public class TasteRiver extends AbstractRiverComponent implements River {
 
             final Map<String, Object> cacheSettings = SettingsUtils.get(
                     modelInfoSettings, "cache");
-            final Number weight = SettingsUtils.get(cacheSettings, "weight");
-            if (weight != null) {
-                model.setMaxCacheWeight(weight.longValue());
+            final Object weight = SettingsUtils.get(cacheSettings, "weight");
+            if (weight instanceof Number) {
+                model.setMaxCacheWeight(((Integer) weight).longValue());
+            } else {
+                final long weightSize = parseWeight(weight.toString());
+                if (weightSize > 0) {
+                    model.setMaxCacheWeight(weightSize);
+                }
             }
             return model;
         } catch (ClassNotFoundException | InstantiationException
@@ -325,6 +355,26 @@ public class TasteRiver extends AbstractRiverComponent implements River {
             throw new TasteSystemException("Could not create an instance of "
                     + className);
         }
+    }
+
+    private long parseWeight(final String value) {
+        if (StringUtils.isBlank(value)) {
+            return 0;
+        }
+        try {
+            final char lastChar = value.charAt(value.length() - 1);
+            if (lastChar == 'g' || lastChar == 'G') {
+                return Long.parseLong(value.substring(0, value.length() - 2));
+            } else if (lastChar == 'm' || lastChar == 'M') {
+                return Long.parseLong(value.substring(0, value.length() - 2));
+            } else if (lastChar == 'k' || lastChar == 'K') {
+                return Long.parseLong(value.substring(0, value.length() - 2));
+            }
+            return Long.parseLong(value);
+        } catch (final Exception e) {
+            logger.warn("Failed to parse a weight: {}", e, value);
+        }
+        return 0;
     }
 
     protected static class IndexInfo {
