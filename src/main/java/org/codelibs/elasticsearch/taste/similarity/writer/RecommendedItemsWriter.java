@@ -23,7 +23,7 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 
 public class RecommendedItemsWriter implements Closeable {
     private static final ESLogger logger = Loggers
-            .getLogger(SimilarItemsWriter.class);
+            .getLogger(RecommendedItemsWriter.class);
 
     protected Client client;
 
@@ -129,7 +129,7 @@ public class RecommendedItemsWriter implements Closeable {
                     @Override
                     public void onResponse(final IndexResponse response) {
                         if (logger.isDebugEnabled()) {
-                            logger.debug("Response: ", response);
+                            logger.debug("Response: {}", response);
                         }
                     }
 
