@@ -11,6 +11,14 @@ public class DmKey {
 
     public static final int PREFERENCE_TIME = 5;
 
+    public static final int EXISTS_USER_ID = 6;
+
+    public static final int EXISTS_ITEM_ID = 7;
+
+    public static final int NUM_USERS_FOR_ITEM = 8;
+
+    public static final int NUM_USERS_FOR_ITEMS = 9;
+
     private static final ThreadLocal<DmKey> localDmKey = new ThreadLocal<>();
 
     private int type;

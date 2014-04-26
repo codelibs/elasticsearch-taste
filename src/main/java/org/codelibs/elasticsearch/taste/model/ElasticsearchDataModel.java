@@ -1,8 +1,11 @@
 package org.codelibs.elasticsearch.taste.model;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.mahout.cf.taste.common.Refreshable;
@@ -11,17 +14,21 @@ import org.apache.mahout.cf.taste.impl.common.FastIDSet;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveArrayIterator;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.impl.model.GenericItemPreferenceArray;
+import org.apache.mahout.cf.taste.impl.model.GenericPreference;
 import org.apache.mahout.cf.taste.impl.model.GenericUserPreferenceArray;
 import org.apache.mahout.cf.taste.model.DataModel;
+import org.apache.mahout.cf.taste.model.Preference;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.codelibs.elasticsearch.taste.TasteConstants;
+import org.codelibs.elasticsearch.taste.TasteSystemException;
 import org.codelibs.elasticsearch.taste.model.cache.DmKey;
 import org.codelibs.elasticsearch.taste.model.cache.DmValue;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ShardOperationFailedException;
-import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.deletebyquery.DeleteByQueryResponse;
 import org.elasticsearch.action.deletebyquery.IndexDeleteByQueryResponse;
+import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
@@ -77,6 +84,8 @@ public class ElasticsearchDataModel implements DataModel {
 
     protected int scrollSize = 1000;
 
+    protected int maxPreferenceSize = 1000;
+
     protected volatile long[] userIDs;
 
     protected volatile long[] itemIDs;
@@ -93,7 +102,7 @@ public class ElasticsearchDataModel implements DataModel {
 
     @Override
     public void refresh(final Collection<Refreshable> alreadyRefreshed) {
-        // TODO
+        cache.cleanUp();
     }
 
     public void setMaxCacheWeight(final long weight) {
@@ -114,6 +123,35 @@ public class ElasticsearchDataModel implements DataModel {
         return new LongPrimitiveArrayIterator(userIDs);
     }
 
+    protected boolean existsUserID(final long userID) throws TasteException {
+        if (cache != null) {
+            final DmValue dmValue = cache.getIfPresent(DmKey.key(
+                    DmKey.EXISTS_USER_ID, userID));
+            if (dmValue != null) {
+                return dmValue.getValue();
+            }
+        }
+
+        if (userIDs == null) {
+            loadUserIDs();
+        }
+
+        // use elasticsearch?
+        boolean exists = false;
+        for (final long id : userIDs) {
+            if (id == userID) {
+                exists = true;
+                break;
+            }
+        }
+
+        if (cache != null) {
+            cache.put(DmKey.create(DmKey.EXISTS_USER_ID, userID), new DmValue(
+                    exists, 16));
+        }
+        return exists;
+    }
+
     @Override
     public PreferenceArray getPreferencesFromUser(final long userID)
             throws TasteException {
@@ -125,46 +163,30 @@ public class ElasticsearchDataModel implements DataModel {
             }
         }
 
-        SearchResponse response = getPreferenceSearchResponse(userIdField,
-                userID, itemIdField, valueField);
+        final SearchResponse response = getPreferenceSearchResponse(
+                userIdField, userID, itemIdField, valueField);
 
         long totalHits = response.getHits().getTotalHits();
-        if (totalHits > Integer.MAX_VALUE) {
+        if (totalHits > maxPreferenceSize) {
             logger.warn("UserID {} has {} items over {}.", userID, totalHits,
-                    Integer.MAX_VALUE);
-            totalHits = Integer.MAX_VALUE;
+                    maxPreferenceSize);
+            totalHits = maxPreferenceSize;
         }
 
+        long oldId = -1;
         final int size = (int) totalHits;
-        final PreferenceArray preferenceArray = new GenericUserPreferenceArray(
-                size);
-        preferenceArray.setUserID(0, userID);
-        int index = 0;
-        try {
-            while (true) {
-                response = client.prepareSearchScroll(response.getScrollId())
-                        .setScroll(scrollKeepAlive).execute().actionGet();
-                for (final SearchHit hit : response.getHits()) {
-                    preferenceArray.setItemID(index,
-                            getLongValue(hit, itemIdField));
-                    preferenceArray.setValue(index,
-                            getFloatValue(hit, valueField));
-                    index++;
-                }
-
-                if (response.getHits().getHits().length == 0) {
-                    break;
-                }
+        final List<Preference> prefList = new ArrayList<>(size);
+        for (final SearchHit hit : response.getHits()) {
+            final long itemID = getLongValue(hit, itemIdField);
+            if (itemID != oldId && existsItemID(itemID)) {
+                final float value = getFloatValue(hit, valueField);
+                prefList.add(new GenericPreference(userID, itemID, value));
+                oldId = itemID;
             }
-        } catch (final ElasticsearchException e) {
-            throw new TasteException(
-                    "Failed to scroll the result by " + userID, e);
         }
 
-        if (index != size) {
-            throw new TasteException("The total size " + size
-                    + " and the result " + index + " are not matched");
-        }
+        final PreferenceArray preferenceArray = new GenericUserPreferenceArray(
+                prefList);
 
         if (cache != null) {
             cache.put(DmKey.create(DmKey.PREFERENCES_FROM_USER, userID),
@@ -184,33 +206,23 @@ public class ElasticsearchDataModel implements DataModel {
             }
         }
 
-        SearchResponse response = getPreferenceSearchResponse(userIdField,
-                userID, itemIdField);
+        final SearchResponse response = getPreferenceSearchResponse(
+                userIdField, userID, itemIdField);
 
         long totalHits = response.getHits().getTotalHits();
-        if (totalHits > Integer.MAX_VALUE) {
+        if (totalHits > maxPreferenceSize) {
             logger.warn("UserID {} has {} items over {}.", userID, totalHits,
-                    Integer.MAX_VALUE);
-            totalHits = Integer.MAX_VALUE;
+                    maxPreferenceSize);
+            totalHits = maxPreferenceSize;
         }
 
         final int size = (int) totalHits;
-        final FastIDSet result = new FastIDSet((int) totalHits);
-        try {
-            while (true) {
-                response = client.prepareSearchScroll(response.getScrollId())
-                        .setScroll(scrollKeepAlive).execute().actionGet();
-                for (final SearchHit hit : response.getHits()) {
-                    result.add(getLongValue(hit, itemIdField));
-                }
-
-                if (response.getHits().getHits().length == 0) {
-                    break;
-                }
+        final FastIDSet result = new FastIDSet(size);
+        for (final SearchHit hit : response.getHits()) {
+            final long itemID = getLongValue(hit, itemIdField);
+            if (existsItemID(itemID)) {
+                result.add(itemID);
             }
-        } catch (final ElasticsearchException e) {
-            throw new TasteException(
-                    "Failed to scroll the result by " + userID, e);
         }
 
         if (cache != null) {
@@ -228,6 +240,35 @@ public class ElasticsearchDataModel implements DataModel {
         return new LongPrimitiveArrayIterator(itemIDs);
     }
 
+    protected boolean existsItemID(final long itemID) throws TasteException {
+        if (cache != null) {
+            final DmValue dmValue = cache.getIfPresent(DmKey.key(
+                    DmKey.EXISTS_ITEM_ID, itemID));
+            if (dmValue != null) {
+                return dmValue.getValue();
+            }
+        }
+
+        if (itemIDs == null) {
+            loadItemIDs();
+        }
+
+        // use elasticsearch?
+        boolean exists = false;
+        for (final long id : itemIDs) {
+            if (id == itemID) {
+                exists = true;
+                break;
+            }
+        }
+
+        if (cache != null) {
+            cache.put(DmKey.create(DmKey.EXISTS_ITEM_ID, itemID), new DmValue(
+                    exists, 16));
+        }
+        return exists;
+    }
+
     @Override
     public PreferenceArray getPreferencesForItem(final long itemID)
             throws TasteException {
@@ -239,46 +280,30 @@ public class ElasticsearchDataModel implements DataModel {
             }
         }
 
-        SearchResponse response = getPreferenceSearchResponse(itemIdField,
-                itemID, userIdField, valueField);
+        final SearchResponse response = getPreferenceSearchResponse(
+                itemIdField, itemID, userIdField, valueField);
 
         long totalHits = response.getHits().getTotalHits();
-        if (totalHits > Integer.MAX_VALUE) {
+        if (totalHits > maxPreferenceSize) {
             logger.warn("ItemID {} has {} users over {}.", itemID, totalHits,
-                    Integer.MAX_VALUE);
-            totalHits = Integer.MAX_VALUE;
+                    maxPreferenceSize);
+            totalHits = maxPreferenceSize;
         }
 
+        long oldId = -1;
         final int size = (int) totalHits;
-        final PreferenceArray preferenceArray = new GenericItemPreferenceArray(
-                size);
-        preferenceArray.setItemID(0, itemID);
-        int index = 0;
-        try {
-            while (true) {
-                response = client.prepareSearchScroll(response.getScrollId())
-                        .setScroll(scrollKeepAlive).execute().actionGet();
-                for (final SearchHit hit : response.getHits()) {
-                    preferenceArray.setUserID(index,
-                            getLongValue(hit, userIdField));
-                    preferenceArray.setValue(index,
-                            getFloatValue(hit, valueField));
-                    index++;
-                }
-
-                if (response.getHits().getHits().length == 0) {
-                    break;
-                }
+        final List<Preference> prefList = new ArrayList<>(size);
+        for (final SearchHit hit : response.getHits()) {
+            final long userID = getLongValue(hit, userIdField);
+            if (userID != oldId && existsUserID(userID)) {
+                final float value = getFloatValue(hit, valueField);
+                prefList.add(new GenericPreference(userID, itemID, value));
+                oldId = userID;
             }
-        } catch (final ElasticsearchException e) {
-            throw new TasteException(
-                    "Failed to scroll the result by " + itemID, e);
         }
 
-        if (index != size) {
-            throw new TasteException("The total size " + size
-                    + " and the result " + index + " are not matched");
-        }
+        final PreferenceArray preferenceArray = new GenericItemPreferenceArray(
+                prefList);
 
         if (cache != null) {
             cache.put(DmKey.create(DmKey.PREFERENCES_FROM_ITEM, itemID),
@@ -337,7 +362,7 @@ public class ElasticsearchDataModel implements DataModel {
                 final Number value = result.getValue();
                 final float floatValue = value.floatValue();
                 if (cache != null) {
-                    cache.put(DmKey.create(DmKey.PREFERENCE_VALUE, itemID,
+                    cache.put(DmKey.create(DmKey.PREFERENCE_VALUE, userID,
                             itemID), new DmValue(floatValue, 16));
                 }
                 return floatValue;
@@ -398,7 +423,7 @@ public class ElasticsearchDataModel implements DataModel {
                 final long time = date.getTime();
                 if (cache != null) {
                     cache.put(
-                            DmKey.create(DmKey.PREFERENCE_TIME, itemID, itemID),
+                            DmKey.create(DmKey.PREFERENCE_TIME, userID, itemID),
                             new DmValue(time, 16));
                 }
                 return time;
@@ -427,29 +452,74 @@ public class ElasticsearchDataModel implements DataModel {
     @Override
     public int getNumUsersWithPreferenceFor(final long itemID)
             throws TasteException {
-        return getNumByQuery(userIndex, userType,
-                QueryBuilders.termQuery(itemIdField, itemID));
+        if (cache != null) {
+            final DmValue dmValue = cache.getIfPresent(DmKey.key(
+                    DmKey.NUM_USERS_FOR_ITEM, itemID));
+            if (dmValue != null) {
+                return dmValue.getValue();
+            }
+        }
+
+        final PreferenceArray array = getPreferencesForItem(itemID);
+        final int length = array.length();
+        if (cache != null) {
+            cache.put(DmKey.create(DmKey.NUM_USERS_FOR_ITEM, itemID),
+                    new DmValue(length, 16));
+        }
+        return length;
     }
 
     @Override
     public int getNumUsersWithPreferenceFor(final long itemID1,
             final long itemID2) throws TasteException {
-        return getNumByQuery(
-                userIndex,
-                userType,
-                QueryBuilders.boolQuery()
-                        .must(QueryBuilders.termQuery(itemIdField, itemID1))
-                        .must(QueryBuilders.termQuery(itemIdField, itemID2)));
+        if (cache != null) {
+            final DmValue dmValue = cache.getIfPresent(DmKey.key(
+                    DmKey.NUM_USERS_FOR_ITEMS, itemID1, itemID2));
+            if (dmValue != null) {
+                return dmValue.getValue();
+            }
+        }
+
+        int count = 0;
+        int pos = 0;
+        final PreferenceArray array1 = getPreferencesForItem(itemID1);
+        final PreferenceArray array2 = getPreferencesForItem(itemID2);
+        final int length1 = array1.length();
+        final int length2 = array2.length();
+        for (int index1 = 0; index1 < length1; index1++) {
+            final long userID1 = array1.getUserID(index1);
+            for (int index2 = pos; index2 < length2; index2++) {
+                final long userID2 = array2.getUserID(index2);
+                if (userID1 == userID2) {
+                    count++;
+                    pos = index2 + 1;
+                    continue;
+                } else if (userID1 < userID2) {
+                    pos = index2;
+                    break;
+                }
+            }
+        }
+
+        if (cache != null) {
+            cache.put(
+                    DmKey.create(DmKey.NUM_USERS_FOR_ITEMS, itemID1, itemID2),
+                    new DmValue(count, 16));
+        }
+        return count;
     }
 
     @Override
     public void setPreference(final long userID, final long itemID,
             final float value) throws TasteException {
+        createUserID(userID);
+        createItemID(itemID);
+
         final Map<String, Object> source = new HashMap<String, Object>();
         source.put(userIdField, userID);
         source.put(itemIdField, itemID);
         source.put(valueField, value);
-        source.put(timestampField, "now");
+        source.put(timestampField, new Date());
         try {
             client.prepareIndex(preferenceIndex, preferenceType)
                     .setSource(source).setRefresh(true).execute().actionGet();
@@ -457,8 +527,42 @@ public class ElasticsearchDataModel implements DataModel {
             throw new TasteException("Failed to set (" + userID + "," + itemID
                     + "," + value + ")", e);
         }
+    }
 
-        // TODO add user and item
+    private void createUserID(final long userID) {
+        final GetResponse getResponse = client
+                .prepareGet(userIndex, userType, Long.toString(userID))
+                .setRefresh(true).execute().actionGet();
+        if (!getResponse.isExists()) {
+            final Map<String, Object> source = new HashMap<String, Object>();
+            source.put("id", Long.toString(userID));
+            source.put(userIdField, userID);
+            source.put(timestampField, new Date());
+            final IndexResponse response = client
+                    .prepareIndex(userIndex, userType, Long.toString(userID))
+                    .setSource(source).setRefresh(true).execute().actionGet();
+            if (!response.isCreated()) {
+                throw new TasteSystemException("Failed to create " + source);
+            }
+        }
+    }
+
+    private void createItemID(final long itemID) {
+        final GetResponse getResponse = client
+                .prepareGet(itemIndex, itemType, Long.toString(itemID))
+                .setRefresh(true).execute().actionGet();
+        if (!getResponse.isExists()) {
+            final Map<String, Object> source = new HashMap<String, Object>();
+            source.put("id", Long.toString(itemID));
+            source.put(itemIdField, itemID);
+            source.put(timestampField, new Date());
+            final IndexResponse response = client
+                    .prepareIndex(itemIndex, itemType, Long.toString(itemID))
+                    .setSource(source).setRefresh(true).execute().actionGet();
+            if (!response.isCreated()) {
+                throw new TasteSystemException("Failed to create " + source);
+            }
+        }
     }
 
     @Override
@@ -500,8 +604,6 @@ public class ElasticsearchDataModel implements DataModel {
                         + buf.toString());
             }
         }
-
-        // TODO add user and item
     }
 
     @Override
@@ -534,15 +636,14 @@ public class ElasticsearchDataModel implements DataModel {
             return client
                     .prepareSearch(preferenceIndex)
                     .setTypes(preferenceType)
-                    .setSearchType(SearchType.SCAN)
-                    .setScroll(scrollKeepAlive)
                     .setQuery(
                             QueryBuilders.filteredQuery(QueryBuilders
                                     .termQuery(targetField, targetID),
                                     getLastAccessedFilterQuery()))
                     .addFields(resultFields)
                     .addSort(resultFields[0], SortOrder.ASC)
-                    .setSize(scrollSize).execute().actionGet();
+                    .addSort(timestampField, SortOrder.DESC)
+                    .setSize(maxPreferenceSize).execute().actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to get the preference by "
                     + targetField + ":" + targetID, e);
@@ -590,8 +691,8 @@ public class ElasticsearchDataModel implements DataModel {
                     .setQuery(
                             QueryBuilders.filteredQuery(userQueryBuilder,
                                     getLastAccessedFilterQuery()))
-                    .addFields(userIdField).addSort(userIdField, SortOrder.ASC)
-                    .setSize(scrollSize).execute().actionGet();
+                    .addFields(userIdField).setSize(scrollSize).execute()
+                    .actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to load userIDs.", e);
         }
@@ -628,6 +729,7 @@ public class ElasticsearchDataModel implements DataModel {
             throw new TasteException("The total size " + size
                     + " and the result " + index + " are not matched");
         }
+        Arrays.sort(ids);
         userIDs = ids;
     }
 
@@ -646,8 +748,8 @@ public class ElasticsearchDataModel implements DataModel {
                     .setQuery(
                             QueryBuilders.filteredQuery(itemQueryBuilder,
                                     getLastAccessedFilterQuery()))
-                    .addFields(itemIdField).addSort(itemIdField, SortOrder.ASC)
-                    .setSize(scrollSize).execute().actionGet();
+                    .addFields(itemIdField).setSize(scrollSize).execute()
+                    .actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to load itemIDs.", e);
         }
@@ -684,49 +786,12 @@ public class ElasticsearchDataModel implements DataModel {
             throw new TasteException("The total size " + size
                     + " and the result " + index + " are not matched");
         }
+        Arrays.sort(ids);
         itemIDs = ids;
     }
 
     private RangeFilterBuilder getLastAccessedFilterQuery() {
         return FilterBuilders.rangeFilter(timestampField).to(lastAccessed);
-    }
-
-    protected int getNumByQuery(final String index, final String type,
-            final QueryBuilder query) throws TasteException {
-        CountResponse response;
-        try {
-            response = client
-                    .prepareCount(index)
-                    .setTypes(type)
-                    .setQuery(
-                            QueryBuilders.filteredQuery(query,
-                                    getLastAccessedFilterQuery())).execute()
-                    .actionGet();
-        } catch (final ElasticsearchException e) {
-            throw new TasteException("Failed to count by " + query, e);
-        }
-        final int totalShards = response.getTotalShards();
-        final int successfulShards = response.getSuccessfulShards();
-        if (totalShards != successfulShards) {
-            throw new TasteException(totalShards - successfulShards
-                    + " shards are failed.");
-        }
-        final ShardOperationFailedException[] failures = response
-                .getShardFailures();
-        if (failures.length > 0) {
-            final StringBuilder buf = new StringBuilder();
-            for (final ShardOperationFailedException failure : failures) {
-                buf.append('\n').append(failure.toString());
-            }
-            throw new TasteException("Search Operation Failed: "
-                    + buf.toString());
-        }
-        final long count = response.getCount();
-        if (count > Integer.MAX_VALUE) {
-            throw new TasteException("The number of results is " + count
-                    + " > " + Integer.MAX_VALUE);
-        }
-        return (int) count;
     }
 
     protected synchronized void loadValueStats() {
@@ -815,5 +880,9 @@ public class ElasticsearchDataModel implements DataModel {
 
     public void setItemQueryBuilder(final QueryBuilder itemQueryBuilder) {
         this.itemQueryBuilder = itemQueryBuilder;
+    }
+
+    public void setMaxPreferenceSize(final int maxPreferenceSize) {
+        this.maxPreferenceSize = maxPreferenceSize;
     }
 }
