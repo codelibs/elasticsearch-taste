@@ -34,6 +34,10 @@ import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.search.Scroll;
 
 public class TasteRiver extends AbstractRiverComponent implements River {
+    private static final String RECOMMEND_FROM_ITEM = "recommend_from_item";
+
+    private static final String RECOMMEND_FROM_USER = "recommend_from_user";
+
     private final Client client;
 
     private PrecomputeService precomputeService;
@@ -58,7 +62,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         try {
             final Map<String, Object> rootSettings = settings.settings();
             final Object actionObj = rootSettings.get("action");
-            if ("user".equals(actionObj)) {
+            if (RECOMMEND_FROM_USER.equals(actionObj)) {
                 final int numOfItems = SettingsUtils.get(rootSettings,
                         "num_of_items", 10);
                 final int maxDuration = SettingsUtils.get(rootSettings,
@@ -113,7 +117,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                         }
                     }
                 }, "River" + riverName.name());
-            } else if ("item".equals(actionObj)) {
+            } else if (RECOMMEND_FROM_ITEM.equals(actionObj)) {
                 final int numOfItems = SettingsUtils.get(rootSettings,
                         "num_of_items", 10);
                 final int maxDuration = SettingsUtils.get(rootSettings,
