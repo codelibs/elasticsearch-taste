@@ -75,11 +75,28 @@ You can create/update/delete the above index and document with Elasticsearch man
 Taste plugin provides an useful API to register a preference value.
 If you send it to http://.../{index}/\_taste/event, user\_id and item\_id are generated and then the preference value is inserted.
 
+For example, if User ID is "U0001", Item ID is "I1000" and the preference(rating) value is 10.0, the request is below:
 
+    $ curl -XPOST localhost:9200/sample/_taste/event -d '{
+      user: {
+        id: "U0001"
+      },
+      item: {
+        id: "I1000"
+      },
+      value: 10.0
+    }'
+
+Values of user\_id, item\_id and @timestamp are generated automatically.
 
 ## User Recommender
 
+TBD
+
 ## Item Recommender
 
+TBD
 
 ## Tutorial
+
+TBD
