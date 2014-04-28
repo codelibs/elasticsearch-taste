@@ -1,22 +1,15 @@
 package org.codelibs.elasticsearch.taste.river;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.mahout.cf.taste.impl.recommender.GenericItemBasedRecommender;
-import org.apache.mahout.cf.taste.impl.recommender.GenericUserBasedRecommender;
-import org.apache.mahout.cf.taste.neighborhood.UserNeighborhood;
 import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
-import org.apache.mahout.cf.taste.recommender.Recommender;
-import org.apache.mahout.cf.taste.similarity.ItemSimilarity;
-import org.apache.mahout.cf.taste.similarity.UserSimilarity;
-import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
+import org.codelibs.elasticsearch.taste.eval.ItemBasedRecommenderBuilder;
+import org.codelibs.elasticsearch.taste.eval.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
-import org.codelibs.elasticsearch.taste.neighborhood.UserNeighborhoodFactory;
+import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.service.PrecomputeService;
-import org.codelibs.elasticsearch.taste.similarity.SimilarityFactory;
 import org.codelibs.elasticsearch.taste.similarity.writer.RecommendedItemsWriter;
 import org.codelibs.elasticsearch.taste.similarity.writer.SimilarItemsWriter;
 import org.codelibs.elasticsearch.util.SettingsUtils;
@@ -67,6 +60,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                         "num_of_items", 10);
                 final int maxDuration = SettingsUtils.get(rootSettings,
                         "max_duration", 0);
+                final int degreeOfParallelism = getDegreeOfParallelism();
 
                 final Map<String, Object> indexInfoSettings = SettingsUtils
                         .get(rootSettings, "index_info");
@@ -82,31 +76,17 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                         indexInfo.getPreferenceIndex(),
                         indexInfo.getRecommendationIndex());
 
-                final Map<String, Object> similaritySettings = SettingsUtils
-                        .get(rootSettings, "similarity",
-                                new HashMap<String, Object>());
-                similaritySettings.put("dataModel", dataModel);
-                final UserSimilarity similarity = createSimilarity(similaritySettings);
-
-                final Map<String, Object> neighborhoodSettings = SettingsUtils
-                        .get(rootSettings, "neighborhood",
-                                new HashMap<String, Object>());
-                neighborhoodSettings.put("dataModel", dataModel);
-                neighborhoodSettings.put("userSimilarity", similarity);
-                final UserNeighborhood neighborhood = createUserNeighborhood(neighborhoodSettings);
-
                 final RecommendedItemsWriter writer = createRecommendedItemsWriter(indexInfo);
 
-                final int degreeOfParallelism = getDegreeOfParallelism();
-
-                final Recommender recommender = new GenericUserBasedRecommender(
-                        dataModel, neighborhood, similarity);
+                final UserBasedRecommenderBuilder recommenderBuilder = new UserBasedRecommenderBuilder(
+                        indexInfo, rootSettings);
 
                 startRiverThread(new Runnable() {
                     @Override
                     public void run() {
                         try {
-                            precomputeService.compute(recommender, writer,
+                            precomputeService.compute(recommenderBuilder
+                                    .buildRecommender(dataModel), writer,
                                     numOfItems, degreeOfParallelism,
                                     maxDuration);
                         } catch (final Exception e) {
@@ -122,6 +102,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                         "num_of_items", 10);
                 final int maxDuration = SettingsUtils.get(rootSettings,
                         "max_duration", 0);
+                final int degreeOfParallelism = getDegreeOfParallelism();
 
                 final Map<String, Object> indexInfoSettings = SettingsUtils
                         .get(rootSettings, "index_info");
@@ -137,25 +118,19 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                         indexInfo.getPreferenceIndex(),
                         indexInfo.getItemSimilarityIndex());
 
-                final Map<String, Object> similaritySettings = SettingsUtils
-                        .get(rootSettings, "similarity",
-                                new HashMap<String, Object>());
-                similaritySettings.put("dataModel", dataModel);
-                final ItemSimilarity similarity = createSimilarity(similaritySettings);
-
-                final ItemBasedRecommender recommender = new GenericItemBasedRecommender(
-                        dataModel, similarity);
+                final ItemBasedRecommenderBuilder recommenderBuilder = new ItemBasedRecommenderBuilder(
+                        indexInfo, rootSettings);
 
                 final SimilarItemsWriter writer = createSimilarItemsWriter(indexInfo);
-
-                final int degreeOfParallelism = getDegreeOfParallelism();
 
                 startRiverThread(new Runnable() {
                     @Override
                     public void run() {
                         try {
-                            precomputeService.compute(recommender, writer,
-                                    numOfItems, degreeOfParallelism,
+                            precomputeService.compute(
+                                    (ItemBasedRecommender) recommenderBuilder
+                                            .buildRecommender(dataModel),
+                                    writer, numOfItems, degreeOfParallelism,
                                     maxDuration);
                         } catch (final Exception e) {
                             logger.error("River {} is failed.", e,
@@ -234,43 +209,6 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         writer.open();
 
         return writer;
-    }
-
-    protected UserNeighborhood createUserNeighborhood(
-            final Map<String, Object> neighborhoodSettings) {
-        final String factoryName = SettingsUtils
-                .get(neighborhoodSettings, "factory",
-                        "org.codelibs.elasticsearch.taste.neighborhood.NearestNUserNeighborhoodFactory");
-        try {
-            final Class<?> clazz = Class.forName(factoryName);
-            final UserNeighborhoodFactory userNeighborhoodFactory = (UserNeighborhoodFactory) clazz
-                    .newInstance();
-            userNeighborhoodFactory.init(neighborhoodSettings);
-            return userNeighborhoodFactory.create();
-        } catch (ClassNotFoundException | InstantiationException
-                | IllegalAccessException e) {
-            throw new TasteSystemException("Could not create an instance of "
-                    + factoryName, e);
-        }
-    }
-
-    protected <T> T createSimilarity(
-            final Map<String, Object> similaritySettings) {
-        final String factoryName = SettingsUtils
-                .get(similaritySettings, "factory",
-                        "org.codelibs.elasticsearch.taste.similarity.LogLikelihoodSimilarityFactory");
-        try {
-            final Class<?> clazz = Class.forName(factoryName);
-            @SuppressWarnings("unchecked")
-            final SimilarityFactory<T> similarityFactory = (SimilarityFactory<T>) clazz
-                    .newInstance();
-            similarityFactory.init(similaritySettings);
-            return similarityFactory.create();
-        } catch (ClassNotFoundException | InstantiationException
-                | IllegalAccessException e) {
-            throw new TasteSystemException("Could not create an instance of "
-                    + factoryName, e);
-        }
     }
 
     @Override
@@ -379,148 +317,5 @@ public class TasteRiver extends AbstractRiverComponent implements River {
             logger.warn("Failed to parse a weight: {}", e, value);
         }
         return 0;
-    }
-
-    protected static class IndexInfo {
-        private String preferenceIndex;
-
-        private String preferenceType;
-
-        private String userIndex;
-
-        private String userType;
-
-        private String itemIndex;
-
-        private String itemType;
-
-        private String recommendationIndex;
-
-        private String recommendationType;
-
-        private String itemSimilarityIndex;
-
-        private String itemSimilarityType;
-
-        private String userIdField;
-
-        private String itemIdField;
-
-        private String valueField;
-
-        private String timestampField;
-
-        private String itemsField;
-
-        protected IndexInfo(final Map<String, Object> indexInfoSettings) {
-            final String defaultIndex = SettingsUtils.get(indexInfoSettings,
-                    "index");
-
-            final Map<String, Object> preferenceSettings = SettingsUtils.get(
-                    indexInfoSettings, "preference");
-            preferenceIndex = SettingsUtils.get(preferenceSettings, "index",
-                    defaultIndex);
-            preferenceType = SettingsUtils.get(preferenceSettings, "type",
-                    TasteConstants.PREFERENCE_TYPE);
-
-            final Map<String, Object> userSettings = SettingsUtils.get(
-                    indexInfoSettings, "user");
-            userIndex = SettingsUtils.get(userSettings, "index", defaultIndex);
-            userType = SettingsUtils.get(userSettings, "type",
-                    TasteConstants.USER_TYPE);
-
-            final Map<String, Object> itemSettings = SettingsUtils.get(
-                    indexInfoSettings, "item");
-            itemIndex = SettingsUtils.get(itemSettings, "index", defaultIndex);
-            itemType = SettingsUtils.get(itemSettings, "type",
-                    TasteConstants.ITEM_TYPE);
-
-            final Map<String, Object> recommendationSettings = SettingsUtils
-                    .get(indexInfoSettings, "recommendation");
-            recommendationIndex = SettingsUtils.get(recommendationSettings,
-                    "index", defaultIndex);
-            recommendationType = SettingsUtils.get(recommendationSettings,
-                    "type", TasteConstants.RECOMMENDATION_TYPE);
-
-            final Map<String, Object> itemSimilaritySettings = SettingsUtils
-                    .get(indexInfoSettings, "item_similarity");
-            itemSimilarityIndex = SettingsUtils.get(itemSimilaritySettings,
-                    "index", defaultIndex);
-            itemSimilarityType = SettingsUtils.get(itemSimilaritySettings,
-                    "type", TasteConstants.ITEM_SIMILARITY_TYPE);
-
-            final Map<String, Object> fieldSettings = SettingsUtils.get(
-                    indexInfoSettings, "field");
-            userIdField = SettingsUtils.get(fieldSettings, "user_id",
-                    TasteConstants.USER_ID_FIELD);
-            itemIdField = SettingsUtils.get(fieldSettings, "item_id",
-                    TasteConstants.ITEM_ID_FIELD);
-            valueField = SettingsUtils.get(fieldSettings, "value",
-                    TasteConstants.VALUE_FIELD);
-            timestampField = SettingsUtils.get(fieldSettings, "timestamp",
-                    TasteConstants.TIMESTAMP_FIELD);
-            itemsField = SettingsUtils.get(fieldSettings, "items",
-                    TasteConstants.ITEMS_FILED);
-        }
-
-        public String getPreferenceIndex() {
-            return preferenceIndex;
-        }
-
-        public String getPreferenceType() {
-            return preferenceType;
-        }
-
-        public String getUserIndex() {
-            return userIndex;
-        }
-
-        public String getUserType() {
-            return userType;
-        }
-
-        public String getItemIndex() {
-            return itemIndex;
-        }
-
-        public String getItemType() {
-            return itemType;
-        }
-
-        public String getRecommendationIndex() {
-            return recommendationIndex;
-        }
-
-        public String getRecommendationType() {
-            return recommendationType;
-        }
-
-        public String getItemSimilarityIndex() {
-            return itemSimilarityIndex;
-        }
-
-        public String getItemSimilarityType() {
-            return itemSimilarityType;
-        }
-
-        public String getUserIdField() {
-            return userIdField;
-        }
-
-        public String getItemIdField() {
-            return itemIdField;
-        }
-
-        public String getValueField() {
-            return valueField;
-        }
-
-        public String getTimestampField() {
-            return timestampField;
-        }
-
-        public String getItemsField() {
-            return itemsField;
-        }
     }
 }
