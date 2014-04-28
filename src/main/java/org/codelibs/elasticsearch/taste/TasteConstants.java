@@ -10,6 +10,8 @@ public class TasteConstants {
 
     public static final String ITEM_SIMILARITY_TYPE = "item_similarity";
 
+    public static final String REPORT_TYPE = "report";
+
     public static final String RECOMMENDATION_TYPE = "recommendation";
 
     public static final String VALUE_FIELD = "value";

@@ -5,56 +5,78 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.mahout.cf.taste.common.TasteException;
+import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
 import org.apache.mahout.cf.taste.recommender.Recommender;
+import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
 import org.codelibs.elasticsearch.taste.similarity.worker.RecommendedItemsWorker;
 import org.codelibs.elasticsearch.taste.similarity.worker.SimilarItemsWorker;
-import org.codelibs.elasticsearch.taste.similarity.writer.RecommendedItemsWriter;
-import org.codelibs.elasticsearch.taste.similarity.writer.SimilarItemsWriter;
+import org.codelibs.elasticsearch.taste.similarity.writer.ItemsWriter;
 import org.codelibs.elasticsearch.util.IOUtils;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 
-public class PrecomputeService extends
-        AbstractLifecycleComponent<PrecomputeService> {
+public class TasteService extends AbstractLifecycleComponent<TasteService> {
 
     @Inject
-    public PrecomputeService(final Settings settings) {
+    public TasteService(final Settings settings) {
         super(settings);
-        logger.info("CREATE PrecomputeService");
+        logger.info("CREATE TasteService");
     }
 
     @Override
     protected void doStart() throws ElasticsearchException {
-        logger.info("START PrecomputeService");
+        logger.info("START TasteService");
     }
 
     @Override
     protected void doStop() throws ElasticsearchException {
-        logger.info("STOP PrecomputeService");
+        logger.info("STOP TasteService");
     }
 
     @Override
     protected void doClose() throws ElasticsearchException {
-        logger.info("CLOSE PrecomputeService");
+        logger.info("CLOSE TasteService");
     }
 
-    public void compute(final Recommender recommender,
-            final RecommendedItemsWriter writer,
+    public void compute(final DataModel dataModel,
+            final RecommenderBuilder recommenderBuilder,
+            final ItemsWriter writer, final int numOfItems,
+            final int degreeOfParallelism, final int maxDuration) {
+        try {
+            final Recommender recommender = recommenderBuilder
+                    .buildRecommender(dataModel);
+            if (recommender instanceof UserBasedRecommender) {
+                compute(dataModel, (UserBasedRecommender) recommender, writer,
+                        numOfItems, degreeOfParallelism, maxDuration);
+            } else if (recommender instanceof ItemBasedRecommender) {
+                compute(dataModel, (ItemBasedRecommender) recommender, writer,
+                        numOfItems, degreeOfParallelism, maxDuration);
+            } else {
+                logger.error("Unknown a recommender: {}", recommender);
+            }
+        } catch (final TasteException e) {
+            logger.error("Failed to build a recommender from: {}", e,
+                    recommenderBuilder);
+        }
+    }
+
+    protected void compute(final DataModel dataModel,
+            final UserBasedRecommender recommender, final ItemsWriter writer,
             final int numOfRecommendedItems, final int degreeOfParallelism,
             final int maxDuration) {
-        logger.info("Recommender: ", recommender.toString());
-        logger.info("NumOfRecommendedItems: ", numOfRecommendedItems);
-        logger.info("MaxDuration: ", maxDuration);
-
         final ExecutorService executorService = Executors
                 .newFixedThreadPool(degreeOfParallelism + 1);
         try {
-            final DataModel dataModel = recommender.getDataModel();
+
+            logger.info("Recommender: ", recommender);
+            logger.info("NumOfRecommendedItems: ", numOfRecommendedItems);
+            logger.info("MaxDuration: ", maxDuration);
+
             final LongPrimitiveIterator userIDs = dataModel.getUserIDs();
 
             for (int n = 0; n < degreeOfParallelism; n++) {
@@ -86,9 +108,10 @@ public class PrecomputeService extends
 
     }
 
-    public void compute(final ItemBasedRecommender recommender,
-            final SimilarItemsWriter writer, final int numOfMostSimilarItems,
-            final int degreeOfParallelism, final int maxDuration) {
+    protected void compute(final DataModel dataModel,
+            final ItemBasedRecommender recommender, final ItemsWriter writer,
+            final int numOfMostSimilarItems, final int degreeOfParallelism,
+            final int maxDuration) {
         logger.info("Recommender: ", recommender.toString());
         logger.info("NumOfMostSimilarItems: ", numOfMostSimilarItems);
         logger.info("MaxDuration: ", maxDuration);
@@ -96,7 +119,6 @@ public class PrecomputeService extends
         final ExecutorService executorService = Executors
                 .newFixedThreadPool(degreeOfParallelism + 1);
         try {
-            final DataModel dataModel = recommender.getDataModel();
             final LongPrimitiveIterator itemIDs = dataModel.getItemIDs();
 
             for (int n = 0; n < degreeOfParallelism; n++) {

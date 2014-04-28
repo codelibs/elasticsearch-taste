@@ -1,6 +1,5 @@
 package org.codelibs.elasticsearch.taste.similarity.writer;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -21,7 +20,7 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 
-public class SimilarItemsWriter implements Closeable {
+public class SimilarItemsWriter implements ItemsWriter {
 
     private static final ESLogger logger = Loggers
             .getLogger(SimilarItemsWriter.class);
@@ -45,6 +44,7 @@ public class SimilarItemsWriter implements Closeable {
         this.index = index;
     }
 
+    @Override
     public void open() {
         final GetMappingsResponse response = client.admin().indices()
                 .prepareGetMappings(index).setTypes(type).execute().actionGet();
@@ -107,6 +107,7 @@ public class SimilarItemsWriter implements Closeable {
         // nothing
     }
 
+    @Override
     public void write(final long itemId,
             final List<RecommendedItem> recommendedItems) {
         final Map<String, Object> rootObj = new HashMap<>();

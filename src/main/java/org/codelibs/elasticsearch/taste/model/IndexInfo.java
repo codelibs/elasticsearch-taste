@@ -26,6 +26,10 @@ public class IndexInfo {
 
     private String itemSimilarityType;
 
+    private String reportIndex;
+
+    private String reportType;
+
     private String userIdField;
 
     private String itemIdField;
@@ -72,6 +76,12 @@ public class IndexInfo {
                 "index", defaultIndex);
         itemSimilarityType = SettingsUtils.get(itemSimilaritySettings, "type",
                 TasteConstants.ITEM_SIMILARITY_TYPE);
+
+        final Map<String, Object> reportSettings = SettingsUtils.get(
+                indexInfoSettings, "report");
+        reportIndex = SettingsUtils.get(reportSettings, "index", defaultIndex);
+        reportType = SettingsUtils.get(reportSettings, "type",
+                TasteConstants.REPORT_TYPE);
 
         final Map<String, Object> fieldSettings = SettingsUtils.get(
                 indexInfoSettings, "field");
@@ -125,6 +135,14 @@ public class IndexInfo {
 
     public String getItemSimilarityType() {
         return itemSimilarityType;
+    }
+
+    public String getReportIndex() {
+        return reportIndex;
+    }
+
+    public String getReportType() {
+        return reportType;
     }
 
     public String getUserIdField() {

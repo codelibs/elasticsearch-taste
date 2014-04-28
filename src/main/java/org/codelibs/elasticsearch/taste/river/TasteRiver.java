@@ -3,13 +3,14 @@ package org.codelibs.elasticsearch.taste.river;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
+import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
 import org.codelibs.elasticsearch.taste.eval.ItemBasedRecommenderBuilder;
+import org.codelibs.elasticsearch.taste.eval.RecommenderEvaluatorFactory;
 import org.codelibs.elasticsearch.taste.eval.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
-import org.codelibs.elasticsearch.taste.service.PrecomputeService;
+import org.codelibs.elasticsearch.taste.service.TasteService;
 import org.codelibs.elasticsearch.taste.similarity.writer.RecommendedItemsWriter;
 import org.codelibs.elasticsearch.taste.similarity.writer.SimilarItemsWriter;
 import org.codelibs.elasticsearch.util.SettingsUtils;
@@ -27,22 +28,24 @@ import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.search.Scroll;
 
 public class TasteRiver extends AbstractRiverComponent implements River {
-    private static final String RECOMMEND_FROM_ITEM = "recommend_from_item";
+    private static final String EVALUATE_ITEMS_FROM_USER = "evaluate_items_from_user";
 
-    private static final String RECOMMEND_FROM_USER = "recommend_from_user";
+    private static final String RECOMMENDED_ITEMS_FROM_ITEM = "recommended_items_from_item";
+
+    private static final String RECOMMENDED_ITEMS_FROM_USER = "recommended_items_from_user";
 
     private final Client client;
 
-    private PrecomputeService precomputeService;
+    private TasteService tasteService;
 
     private Thread riverThread;
 
     @Inject
     public TasteRiver(final RiverName riverName, final RiverSettings settings,
-            final Client client, final PrecomputeService precomputeService) {
+            final Client client, final TasteService tasteService) {
         super(riverName, settings);
         this.client = client;
-        this.precomputeService = precomputeService;
+        this.tasteService = tasteService;
 
         logger.info("CREATE TasteRiver");
     }
@@ -55,7 +58,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         try {
             final Map<String, Object> rootSettings = settings.settings();
             final Object actionObj = rootSettings.get("action");
-            if (RECOMMEND_FROM_USER.equals(actionObj)) {
+            if (RECOMMENDED_ITEMS_FROM_USER.equals(actionObj)) {
                 final int numOfItems = SettingsUtils.get(rootSettings,
                         "num_of_items", 10);
                 final int maxDuration = SettingsUtils.get(rootSettings,
@@ -85,9 +88,8 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                     @Override
                     public void run() {
                         try {
-                            precomputeService.compute(recommenderBuilder
-                                    .buildRecommender(dataModel), writer,
-                                    numOfItems, degreeOfParallelism,
+                            tasteService.compute(dataModel, recommenderBuilder,
+                                    writer, numOfItems, degreeOfParallelism,
                                     maxDuration);
                         } catch (final Exception e) {
                             logger.error("River {} is failed.", e,
@@ -97,7 +99,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                         }
                     }
                 }, "River" + riverName.name());
-            } else if (RECOMMEND_FROM_ITEM.equals(actionObj)) {
+            } else if (RECOMMENDED_ITEMS_FROM_ITEM.equals(actionObj)) {
                 final int numOfItems = SettingsUtils.get(rootSettings,
                         "num_of_items", 10);
                 final int maxDuration = SettingsUtils.get(rootSettings,
@@ -127,11 +129,46 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                     @Override
                     public void run() {
                         try {
-                            precomputeService.compute(
-                                    (ItemBasedRecommender) recommenderBuilder
-                                            .buildRecommender(dataModel),
+                            tasteService.compute(dataModel, recommenderBuilder,
                                     writer, numOfItems, degreeOfParallelism,
                                     maxDuration);
+                        } catch (final Exception e) {
+                            logger.error("River {} is failed.", e,
+                                    riverName.name());
+                        } finally {
+                            deleteRiver();
+                        }
+                    }
+                }, "River" + riverName.name());
+            } else if (EVALUATE_ITEMS_FROM_USER.equals(actionObj)) {
+
+                final Map<String, Object> indexInfoSettings = SettingsUtils
+                        .get(rootSettings, "index_info");
+                final IndexInfo indexInfo = new IndexInfo(indexInfoSettings);
+
+                final Map<String, Object> modelInfoSettings = SettingsUtils
+                        .get(rootSettings, "data_model");
+                createDataModel(client, indexInfo, modelInfoSettings);
+
+                waitForClusterStatus(indexInfo.getUserIndex(),
+                        indexInfo.getItemIndex(),
+                        indexInfo.getPreferenceIndex(),
+                        indexInfo.getItemSimilarityIndex());
+
+                new UserBasedRecommenderBuilder(indexInfo, rootSettings);
+
+                final Map<String, Object> evaluatorSettings = SettingsUtils
+                        .get(rootSettings, "evaluator");
+                createRecommenderEvaluator(evaluatorSettings);
+
+                // TODO writer
+
+                startRiverThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            // TODO EVALUATE
+                            // tasteService.evaluate();
                         } catch (final Exception e) {
                             logger.error("River {} is failed.", e,
                                     riverName.name());
@@ -296,6 +333,24 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                 | IllegalAccessException e) {
             throw new TasteSystemException("Could not create an instance of "
                     + className);
+        }
+    }
+
+    protected RecommenderEvaluator createRecommenderEvaluator(
+            final Map<String, Object> recommenderEvaluatorSettings) {
+        final String factoryName = SettingsUtils
+                .get(recommenderEvaluatorSettings, "factory",
+                        "org.codelibs.elasticsearch.taste.eval.RMSRecommenderEvaluatorFactory");
+        try {
+            final Class<?> clazz = Class.forName(factoryName);
+            final RecommenderEvaluatorFactory recommenderEvaluatorFactory = (RecommenderEvaluatorFactory) clazz
+                    .newInstance();
+            recommenderEvaluatorFactory.init(recommenderEvaluatorSettings);
+            return recommenderEvaluatorFactory.create();
+        } catch (ClassNotFoundException | InstantiationException
+                | IllegalAccessException e) {
+            throw new TasteSystemException("Could not create an instance of "
+                    + factoryName, e);
         }
     }
 

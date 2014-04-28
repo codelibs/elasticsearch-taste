@@ -1,6 +1,5 @@
 package org.codelibs.elasticsearch.taste.similarity.writer;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -21,7 +20,7 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 
-public class RecommendedItemsWriter implements Closeable {
+public class RecommendedItemsWriter implements ItemsWriter {
     private static final ESLogger logger = Loggers
             .getLogger(RecommendedItemsWriter.class);
 
@@ -46,6 +45,10 @@ public class RecommendedItemsWriter implements Closeable {
         this.index = index;
     }
 
+    /* (non-Javadoc)
+     * @see org.codelibs.elasticsearch.taste.similarity.writer.ItemsWriter#open()
+     */
+    @Override
     public void open() {
         final GetMappingsResponse response = client.admin().indices()
                 .prepareGetMappings(index).setTypes(type).execute().actionGet();
@@ -103,11 +106,18 @@ public class RecommendedItemsWriter implements Closeable {
         }
     }
 
+    /* (non-Javadoc)
+     * @see org.codelibs.elasticsearch.taste.similarity.writer.ItemsWriter#close()
+     */
     @Override
     public void close() throws IOException {
         // nothing
     }
 
+    /* (non-Javadoc)
+     * @see org.codelibs.elasticsearch.taste.similarity.writer.ItemsWriter#write(long, java.util.List)
+     */
+    @Override
     public void write(final long userID,
             final List<RecommendedItem> recommendedItems) {
         final Map<String, Object> rootObj = new HashMap<>();

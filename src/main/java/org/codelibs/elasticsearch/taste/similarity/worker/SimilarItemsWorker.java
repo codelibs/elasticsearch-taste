@@ -7,7 +7,7 @@ import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.common.MemoryUtil;
-import org.codelibs.elasticsearch.taste.similarity.writer.SimilarItemsWriter;
+import org.codelibs.elasticsearch.taste.similarity.writer.ItemsWriter;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 
@@ -23,12 +23,12 @@ public class SimilarItemsWorker implements Runnable {
 
     protected int numOfMostSimilarItems;
 
-    protected SimilarItemsWriter writer;
+    protected ItemsWriter writer;
 
     public SimilarItemsWorker(final int number,
             final ItemBasedRecommender recommender,
             final LongPrimitiveIterator itemIDs,
-            final int numOfMostSimilarItems, final SimilarItemsWriter writer) {
+            final int numOfMostSimilarItems, final ItemsWriter writer) {
         this.number = number;
         this.recommender = recommender;
         this.itemIDs = itemIDs;
