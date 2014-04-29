@@ -129,6 +129,8 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
 
         final Evaluation result = getEvaluation(testPrefs, recommender,
                 config.getMarginForError());
+        result.setTraining(trainingPrefs.size());
+        result.setTest(testPrefs.size());
         log.info("Evaluation result: {}", result);
         return result;
     }
@@ -232,6 +234,7 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
             evaluation.setSuccessful(finalResult.getSuccessful());
             evaluation.setFailure(finalResult.getFailure());
             evaluation.setNoEstimate(finalResult.getNoEstimate());
+            evaluation.setTotalPreference(finalResult.getTotalPreference());
         }
         return evaluation;
     }
@@ -291,7 +294,7 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
             return failure;
         }
 
-        public int getTotal() {
+        public int getTotalPreference() {
             return noEstimate + successful + failure;
         }
 
@@ -379,7 +382,7 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
                 }
             }
 
-            return null;
+            return result;
         }
 
     }

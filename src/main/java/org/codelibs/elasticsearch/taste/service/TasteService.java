@@ -178,8 +178,29 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
 
             final Map<String, Object> rootObj = new HashMap<>();
             rootObj.put("report_type", reportType);
-            rootObj.put("evaluation", evaluation);
-            rootObj.put("config", config);
+            final Map<String, Object> evaluationObj = new HashMap<>();
+            evaluationObj.put("average_processing_time",
+                    evaluation.getAverageProcessingTime());
+            evaluationObj.put("max_processing_time",
+                    evaluation.getMaxProcessingTime());
+            evaluationObj.put("total_processing_time",
+                    evaluation.getTotalProcessingTime());
+            evaluationObj.put("successfull", evaluation.getSuccessful());
+            evaluationObj.put("failure", evaluation.getFailure());
+            evaluationObj.put("no_estimate", evaluation.getNoEstimate());
+            evaluationObj.put("total_preference",
+                    evaluation.getTotalPreference());
+            evaluationObj.put("training", evaluation.getTraining());
+            evaluationObj.put("test", evaluation.getTest());
+            evaluationObj.put("score", evaluation.getScore());
+            rootObj.put("evaluation", evaluationObj);
+            final Map<String, Object> configObj = new HashMap<>();
+            configObj
+                    .put("training_percentage", config.getTrainingPercentage());
+            configObj.put("evaluation_percentage",
+                    config.getEvaluationPercentage());
+            configObj.put("margin_for_error", config.getMarginForError());
+            rootObj.put("config", configObj);
 
             writer.write(rootObj);
         } catch (final TasteException e) {

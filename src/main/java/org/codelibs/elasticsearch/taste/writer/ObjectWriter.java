@@ -15,7 +15,6 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentFactory;
 
 public class ObjectWriter implements Closeable {
     private static final ESLogger logger = Loggers
@@ -29,6 +28,8 @@ public class ObjectWriter implements Closeable {
 
     protected String timestampField = TasteConstants.TIMESTAMP_FIELD;
 
+    private XContentBuilder mappingBuilder;
+
     public ObjectWriter(final Client client, final String index,
             final String type) {
         this.client = client;
@@ -37,42 +38,19 @@ public class ObjectWriter implements Closeable {
     }
 
     public void open() {
-        final GetMappingsResponse response = client.admin().indices()
-                .prepareGetMappings(index).setTypes(type).execute().actionGet();
-        if (response.mappings().isEmpty()) {
-            try {
-                final XContentBuilder builder = XContentFactory.jsonBuilder()//
-                        .startObject()//
-                        .startObject(type)//
-                        .startObject("properties")//
-
-                        // @timestamp
-                        .startObject(timestampField)//
-                        .field("type", "date")//
-                        .field("format", "dateOptionalTime")//
-                        .endObject()//
-
-                        // value
-                        .startObject("report_type")//
-                        .field("type", "string")//
-                        .field("index", "not_analyzed")//
-                        .endObject()//
-
-                        .endObject()//
-                        .endObject()//
-                        .endObject();
-
+        if (mappingBuilder != null) {
+            final GetMappingsResponse response = client.admin().indices()
+                    .prepareGetMappings(index).setTypes(type).execute()
+                    .actionGet();
+            if (response.mappings().isEmpty()) {
                 final PutMappingResponse putMappingResponse = client.admin()
                         .indices().preparePutMapping(index).setType(type)
-                        .setSource(builder).execute().actionGet();
+                        .setSource(mappingBuilder).execute().actionGet();
                 if (!putMappingResponse.isAcknowledged()) {
                     throw new TasteSystemException(
                             "Failed to create a mapping of" + index + "/"
                                     + type);
                 }
-            } catch (final IOException e) {
-                throw new TasteSystemException("Failed to create a mapping of"
-                        + index + "/" + type, e);
             }
         }
     }
@@ -108,6 +86,10 @@ public class ObjectWriter implements Closeable {
 
     public void setTimestampField(final String timestampField) {
         this.timestampField = timestampField;
+    }
+
+    public void setMapping(final XContentBuilder builder) {
+        mappingBuilder = builder;
     }
 
 }

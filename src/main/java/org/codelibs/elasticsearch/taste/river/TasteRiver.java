@@ -1,5 +1,6 @@
 package org.codelibs.elasticsearch.taste.river;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +24,8 @@ import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingRespon
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.AbstractRiverComponent;
 import org.elasticsearch.river.River;
@@ -270,6 +273,32 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         final ObjectWriter writer = new ObjectWriter(client,
                 indexInfo.getReportIndex(), indexInfo.getReportType());
         writer.setTimestampField(indexInfo.getTimestampField());
+        try {
+            final XContentBuilder builder = XContentFactory.jsonBuilder()//
+                    .startObject()//
+                    .startObject(indexInfo.getReportType())//
+                    .startObject("properties")//
+
+                    // @timestamp
+                    .startObject(indexInfo.getTimestampField())//
+                    .field("type", "date")//
+                    .field("format", "dateOptionalTime")//
+                    .endObject()//
+
+                    // value
+                    .startObject("report_type")//
+                    .field("type", "string")//
+                    .field("index", "not_analyzed")//
+                    .endObject()//
+
+                    .endObject()//
+                    .endObject()//
+                    .endObject();
+            writer.setMapping(builder);
+        } catch (final IOException e) {
+            logger.info("Failed to create a mapping {}/{}.", e,
+                    indexInfo.getReportIndex(), indexInfo.getReportType());
+        }
 
         writer.open();
 

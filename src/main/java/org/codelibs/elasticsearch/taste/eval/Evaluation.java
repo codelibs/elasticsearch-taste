@@ -10,6 +10,12 @@ public class Evaluation {
 
     private int failure = 0;
 
+    private int totalPreference = 0;
+
+    private int training = 0;
+
+    private int test = 0;
+
     private long totalProcessingTime = 0;
 
     private long maxProcessingTime = 0;
@@ -46,6 +52,30 @@ public class Evaluation {
 
     public void setFailure(final int failure) {
         this.failure = failure;
+    }
+
+    public int getTotalPreference() {
+        return totalPreference;
+    }
+
+    public void setTotalPreference(final int totalPreference) {
+        this.totalPreference = totalPreference;
+    }
+
+    public int getTraining() {
+        return training;
+    }
+
+    public void setTraining(final int training) {
+        this.training = training;
+    }
+
+    public int getTest() {
+        return test;
+    }
+
+    public void setTest(final int test) {
+        this.test = test;
     }
 
     public long getTotalProcessingTime() {
