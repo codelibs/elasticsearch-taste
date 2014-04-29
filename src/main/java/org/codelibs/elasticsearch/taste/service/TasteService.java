@@ -8,13 +8,15 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
-import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
 import org.apache.mahout.common.RandomUtils;
+import org.codelibs.elasticsearch.taste.eval.Evaluation;
+import org.codelibs.elasticsearch.taste.eval.EvaluationConfig;
+import org.codelibs.elasticsearch.taste.eval.Evaluator;
 import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.worker.RecommendedItemsWorker;
 import org.codelibs.elasticsearch.taste.worker.SimilarItemsWorker;
@@ -158,13 +160,13 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
 
     public void evaluate(final DataModel dataModel,
             final RecommenderBuilder recommenderBuilder,
-            final RecommenderEvaluator evaluator, final ObjectWriter writer,
-            final double trainingPercentage, final double evaluationPercentage) {
+            final Evaluator evaluator, final ObjectWriter writer,
+            final EvaluationConfig config) {
         RandomUtils.useTestSeed();
         try {
             long time = System.currentTimeMillis();
-            final double score = evaluator.evaluate(recommenderBuilder, null,
-                    dataModel, trainingPercentage, evaluationPercentage);
+            final Evaluation evaluation = evaluator.evaluate(
+                    recommenderBuilder, dataModel, config);
             time = System.currentTimeMillis() - time;
 
             String reportType;
@@ -176,15 +178,12 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
 
             final Map<String, Object> rootObj = new HashMap<>();
             rootObj.put("report_type", reportType);
-            rootObj.put("score", score);
-            rootObj.put("processing_time", time);
-            rootObj.put("training_percentage", trainingPercentage);
-            rootObj.put("evaluation_percentage", evaluationPercentage);
+            rootObj.put("evaluation", evaluation);
+            rootObj.put("config", config);
 
             writer.write(rootObj);
         } catch (final TasteException e) {
-            logger.error("Evaluator {}({}/{}) is failed.", e, evaluator,
-                    trainingPercentage, evaluationPercentage);
+            logger.error("Evaluator {}({}) is failed.", e, evaluator, config);
         } finally {
             IOUtils.closeQuietly(writer);
         }

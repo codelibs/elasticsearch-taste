@@ -23,16 +23,12 @@ import org.apache.mahout.cf.taste.model.Preference;
 
 /**
  * <p>
- * A {@link org.apache.mahout.cf.taste.eval.RecommenderEvaluator} which computes the average absolute
- * difference between predicted and actual ratings for users.
- * </p>
- *
- * <p>
- * This algorithm is also called "mean average error".
+ * A {@link org.apache.mahout.cf.taste.eval.RecommenderEvaluator} which computes the "root mean squared"
+ * difference between predicted and actual ratings for users. This is the square root of the average of this
+ * difference, squared.
  * </p>
  */
-public final class AverageAbsoluteDifferenceRecommenderEvaluator extends
-        AbstractDifferenceRecommenderEvaluator {
+public final class RMSEvaluator extends AbstractDifferenceEvaluator {
 
     private RunningAverage average;
 
@@ -44,17 +40,18 @@ public final class AverageAbsoluteDifferenceRecommenderEvaluator extends
     @Override
     protected void processOneEstimate(final float estimatedPreference,
             final Preference realPref) {
-        average.addDatum(Math.abs(realPref.getValue() - estimatedPreference));
+        final double diff = realPref.getValue() - estimatedPreference;
+        average.addDatum(diff * diff);
     }
 
     @Override
     protected double computeFinalEvaluation() {
-        return average.getAverage();
+        return Math.sqrt(average.getAverage());
     }
 
     @Override
     public String toString() {
-        return "AverageAbsoluteDifferenceRecommenderEvaluator";
+        return "RMSEvaluator";
     }
 
 }

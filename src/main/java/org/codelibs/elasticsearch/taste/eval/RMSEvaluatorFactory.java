@@ -2,12 +2,10 @@ package org.codelibs.elasticsearch.taste.eval;
 
 import java.util.Map;
 
-import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
-import org.apache.mahout.cf.taste.impl.eval.RMSRecommenderEvaluator;
+import org.codelibs.elasticsearch.taste.eval.impl.RMSEvaluator;
 import org.codelibs.elasticsearch.util.SettingsUtils;
 
-public class RMSRecommenderEvaluatorFactory implements
-        RecommenderEvaluatorFactory {
+public class RMSEvaluatorFactory implements EvaluatorFactory {
     protected Number maxPreference;
 
     protected Number minPreference;
@@ -19,8 +17,8 @@ public class RMSRecommenderEvaluatorFactory implements
     }
 
     @Override
-    public RecommenderEvaluator create() {
-        final RMSRecommenderEvaluator evaluator = new RMSRecommenderEvaluator();
+    public Evaluator create() {
+        final RMSEvaluator evaluator = new RMSEvaluator();
         if (maxPreference != null) {
             evaluator.setMaxPreference(maxPreference.floatValue());
         }

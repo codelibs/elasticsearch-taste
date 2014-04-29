@@ -4,9 +4,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
-import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
-import org.codelibs.elasticsearch.taste.eval.RecommenderEvaluatorFactory;
+import org.codelibs.elasticsearch.taste.eval.EvaluationConfig;
+import org.codelibs.elasticsearch.taste.eval.Evaluator;
+import org.codelibs.elasticsearch.taste.eval.EvaluatorFactory;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.recommender.ItemBasedRecommenderBuilder;
@@ -149,6 +150,12 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                         rootSettings, "training_percentage", 1.0);
                 final double evaluationPercentage = SettingsUtils.get(
                         rootSettings, "evaluation_percentage", 1.0);
+                final double marginForError = SettingsUtils.get(rootSettings,
+                        "margin_for_error", 1.0);
+                final EvaluationConfig config = new EvaluationConfig();
+                config.setTrainingPercentage(trainingPercentage);
+                config.setEvaluationPercentage(evaluationPercentage);
+                config.setMarginForError((float) marginForError);
 
                 final Map<String, Object> indexInfoSettings = SettingsUtils
                         .get(rootSettings, "index_info");
@@ -169,7 +176,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
 
                 final Map<String, Object> evaluatorSettings = SettingsUtils
                         .get(rootSettings, "evaluator");
-                final RecommenderEvaluator evaluator = createRecommenderEvaluator(evaluatorSettings);
+                final Evaluator evaluator = createEvaluator(evaluatorSettings);
 
                 final ObjectWriter writer = createReportWriter(indexInfo);
 
@@ -179,7 +186,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                         try {
                             tasteService.evaluate(dataModel,
                                     recommenderBuilder, evaluator, writer,
-                                    trainingPercentage, evaluationPercentage);
+                                    config);
                         } catch (final Exception e) {
                             logger.error("River {} is failed.", e,
                                     riverName.name());
@@ -357,16 +364,16 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         }
     }
 
-    protected RecommenderEvaluator createRecommenderEvaluator(
-            final Map<String, Object> recommenderEvaluatorSettings) {
-        final String factoryName = SettingsUtils
-                .get(recommenderEvaluatorSettings, "factory",
-                        "org.codelibs.elasticsearch.taste.eval.RMSRecommenderEvaluatorFactory");
+    protected Evaluator createEvaluator(
+            final Map<String, Object> evaluatorSettings) {
+        final String factoryName = SettingsUtils.get(evaluatorSettings,
+                "factory",
+                "org.codelibs.elasticsearch.taste.eval.RMSEvaluatorFactory");
         try {
             final Class<?> clazz = Class.forName(factoryName);
-            final RecommenderEvaluatorFactory recommenderEvaluatorFactory = (RecommenderEvaluatorFactory) clazz
+            final EvaluatorFactory recommenderEvaluatorFactory = (EvaluatorFactory) clazz
                     .newInstance();
-            recommenderEvaluatorFactory.init(recommenderEvaluatorSettings);
+            recommenderEvaluatorFactory.init(evaluatorSettings);
             return recommenderEvaluatorFactory.create();
         } catch (ClassNotFoundException | InstantiationException
                 | IllegalAccessException e) {

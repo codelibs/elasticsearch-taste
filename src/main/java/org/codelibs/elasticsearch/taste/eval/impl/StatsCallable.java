@@ -24,7 +24,7 @@ import org.apache.mahout.cf.taste.impl.common.RunningAverageAndStdDev;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-final class StatsCallable implements Callable<Void> {
+public class StatsCallable implements Callable<Void> {
 
     private static final Logger log = LoggerFactory
             .getLogger(StatsCallable.class);
@@ -37,7 +37,7 @@ final class StatsCallable implements Callable<Void> {
 
     private final AtomicInteger noEstimateCounter;
 
-    StatsCallable(final Callable<Void> delegate, final boolean logStats,
+    public StatsCallable(final Callable<Void> delegate, final boolean logStats,
             final RunningAverageAndStdDev timing,
             final AtomicInteger noEstimateCounter) {
         this.delegate = delegate;
