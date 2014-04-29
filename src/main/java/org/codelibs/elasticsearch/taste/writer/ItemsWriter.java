@@ -1,4 +1,4 @@
-package org.codelibs.elasticsearch.taste.similarity.writer;
+package org.codelibs.elasticsearch.taste.writer;
 
 import java.io.Closeable;
 import java.io.IOException;

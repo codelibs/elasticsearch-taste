@@ -1,37 +1,38 @@
-package org.codelibs.elasticsearch.taste.similarity.worker;
+package org.codelibs.elasticsearch.taste.worker;
 
 import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
+import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
-import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.common.MemoryUtil;
-import org.codelibs.elasticsearch.taste.similarity.writer.ItemsWriter;
+import org.codelibs.elasticsearch.taste.writer.ItemsWriter;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 
-public class RecommendedItemsWorker implements Runnable {
+public class SimilarItemsWorker implements Runnable {
     private static final ESLogger logger = Loggers
-            .getLogger(RecommendedItemsWorker.class);
+            .getLogger(SimilarItemsWorker.class);
 
     protected int number;
 
-    protected Recommender recommender;
+    protected ItemBasedRecommender recommender;
 
-    protected LongPrimitiveIterator userIDs;
+    protected LongPrimitiveIterator itemIDs;
 
-    protected int numOfRecommendedItems;
+    protected int numOfMostSimilarItems;
 
     protected ItemsWriter writer;
 
-    public RecommendedItemsWorker(final int number,
-            final Recommender recommender, final LongPrimitiveIterator userIDs,
-            final int numOfRecommendedItems, final ItemsWriter writer) {
+    public SimilarItemsWorker(final int number,
+            final ItemBasedRecommender recommender,
+            final LongPrimitiveIterator itemIDs,
+            final int numOfMostSimilarItems, final ItemsWriter writer) {
         this.number = number;
         this.recommender = recommender;
-        this.userIDs = userIDs;
-        this.numOfRecommendedItems = numOfRecommendedItems;
+        this.itemIDs = itemIDs;
+        this.numOfMostSimilarItems = numOfMostSimilarItems;
         this.writer = writer;
     }
 
@@ -40,40 +41,40 @@ public class RecommendedItemsWorker implements Runnable {
         int count = 0;
         final long startTime = System.currentTimeMillis();
         logger.info("Worker {} is started.", number);
-        long userID;
-        while ((userID = nextId(userIDs)) != -1) {
+        long itemID;
+        while ((itemID = nextId(itemIDs)) != -1) {
             try {
                 long time = System.nanoTime();
                 final List<RecommendedItem> recommendedItems = recommender
-                        .recommend(userID, numOfRecommendedItems);
-                writer.write(userID, recommendedItems);
+                        .mostSimilarItems(itemID, numOfMostSimilarItems);
+                writer.write(itemID, recommendedItems);
                 time = (System.nanoTime() - time) / 1000000;
                 if (logger.isDebugEnabled()) {
-                    logger.debug("User {} => Time: {} ms, Result: {}", userID,
+                    logger.debug("Item {} => Time: {} ms, Result: {}", itemID,
                             time, recommendedItems);
                     if (count % 100 == 0) {
                         MemoryUtil.logMemoryStatistics();
                     }
                 } else {
-                    logger.info("User {} => Time: {} ms, Result: {} items",
-                            userID, time, recommendedItems.size());
+                    logger.info("Item {} => Time: {} ms, Result: {} items",
+                            itemID, time, recommendedItems.size());
                     if (count % 1000 == 0) {
                         MemoryUtil.logMemoryStatistics();
                     }
                 }
             } catch (final Exception e) {
-                logger.error("User {} could not be processed.", e, userID);
+                logger.error("Item {} could not be processed.", e, itemID);
             }
             count++;
         }
-        logger.info("Worker {} processed {} users at {} ms. ", number, count,
+        logger.info("Worker {} processed {} items at {} ms. ", number, count,
                 System.currentTimeMillis() - startTime);
     }
 
-    private long nextId(final LongPrimitiveIterator userIDs) {
-        synchronized (userIDs) {
+    private long nextId(final LongPrimitiveIterator itemIDs) {
+        synchronized (itemIDs) {
             try {
-                return userIDs.nextLong();
+                return itemIDs.nextLong();
             } catch (final NoSuchElementException e) {
                 return -1;
             }

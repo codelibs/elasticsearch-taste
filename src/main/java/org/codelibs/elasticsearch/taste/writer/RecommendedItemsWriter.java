@@ -1,4 +1,4 @@
-package org.codelibs.elasticsearch.taste.similarity.writer;
+package org.codelibs.elasticsearch.taste.writer;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,16 +20,17 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 
-public class SimilarItemsWriter implements ItemsWriter {
-
+public class RecommendedItemsWriter implements ItemsWriter {
     private static final ESLogger logger = Loggers
-            .getLogger(SimilarItemsWriter.class);
+            .getLogger(RecommendedItemsWriter.class);
 
     protected Client client;
 
     protected String index;
 
-    protected String type = TasteConstants.ITEM_SIMILARITY_TYPE;
+    protected String type = TasteConstants.RECOMMENDATION_TYPE;
+
+    protected String userIdField = TasteConstants.USER_ID_FIELD;
 
     protected String itemIdField = TasteConstants.ITEM_ID_FIELD;
 
@@ -39,11 +40,14 @@ public class SimilarItemsWriter implements ItemsWriter {
 
     protected String timestampField = TasteConstants.TIMESTAMP_FIELD;
 
-    public SimilarItemsWriter(final Client client, final String index) {
+    public RecommendedItemsWriter(final Client client, final String index) {
         this.client = client;
         this.index = index;
     }
 
+    /* (non-Javadoc)
+     * @see org.codelibs.elasticsearch.taste.similarity.writer.ItemsWriter#open()
+     */
     @Override
     public void open() {
         final GetMappingsResponse response = client.admin().indices()
@@ -61,8 +65,8 @@ public class SimilarItemsWriter implements ItemsWriter {
                         .field("format", "dateOptionalTime")//
                         .endObject()//
 
-                        // item_id
-                        .startObject(itemIdField)//
+                        // user_id
+                        .startObject(userIdField)//
                         .field("type", "long")//
                         .endObject()//
 
@@ -102,16 +106,22 @@ public class SimilarItemsWriter implements ItemsWriter {
         }
     }
 
+    /* (non-Javadoc)
+     * @see org.codelibs.elasticsearch.taste.similarity.writer.ItemsWriter#close()
+     */
     @Override
     public void close() throws IOException {
         // nothing
     }
 
+    /* (non-Javadoc)
+     * @see org.codelibs.elasticsearch.taste.similarity.writer.ItemsWriter#write(long, java.util.List)
+     */
     @Override
-    public void write(final long itemId,
+    public void write(final long userID,
             final List<RecommendedItem> recommendedItems) {
         final Map<String, Object> rootObj = new HashMap<>();
-        rootObj.put(itemIdField, itemId);
+        rootObj.put(userIdField, userID);
         final List<Map<String, Object>> itemList = new ArrayList<>();
         for (final RecommendedItem recommendedItem : recommendedItems) {
             final Map<String, Object> item = new HashMap<>();
@@ -122,7 +132,7 @@ public class SimilarItemsWriter implements ItemsWriter {
         rootObj.put(itemsField, itemList);
         rootObj.put(timestampField, new Date());
 
-        client.prepareIndex(index, type, Long.toString(itemId))
+        client.prepareIndex(index, type, Long.toString(userID))
                 .setSource(rootObj)
                 .execute(new ActionListener<IndexResponse>() {
 
@@ -146,6 +156,10 @@ public class SimilarItemsWriter implements ItemsWriter {
 
     public void setType(final String type) {
         this.type = type;
+    }
+
+    public void setUserIdField(final String userIdField) {
+        this.userIdField = userIdField;
     }
 
     public void setItemIdField(final String itemIdField) {

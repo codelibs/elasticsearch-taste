@@ -3,6 +3,7 @@ package org.codelibs.elasticsearch.taste.river;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
 import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
 import org.codelibs.elasticsearch.taste.eval.ItemBasedRecommenderBuilder;
@@ -11,8 +12,9 @@ import org.codelibs.elasticsearch.taste.eval.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.service.TasteService;
-import org.codelibs.elasticsearch.taste.similarity.writer.RecommendedItemsWriter;
-import org.codelibs.elasticsearch.taste.similarity.writer.SimilarItemsWriter;
+import org.codelibs.elasticsearch.taste.writer.RecommendedItemsWriter;
+import org.codelibs.elasticsearch.taste.writer.ReportWriter;
+import org.codelibs.elasticsearch.taste.writer.SimilarItemsWriter;
 import org.codelibs.elasticsearch.util.SettingsUtils;
 import org.codelibs.elasticsearch.util.StringUtils;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
@@ -148,27 +150,29 @@ public class TasteRiver extends AbstractRiverComponent implements River {
 
                 final Map<String, Object> modelInfoSettings = SettingsUtils
                         .get(rootSettings, "data_model");
-                createDataModel(client, indexInfo, modelInfoSettings);
+                final ElasticsearchDataModel dataModel = createDataModel(
+                        client, indexInfo, modelInfoSettings);
 
                 waitForClusterStatus(indexInfo.getUserIndex(),
                         indexInfo.getItemIndex(),
                         indexInfo.getPreferenceIndex(),
                         indexInfo.getItemSimilarityIndex());
 
-                new UserBasedRecommenderBuilder(indexInfo, rootSettings);
+                final RecommenderBuilder recommenderBuilder = new UserBasedRecommenderBuilder(
+                        indexInfo, rootSettings);
 
                 final Map<String, Object> evaluatorSettings = SettingsUtils
                         .get(rootSettings, "evaluator");
                 createRecommenderEvaluator(evaluatorSettings);
 
-                // TODO writer
+                final ReportWriter writer = createReportWriter(indexInfo);
 
                 startRiverThread(new Runnable() {
                     @Override
                     public void run() {
                         try {
-                            // TODO EVALUATE
-                            // tasteService.evaluate();
+                            tasteService.evaluate(dataModel,
+                                    recommenderBuilder, writer);
                         } catch (final Exception e) {
                             logger.error("River {} is failed.", e,
                                     riverName.name());
@@ -246,6 +250,11 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         writer.open();
 
         return writer;
+    }
+
+    protected ReportWriter createReportWriter(final IndexInfo indexInfo) {
+        // TODO Auto-generated method stub
+        return null;
     }
 
     @Override

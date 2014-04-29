@@ -11,9 +11,11 @@ import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
-import org.codelibs.elasticsearch.taste.similarity.worker.RecommendedItemsWorker;
-import org.codelibs.elasticsearch.taste.similarity.worker.SimilarItemsWorker;
-import org.codelibs.elasticsearch.taste.similarity.writer.ItemsWriter;
+import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
+import org.codelibs.elasticsearch.taste.worker.RecommendedItemsWorker;
+import org.codelibs.elasticsearch.taste.worker.SimilarItemsWorker;
+import org.codelibs.elasticsearch.taste.writer.ItemsWriter;
+import org.codelibs.elasticsearch.taste.writer.ReportWriter;
 import org.codelibs.elasticsearch.util.IOUtils;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
@@ -147,6 +149,13 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
         } finally {
             IOUtils.closeQuietly(writer);
         }
+
+    }
+
+    public void evaluate(final ElasticsearchDataModel dataModel,
+            final RecommenderBuilder recommenderBuilder,
+            final ReportWriter writer) {
+        // TODO Auto-generated method stub
 
     }
 
