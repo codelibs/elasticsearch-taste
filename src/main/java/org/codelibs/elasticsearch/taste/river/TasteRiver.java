@@ -30,6 +30,8 @@ import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.search.Scroll;
 
 public class TasteRiver extends AbstractRiverComponent implements River {
+    private static final String RIVER_THREAD_NAME_PREFIX = "River-";
+
     private static final String EVALUATE_ITEMS_FROM_USER = "evaluate_items_from_user";
 
     private static final String RECOMMENDED_ITEMS_FROM_ITEM = "recommended_items_from_item";
@@ -100,7 +102,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                             deleteRiver();
                         }
                     }
-                }, "River" + riverName.name());
+                }, RIVER_THREAD_NAME_PREFIX + riverName.name());
             } else if (RECOMMENDED_ITEMS_FROM_ITEM.equals(actionObj)) {
                 final int numOfItems = SettingsUtils.get(rootSettings,
                         "num_of_items", 10);
@@ -141,8 +143,12 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                             deleteRiver();
                         }
                     }
-                }, "River" + riverName.name());
+                }, RIVER_THREAD_NAME_PREFIX + riverName.name());
             } else if (EVALUATE_ITEMS_FROM_USER.equals(actionObj)) {
+                final double trainingPercentage = SettingsUtils.get(
+                        rootSettings, "training_percentage", 1.0);
+                final double evaluationPercentage = SettingsUtils.get(
+                        rootSettings, "evaluation_percentage", 1.0);
 
                 final Map<String, Object> indexInfoSettings = SettingsUtils
                         .get(rootSettings, "index_info");
@@ -156,14 +162,14 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                 waitForClusterStatus(indexInfo.getUserIndex(),
                         indexInfo.getItemIndex(),
                         indexInfo.getPreferenceIndex(),
-                        indexInfo.getItemSimilarityIndex());
+                        indexInfo.getReportIndex());
 
                 final RecommenderBuilder recommenderBuilder = new UserBasedRecommenderBuilder(
                         indexInfo, rootSettings);
 
                 final Map<String, Object> evaluatorSettings = SettingsUtils
                         .get(rootSettings, "evaluator");
-                createRecommenderEvaluator(evaluatorSettings);
+                final RecommenderEvaluator evaluator = createRecommenderEvaluator(evaluatorSettings);
 
                 final ReportWriter writer = createReportWriter(indexInfo);
 
@@ -172,7 +178,8 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                     public void run() {
                         try {
                             tasteService.evaluate(dataModel,
-                                    recommenderBuilder, writer);
+                                    recommenderBuilder, evaluator, writer,
+                                    trainingPercentage, evaluationPercentage);
                         } catch (final Exception e) {
                             logger.error("River {} is failed.", e,
                                     riverName.name());
@@ -180,7 +187,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                             deleteRiver();
                         }
                     }
-                }, "River" + riverName.name());
+                }, RIVER_THREAD_NAME_PREFIX + riverName.name());
             } else {
                 logger.info("River {} has no actions. Deleting...",
                         riverName.name());
@@ -253,8 +260,14 @@ public class TasteRiver extends AbstractRiverComponent implements River {
     }
 
     protected ReportWriter createReportWriter(final IndexInfo indexInfo) {
-        // TODO Auto-generated method stub
-        return null;
+        final ReportWriter writer = new ReportWriter(client,
+                indexInfo.getReportIndex());
+        writer.setType(indexInfo.getReportType());
+        writer.setTimestampField(indexInfo.getTimestampField());
+
+        writer.open();
+
+        return writer;
     }
 
     @Override

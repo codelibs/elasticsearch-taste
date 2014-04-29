@@ -3,7 +3,7 @@ package org.codelibs.elasticsearch.taste.eval;
 import java.util.Map;
 
 import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
-import org.codelibs.elasticsearch.taste.eval.impl.RMSRecommenderEvaluator;
+import org.apache.mahout.cf.taste.impl.eval.RMSRecommenderEvaluator;
 import org.codelibs.elasticsearch.util.SettingsUtils;
 
 public class RMSRecommenderEvaluatorFactory implements

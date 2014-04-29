@@ -1,17 +1,21 @@
 package org.codelibs.elasticsearch.taste.service;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
+import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
-import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
+import org.apache.mahout.common.RandomUtils;
+import org.codelibs.elasticsearch.taste.eval.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.worker.RecommendedItemsWorker;
 import org.codelibs.elasticsearch.taste.worker.SimilarItemsWorker;
 import org.codelibs.elasticsearch.taste.writer.ItemsWriter;
@@ -152,11 +156,37 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
 
     }
 
-    public void evaluate(final ElasticsearchDataModel dataModel,
+    public void evaluate(final DataModel dataModel,
             final RecommenderBuilder recommenderBuilder,
-            final ReportWriter writer) {
-        // TODO Auto-generated method stub
+            final RecommenderEvaluator evaluator, final ReportWriter writer,
+            final double trainingPercentage, final double evaluationPercentage) {
+        RandomUtils.useTestSeed();
+        try {
+            long time = System.currentTimeMillis();
+            final double score = evaluator.evaluate(recommenderBuilder, null,
+                    dataModel, trainingPercentage, evaluationPercentage);
+            time = System.currentTimeMillis() - time;
 
+            String reportType;
+            if (recommenderBuilder instanceof UserBasedRecommenderBuilder) {
+                reportType = "user_based";
+            } else {
+                reportType = "unknown";
+            }
+
+            final Map<String, Object> rootObj = new HashMap<>();
+            rootObj.put("report_type", reportType);
+            rootObj.put("score", score);
+            rootObj.put("processing_time", time);
+            rootObj.put("training_percentage", trainingPercentage);
+            rootObj.put("evaluation_percentage", evaluationPercentage);
+
+            writer.write(rootObj);
+        } catch (final TasteException e) {
+            logger.error("Evaluator {}({}/{}) is failed.", e, evaluator,
+                    trainingPercentage, evaluationPercentage);
+        } finally {
+            IOUtils.closeQuietly(writer);
+        }
     }
-
 }
