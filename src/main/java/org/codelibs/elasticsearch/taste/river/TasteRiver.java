@@ -6,14 +6,14 @@ import java.util.Map;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
 import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
-import org.codelibs.elasticsearch.taste.eval.ItemBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.eval.RecommenderEvaluatorFactory;
-import org.codelibs.elasticsearch.taste.eval.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
+import org.codelibs.elasticsearch.taste.recommender.ItemBasedRecommenderBuilder;
+import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.service.TasteService;
+import org.codelibs.elasticsearch.taste.writer.ObjectWriter;
 import org.codelibs.elasticsearch.taste.writer.RecommendedItemsWriter;
-import org.codelibs.elasticsearch.taste.writer.ReportWriter;
 import org.codelibs.elasticsearch.taste.writer.SimilarItemsWriter;
 import org.codelibs.elasticsearch.util.SettingsUtils;
 import org.codelibs.elasticsearch.util.StringUtils;
@@ -171,7 +171,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                         .get(rootSettings, "evaluator");
                 final RecommenderEvaluator evaluator = createRecommenderEvaluator(evaluatorSettings);
 
-                final ReportWriter writer = createReportWriter(indexInfo);
+                final ObjectWriter writer = createReportWriter(indexInfo);
 
                 startRiverThread(new Runnable() {
                     @Override
@@ -259,10 +259,9 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         return writer;
     }
 
-    protected ReportWriter createReportWriter(final IndexInfo indexInfo) {
-        final ReportWriter writer = new ReportWriter(client,
-                indexInfo.getReportIndex());
-        writer.setType(indexInfo.getReportType());
+    protected ObjectWriter createReportWriter(final IndexInfo indexInfo) {
+        final ObjectWriter writer = new ObjectWriter(client,
+                indexInfo.getReportIndex(), indexInfo.getReportType());
         writer.setTimestampField(indexInfo.getTimestampField());
 
         writer.open();

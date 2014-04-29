@@ -15,11 +15,11 @@ import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
 import org.apache.mahout.common.RandomUtils;
-import org.codelibs.elasticsearch.taste.eval.UserBasedRecommenderBuilder;
+import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.worker.RecommendedItemsWorker;
 import org.codelibs.elasticsearch.taste.worker.SimilarItemsWorker;
 import org.codelibs.elasticsearch.taste.writer.ItemsWriter;
-import org.codelibs.elasticsearch.taste.writer.ReportWriter;
+import org.codelibs.elasticsearch.taste.writer.ObjectWriter;
 import org.codelibs.elasticsearch.util.IOUtils;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
@@ -158,7 +158,7 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
 
     public void evaluate(final DataModel dataModel,
             final RecommenderBuilder recommenderBuilder,
-            final RecommenderEvaluator evaluator, final ReportWriter writer,
+            final RecommenderEvaluator evaluator, final ObjectWriter writer,
             final double trainingPercentage, final double evaluationPercentage) {
         RandomUtils.useTestSeed();
         try {

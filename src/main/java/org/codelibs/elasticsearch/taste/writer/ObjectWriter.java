@@ -17,7 +17,7 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 
-public class ReportWriter implements Closeable {
+public class ObjectWriter implements Closeable {
     private static final ESLogger logger = Loggers
             .getLogger(RecommendedItemsWriter.class);
 
@@ -25,13 +25,15 @@ public class ReportWriter implements Closeable {
 
     protected String index;
 
-    protected String type = TasteConstants.REPORT_TYPE;
+    protected String type;
 
     protected String timestampField = TasteConstants.TIMESTAMP_FIELD;
 
-    public ReportWriter(final Client client, final String index) {
+    public ObjectWriter(final Client client, final String index,
+            final String type) {
         this.client = client;
         this.index = index;
+        this.type = type;
     }
 
     public void open() {
@@ -102,10 +104,6 @@ public class ReportWriter implements Closeable {
                         logger.error("Failed to write " + rootObj, e);
                     }
                 });
-    }
-
-    public void setType(final String type) {
-        this.type = type;
     }
 
     public void setTimestampField(final String timestampField) {

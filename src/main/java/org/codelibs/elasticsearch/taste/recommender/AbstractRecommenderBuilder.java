@@ -1,4 +1,4 @@
-package org.codelibs.elasticsearch.taste.eval;
+package org.codelibs.elasticsearch.taste.recommender;
 
 import java.util.Map;
 
