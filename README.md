@@ -93,7 +93,7 @@ The index name can be changed to any name you want.
 
 ## User Recommender
 
-## Precompute Recommended Items From Users
+### Precompute Recommended Items From Users
 
 The precomputing process is started by creating a river configuration.
 If 10 recommended items are generated from simular users, the river configuration is:
@@ -158,8 +158,13 @@ If 10 recommended items are generated from simular users, the river configuratio
 | similarity.factory | string | Factroy name for Similarity implementation. |
 | neighborhood.factory | string | Factroy name for Neighborhood implementation. |
 
+### Evaluate Result
+
+TBD
 
 ## Item Recommender
+
+### Precompute Recommended Items From Items
 
 TBD
 
