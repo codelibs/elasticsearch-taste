@@ -88,10 +88,76 @@ For example, if User ID is "U0001", Item ID is "I1000" and the preference(rating
     }'
 
 Values of user\_id, item\_id and @timestamp are generated automatically.
+They are stored into "sample" index.
+The index name can be changed to any name you want.
 
 ## User Recommender
 
-TBD
+## Precompute Recommended Items From Users
+
+The precomputing process is started by creating a river configuration.
+If 10 recommended items are generated from simular users, the river configuration is:
+
+    $ curl -XPOST localhost:9200/_river/sample/_meta -d '{
+      "type": "taste",
+      "action": "recommended_items_from_user",
+      "num_of_items": 10,
+      "max_duration": 120,
+      "data_model": {
+        "class": "org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel",
+        "scroll": {
+          "size": 1000,
+          "keep_alive": 60
+        },
+        "cache": {
+          "weight": "100m"
+        }
+      },
+      "index_info": {
+        "preference": {
+          "index": "sample",
+          "type": "preference"
+        },
+        "user": {
+          "index": "sample",
+          "type": "user"
+        },
+        "item": {
+          "index": "sample",
+          "type": "item"
+        },
+        "recommendation": {
+          "index": "sample",
+          "type": "recommendation"
+        },
+        "field": {
+          "user_id": "user_id",
+          "item_id": "item_id",
+          "value": "value",
+          "items": "items",
+          "timestamp": "@timestamp"
+        }
+      },
+      "similarity": {
+        "factory": "org.codelibs.elasticsearch.taste.similarity.LogLikelihoodSimilarityFactory"
+      },
+      "neighborhood": {
+        "factory": "org.codelibs.elasticsearch.taste.neighborhood.NearestNUserNeighborhoodFactory"
+      }
+    }'
+    
+| Name       | Type   | Description |
+|:----------:|:-------|:------------|
+| action    | string   | The kind of a process. |
+| num\_of\_items | int | The number of recommended items. |
+| max\_duration | int  | Max duration for computing(min). |
+| data\_model.class | string | Class name for DataModel implementation. |
+| data\_model.scroll | object | Elasticsearch scroll parameters. |
+| data\_model.cache | string | Cache size for the data model. |
+| index\_info | object | Index information(index/type/property name). |
+| similarity.factory | string | Factroy name for Similarity implementation. |
+| neighborhood.factory | string | Factroy name for Neighborhood implementation. |
+
 
 ## Item Recommender
 
