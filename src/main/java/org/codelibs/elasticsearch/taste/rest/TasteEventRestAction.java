@@ -690,6 +690,8 @@ public class TasteEventRestAction extends BaseRestHandler {
                     timestampObj.toString()));
         } else if (timestampObj instanceof Date) {
             timestamp = (Date) timestampObj;
+        } else if (timestampObj instanceof Number) {
+            timestamp = new Date(((Number) timestampObj).longValue());
         } else {
             throw new InvalidParameterException("timestamp is invalid format: "
                     + timestampObj);
