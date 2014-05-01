@@ -28,6 +28,8 @@ TBD
 
     $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/0.1.0
 
+If you want to try this plugin quickly, see [Getting Started](https://github.com/codelibs/elasticsearch-taste#getting-started "Getting Started").
+
 ## Data management
 
 This plugin manages data of Users, Items and Preferences on Elasticsearch.
@@ -281,5 +283,21 @@ The value of "items" property is recommended items.
 
 ## Getting Started
 
-TBD
+### Create Data
 
+In this section, using [MovieLens](http://grouplens.org/datasets/movielens/ "MovieLens") data set, you can learn about Taste plugin.
+For more information about MovieLens, see [MovieLens](http://grouplens.org/datasets/movielens/ "MovieLens") site.
+The preference data set is u.data, it contains user id, item id, rating and timestamp.
+Download it and then insert data by [Event API](https://github.com/codelibs/elasticsearch-taste/blob/master/README.md#insert-preference-value "Event API"):
+
+    curl -o u.data http://files.grouplens.org/datasets/movielens/ml-100k/u.data
+    cat u.data | awk '{system("curl -XPOST localhost:9200/movielens/_taste/event?pretty -d {\"user\":{\"id\":" $1 "},\"item\":{\"id\":" $2 "},\"value\":" $3 ",\"timestamp\":" $4 "000}")}'
+
+By the above request, the preference values are stored in "movielens" index.
+After inserting data, check them in the index:
+
+    curl -XGET "localhost:9200/movielens/_search?q=*:*&pretty"
+
+### Recommend Items
+
+TBD
