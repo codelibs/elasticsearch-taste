@@ -81,9 +81,9 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
                 .newFixedThreadPool(degreeOfParallelism + 1);
         try {
 
-            logger.info("Recommender: ", recommender);
-            logger.info("NumOfRecommendedItems: ", numOfRecommendedItems);
-            logger.info("MaxDuration: ", maxDuration);
+            logger.info("Recommender: {}", recommender);
+            logger.info("NumOfRecommendedItems: {}", numOfRecommendedItems);
+            logger.info("MaxDuration: {}", maxDuration);
 
             final LongPrimitiveIterator userIDs = dataModel.getUserIDs();
 
@@ -95,8 +95,8 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
             executorService.shutdown();
             boolean succeeded = false;
             try {
-                succeeded = executorService.awaitTermination(maxDuration,
-                        TimeUnit.MINUTES);
+                succeeded = awaitExecutorTermination(executorService,
+                        maxDuration);
                 if (!succeeded) {
                     logger.warn(
                             "Unable to complete the computation in {} minutes!",
@@ -120,9 +120,9 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
             final ItemBasedRecommender recommender, final ItemsWriter writer,
             final int numOfMostSimilarItems, final int degreeOfParallelism,
             final int maxDuration) {
-        logger.info("Recommender: ", recommender.toString());
-        logger.info("NumOfMostSimilarItems: ", numOfMostSimilarItems);
-        logger.info("MaxDuration: ", maxDuration);
+        logger.info("Recommender: {}", recommender.toString());
+        logger.info("NumOfMostSimilarItems: {}", numOfMostSimilarItems);
+        logger.info("MaxDuration: {}", maxDuration);
 
         final ExecutorService executorService = Executors
                 .newFixedThreadPool(degreeOfParallelism + 1);
@@ -137,8 +137,8 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
             executorService.shutdown();
             boolean succeeded = false;
             try {
-                succeeded = executorService.awaitTermination(maxDuration,
-                        TimeUnit.MINUTES);
+                succeeded = awaitExecutorTermination(executorService,
+                        maxDuration);
                 if (!succeeded) {
                     logger.warn(
                             "Unable to complete the computation in {} minutes!",
@@ -208,5 +208,15 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
         } finally {
             IOUtils.closeQuietly(writer);
         }
+    }
+
+    protected boolean awaitExecutorTermination(
+            final ExecutorService executorService, final int maxDuration)
+            throws InterruptedException {
+        if (maxDuration == 0) {
+            return executorService.awaitTermination(Long.MAX_VALUE,
+                    TimeUnit.NANOSECONDS);
+        }
+        return executorService.awaitTermination(maxDuration, TimeUnit.MINUTES);
     }
 }

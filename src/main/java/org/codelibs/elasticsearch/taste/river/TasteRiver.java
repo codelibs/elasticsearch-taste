@@ -310,6 +310,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         logger.info("CLOSE TasteRiver");
         if (riverThread != null) {
             riverThread.interrupt();
+            riverThread = null;
         }
     }
 
