@@ -79,7 +79,7 @@ If you send it to http://.../{index}/\_taste/event, user\_id and item\_id are ge
 
 For example, if User ID is "U0001", Item ID is "I1000" and the preference(rating) value is 10.0, the request is below:
 
-    $ curl -XPOST localhost:9200/sample/_taste/event -d '{
+    curl -XPOST localhost:9200/sample/_taste/event -d '{
       user: {
         id: "U0001"
       },
@@ -101,7 +101,7 @@ Recommended items for an user are computed from similar users.
 The computing process is started by creating a river configuration.
 If 10 recommended items are generated from similar users, the river configuration is:
 
-    $ curl -XPOST localhost:9200/_river/sample/_meta -d '{
+    curl -XPOST localhost:9200/_river/sample/_meta -d '{
       "type": "taste",
       "action": "recommended_items_from_user",
       "num_of_items": 10,
@@ -174,7 +174,7 @@ The value of "items" property is recommended items.
 
 TBD
 
-    $ curl -XPOST localhost:9200/_river/sample/_meta -d '{
+    curl -XPOST localhost:9200/_river/sample/_meta -d '{
       "type": "taste",
       "action": "evaluate_items_from_user",
       "training_percentage": 0.9,
@@ -229,7 +229,7 @@ Recommended items for an item are computed from similar items.
 The computing process is started by creating a river configuration.
 If 10 recommended items are generated from similar items, the river configuration is:
 
-    $ curl -XPOST localhost:9200/_river/sample/_meta -d '{
+    curl -XPOST localhost:9200/_river/sample/_meta -d '{
       "type": "taste",
       "action": "recommended_items_from_item",
       "num_of_items": 10,
@@ -298,6 +298,35 @@ After inserting data, check them in the index:
 
     curl -XGET "localhost:9200/movielens/_search?q=*:*&pretty"
 
-### Recommend Items
+### Recommend Items From Users
 
-TBD
+To compute recommended items from users, execute the following request:
+
+    curl -XPOST localhost:9200/_river/movielens_from_user/_meta -d '{
+      "type": "taste",
+      "action": "recommended_items_from_user",
+      "num_of_items": 10,
+      "data_model": {
+        "cache": {
+          "weight": "100m"
+        }
+      },
+      "index_info": {
+        "index": "movielens"
+      }
+    }'
+
+The result is stored in movielens/recommendation.
+You can check:
+
+    curl -XGET "localhost:9200/movielens/recommendation/_search?q=*:*&pretty"
+
+A value of "user\_id" property is a target user, "items" property is recommended items which contains "item\_id" and "value" property.
+A "value" property is a value of similarity.
+
+The computation might take a long time...
+If you want to stop it, execute below:
+
+    curl -XDELETE localhost:9200/_river/movielens_from_user/
+
+
