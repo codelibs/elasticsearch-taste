@@ -195,6 +195,9 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
             // Go look for exceptions here, really
             for (final Future<EstimateResult> future : futures) {
                 final EstimateResult result = future.get();
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new TasteException("Interrupted evaluator.");
+                }
                 if (finalResult == null) {
                     finalResult = result;
                 } else {
@@ -214,13 +217,13 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
             throw new TasteException(ie);
         } catch (final ExecutionException ee) {
             throw new TasteException(ee.getCause());
-        }
-
-        executor.shutdown();
-        try {
-            executor.awaitTermination(10, TimeUnit.SECONDS);
-        } catch (final InterruptedException e) {
-            throw new TasteException(e.getCause());
+        } finally {
+            executor.shutdown();
+            try {
+                executor.awaitTermination(10, TimeUnit.SECONDS);
+            } catch (final InterruptedException e) {
+                throw new TasteException(e.getCause());
+            }
         }
 
         final Evaluation evaluation = new Evaluation();

@@ -308,6 +308,9 @@ public class TasteRiver extends AbstractRiverComponent implements River {
     @Override
     public void close() {
         logger.info("CLOSE TasteRiver");
+        if (riverThread != null) {
+            riverThread.interrupt();
+        }
     }
 
     protected void deleteRiver() {
@@ -335,10 +338,9 @@ public class TasteRiver extends AbstractRiverComponent implements River {
             throw new TasteSystemException("Item Index is blank.");
         }
 
-        final String className = SettingsUtils.get(modelInfoSettings, "class");
-        if (StringUtils.isBlank(className)) {
-            throw new TasteSystemException("A class name is blank.");
-        }
+        final String className = SettingsUtils
+                .get(modelInfoSettings, "class",
+                        "org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel");
 
         try {
             final Class<?> clazz = Class.forName(className);
