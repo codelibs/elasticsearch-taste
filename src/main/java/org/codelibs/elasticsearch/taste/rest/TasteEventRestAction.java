@@ -107,75 +107,99 @@ public class TasteEventRestAction extends BaseRestHandler {
         if (id == null) {
             throw new InvalidParameterException("User ID is null.");
         }
-        client.prepareSearch(index).setTypes(userType)
-                .setQuery(QueryBuilders.termQuery("id", id))
-                .addField(userIdField).addSort(timestampField, SortOrder.DESC)
-                .setSize(1).execute(new ActionListener<SearchResponse>() {
 
-                    @Override
-                    public void onResponse(final SearchResponse response) {
-                        try {
-                            validateRespose(response);
-                            final String updateType = request.param("update");
+        try {
+            client.prepareSearch(index).setTypes(userType)
+                    .setQuery(QueryBuilders.termQuery("id", id))
+                    .addField(userIdField)
+                    .addSort(timestampField, SortOrder.DESC).setSize(1)
+                    .execute(new ActionListener<SearchResponse>() {
 
-                            final SearchHits hits = response.getHits();
-                            if (hits.getTotalHits() == 0) {
-                                handleUserCreation(request, channel,
-                                        requestMap, paramMap, userMap, index,
-                                        userType, userIdField, timestampField);
-                            } else {
-                                final SearchHit[] searchHits = hits.getHits();
-                                final SearchHitField field = searchHits[0]
-                                        .getFields().get(userIdField);
-                                if (field != null) {
-                                    final Number userId = field.getValue();
-                                    if (userId != null) {
-                                        if ("all".equals(updateType)
-                                                || "user".equals(updateType)) {
-                                            handleUserUpdate(request, channel,
-                                                    requestMap, paramMap,
-                                                    userMap, index, userType,
-                                                    userIdField,
-                                                    timestampField,
-                                                    userId.longValue(),
-                                                    OpType.INDEX);
+                        @Override
+                        public void onResponse(final SearchResponse response) {
+                            try {
+                                validateRespose(response);
+                                final String updateType = request
+                                        .param("update");
 
-                                        } else {
-                                            paramMap.put(userIdField,
-                                                    userId.longValue());
-                                            handleItemRequest(request, channel,
-                                                    requestMap, paramMap);
+                                final SearchHits hits = response.getHits();
+                                if (hits.getTotalHits() == 0) {
+                                    handleUserCreation(request, channel,
+                                            requestMap, paramMap, userMap,
+                                            index, userType, userIdField,
+                                            timestampField);
+                                } else {
+                                    final SearchHit[] searchHits = hits
+                                            .getHits();
+                                    final SearchHitField field = searchHits[0]
+                                            .getFields().get(userIdField);
+                                    if (field != null) {
+                                        final Number userId = field.getValue();
+                                        if (userId != null) {
+                                            if ("all".equals(updateType)
+                                                    || "user"
+                                                            .equals(updateType)) {
+                                                handleUserUpdate(request,
+                                                        channel, requestMap,
+                                                        paramMap, userMap,
+                                                        index, userType,
+                                                        userIdField,
+                                                        timestampField,
+                                                        userId.longValue(),
+                                                        OpType.INDEX);
+
+                                            } else {
+                                                paramMap.put(userIdField,
+                                                        userId.longValue());
+                                                handleItemRequest(request,
+                                                        channel, requestMap,
+                                                        paramMap);
+                                            }
+                                            return;
                                         }
-                                        return;
                                     }
+                                    throw new OperationFailedException(
+                                            "User does not have " + userIdField
+                                                    + ": " + searchHits[0]);
                                 }
-                                throw new OperationFailedException(
-                                        "User does not have " + userIdField
-                                                + ": " + searchHits[0]);
+                            } catch (final Exception e) {
+                                onFailure(e);
                             }
-                        } catch (final Exception e) {
-                            onFailure(e);
                         }
-                    }
 
-                    @Override
-                    public void onFailure(final Throwable t) {
-                        @SuppressWarnings("unchecked")
-                        List<Throwable> errorList = (List<Throwable>) paramMap
-                                .get(ERROR_LIST);
-                        if (errorList == null) {
-                            errorList = new ArrayList<>();
-                            paramMap.put(ERROR_LIST, errorList);
+                        @Override
+                        public void onFailure(final Throwable t) {
+                            @SuppressWarnings("unchecked")
+                            List<Throwable> errorList = (List<Throwable>) paramMap
+                                    .get(ERROR_LIST);
+                            if (errorList == null) {
+                                errorList = new ArrayList<>();
+                                paramMap.put(ERROR_LIST, errorList);
+                            }
+                            if (errorList.size() >= maxRetryCount) {
+                                sendErrorResponse(request, channel, t);
+                            } else {
+                                errorList.add(t);
+                                handleUserIndexCreation(request, channel,
+                                        requestMap, paramMap);
+                            }
                         }
-                        if (errorList.size() >= maxRetryCount) {
-                            sendErrorResponse(request, channel, t);
-                        } else {
-                            errorList.add(t);
-                            handleUserIndexCreation(request, channel,
-                                    requestMap, paramMap);
-                        }
-                    }
-                });
+                    });
+        } catch (final Exception e) {
+            @SuppressWarnings("unchecked")
+            List<Throwable> errorList = (List<Throwable>) paramMap
+                    .get(ERROR_LIST);
+            if (errorList == null) {
+                errorList = new ArrayList<>();
+                paramMap.put(ERROR_LIST, errorList);
+            }
+            if (errorList.size() >= maxRetryCount) {
+                sendErrorResponse(request, channel, e);
+            } else {
+                errorList.add(e);
+                handleUserIndexCreation(request, channel, requestMap, paramMap);
+            }
+        }
     }
 
     private void handleUserIndexCreation(final RestRequest request,
@@ -395,75 +419,98 @@ public class TasteEventRestAction extends BaseRestHandler {
         if (id == null) {
             throw new InvalidParameterException("Item ID is null.");
         }
-        client.prepareSearch(index).setTypes(itemType)
-                .setQuery(QueryBuilders.termQuery("id", id))
-                .addField(itemIdField).addSort(timestampField, SortOrder.DESC)
-                .setSize(1).execute(new ActionListener<SearchResponse>() {
 
-                    @Override
-                    public void onResponse(final SearchResponse response) {
-                        try {
-                            validateRespose(response);
-                            final String updateType = request.param("update");
+        try {
+            client.prepareSearch(index).setTypes(itemType)
+                    .setQuery(QueryBuilders.termQuery("id", id))
+                    .addField(itemIdField)
+                    .addSort(timestampField, SortOrder.DESC).setSize(1)
+                    .execute(new ActionListener<SearchResponse>() {
 
-                            final SearchHits hits = response.getHits();
-                            if (hits.getTotalHits() == 0) {
-                                handleItemCreation(request, channel,
-                                        requestMap, paramMap, itemMap, index,
-                                        itemType, itemIdField, timestampField);
-                            } else {
-                                final SearchHit[] searchHits = hits.getHits();
-                                final SearchHitField field = searchHits[0]
-                                        .getFields().get(itemIdField);
-                                if (field != null) {
-                                    final Number itemId = field.getValue();
-                                    if (itemId != null) {
-                                        if ("all".equals(updateType)
-                                                || "item".equals(updateType)) {
-                                            handleItemUpdate(request, channel,
-                                                    requestMap, paramMap,
-                                                    itemMap, index, itemType,
-                                                    itemIdField,
-                                                    timestampField,
-                                                    itemId.longValue(),
-                                                    OpType.INDEX);
-                                        } else {
-                                            paramMap.put(itemIdField,
-                                                    itemId.longValue());
-                                            handlePreferenceRequest(request,
-                                                    channel, requestMap,
-                                                    paramMap);
+                        @Override
+                        public void onResponse(final SearchResponse response) {
+                            try {
+                                validateRespose(response);
+                                final String updateType = request
+                                        .param("update");
+
+                                final SearchHits hits = response.getHits();
+                                if (hits.getTotalHits() == 0) {
+                                    handleItemCreation(request, channel,
+                                            requestMap, paramMap, itemMap,
+                                            index, itemType, itemIdField,
+                                            timestampField);
+                                } else {
+                                    final SearchHit[] searchHits = hits
+                                            .getHits();
+                                    final SearchHitField field = searchHits[0]
+                                            .getFields().get(itemIdField);
+                                    if (field != null) {
+                                        final Number itemId = field.getValue();
+                                        if (itemId != null) {
+                                            if ("all".equals(updateType)
+                                                    || "item"
+                                                            .equals(updateType)) {
+                                                handleItemUpdate(request,
+                                                        channel, requestMap,
+                                                        paramMap, itemMap,
+                                                        index, itemType,
+                                                        itemIdField,
+                                                        timestampField,
+                                                        itemId.longValue(),
+                                                        OpType.INDEX);
+                                            } else {
+                                                paramMap.put(itemIdField,
+                                                        itemId.longValue());
+                                                handlePreferenceRequest(
+                                                        request, channel,
+                                                        requestMap, paramMap);
+                                            }
+                                            return;
                                         }
-                                        return;
                                     }
+                                    throw new OperationFailedException(
+                                            "Item does not have " + itemIdField
+                                                    + ": " + searchHits[0]);
                                 }
-                                throw new OperationFailedException(
-                                        "Item does not have " + itemIdField
-                                                + ": " + searchHits[0]);
+                            } catch (final Exception e) {
+                                onFailure(e);
                             }
-                        } catch (final Exception e) {
-                            onFailure(e);
                         }
-                    }
 
-                    @Override
-                    public void onFailure(final Throwable t) {
-                        @SuppressWarnings("unchecked")
-                        List<Throwable> errorList = (List<Throwable>) paramMap
-                                .get(ERROR_LIST);
-                        if (errorList == null) {
-                            errorList = new ArrayList<>();
-                            paramMap.put(ERROR_LIST, errorList);
+                        @Override
+                        public void onFailure(final Throwable t) {
+                            @SuppressWarnings("unchecked")
+                            List<Throwable> errorList = (List<Throwable>) paramMap
+                                    .get(ERROR_LIST);
+                            if (errorList == null) {
+                                errorList = new ArrayList<>();
+                                paramMap.put(ERROR_LIST, errorList);
+                            }
+                            if (errorList.size() >= maxRetryCount) {
+                                sendErrorResponse(request, channel, t);
+                            } else {
+                                errorList.add(t);
+                                handleItemIndexCreation(request, channel,
+                                        requestMap, paramMap);
+                            }
                         }
-                        if (errorList.size() >= maxRetryCount) {
-                            sendErrorResponse(request, channel, t);
-                        } else {
-                            errorList.add(t);
-                            handleItemIndexCreation(request, channel,
-                                    requestMap, paramMap);
-                        }
-                    }
-                });
+                    });
+        } catch (final Exception e) {
+            @SuppressWarnings("unchecked")
+            List<Throwable> errorList = (List<Throwable>) paramMap
+                    .get(ERROR_LIST);
+            if (errorList == null) {
+                errorList = new ArrayList<>();
+                paramMap.put(ERROR_LIST, errorList);
+            }
+            if (errorList.size() >= maxRetryCount) {
+                sendErrorResponse(request, channel, e);
+            } else {
+                errorList.add(e);
+                handleItemIndexCreation(request, channel, requestMap, paramMap);
+            }
+        }
     }
 
     private void handleItemIndexCreation(final RestRequest request,
