@@ -3,6 +3,7 @@ package org.codelibs.elasticsearch.taste.eval;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
 import org.apache.mahout.cf.taste.model.DataModel;
+import org.codelibs.elasticsearch.taste.writer.ResultWriter;
 
 public interface Evaluator {
     /**
@@ -54,4 +55,8 @@ public interface Evaluator {
      */
     Evaluation evaluate(RecommenderBuilder recommenderBuilder,
             DataModel dataModel, EvaluationConfig config) throws TasteException;
+
+    void setResultWriter(ResultWriter resultWriter);
+
+    void setId(String evaluatorId);
 }

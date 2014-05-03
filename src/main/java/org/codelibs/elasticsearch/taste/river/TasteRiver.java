@@ -1,6 +1,7 @@
 package org.codelibs.elasticsearch.taste.river;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,9 +15,9 @@ import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.recommender.ItemBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.service.TasteService;
+import org.codelibs.elasticsearch.taste.writer.ItemWriter;
 import org.codelibs.elasticsearch.taste.writer.ObjectWriter;
-import org.codelibs.elasticsearch.taste.writer.RecommendedItemsWriter;
-import org.codelibs.elasticsearch.taste.writer.SimilarItemsWriter;
+import org.codelibs.elasticsearch.taste.writer.ResultWriter;
 import org.codelibs.elasticsearch.util.SettingsUtils;
 import org.codelibs.elasticsearch.util.StringUtils;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
@@ -87,7 +88,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                         indexInfo.getPreferenceIndex(),
                         indexInfo.getRecommendationIndex());
 
-                final RecommendedItemsWriter writer = createRecommendedItemsWriter(indexInfo);
+                final ItemWriter writer = createRecommendedItemsWriter(indexInfo);
 
                 final UserBasedRecommenderBuilder recommenderBuilder = new UserBasedRecommenderBuilder(
                         indexInfo, rootSettings);
@@ -131,7 +132,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                 final ItemBasedRecommenderBuilder recommenderBuilder = new ItemBasedRecommenderBuilder(
                         indexInfo, rootSettings);
 
-                final SimilarItemsWriter writer = createSimilarItemsWriter(indexInfo);
+                final ItemWriter writer = createSimilarItemsWriter(indexInfo);
 
                 startRiverThread(new Runnable() {
                     @Override
@@ -154,7 +155,7 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                 final double evaluationPercentage = SettingsUtils.get(
                         rootSettings, "evaluation_percentage", 1.0);
                 final double marginForError = SettingsUtils.get(rootSettings,
-                        "margin_for_error", 1.0);
+                        "margin_for_error", 0.5);
                 final EvaluationConfig config = new EvaluationConfig();
                 config.setTrainingPercentage(trainingPercentage);
                 config.setEvaluationPercentage(evaluationPercentage);
@@ -182,6 +183,20 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                 final Evaluator evaluator = createEvaluator(evaluatorSettings);
 
                 final ObjectWriter writer = createReportWriter(indexInfo);
+
+                final Map<String, Object> resultSettings = SettingsUtils.get(
+                        rootSettings, "result", new HashMap<String, Object>());
+                final Boolean writerEnabled = SettingsUtils.get(resultSettings,
+                        "enabled", false);
+                if (writerEnabled.booleanValue()) {
+                    final int maxQueueSize = SettingsUtils.get(resultSettings,
+                            "queue_size", 1000);
+                    final ResultWriter resultWriter = createResultWriter(
+                            indexInfo, maxQueueSize);
+                    if (resultWriter != null) {
+                        evaluator.setResultWriter(resultWriter);
+                    }
+                }
 
                 startRiverThread(new Runnable() {
                     @Override
@@ -238,32 +253,111 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         return degreeOfParallelism;
     }
 
-    protected RecommendedItemsWriter createRecommendedItemsWriter(
-            final IndexInfo indexInfo) {
-        final RecommendedItemsWriter writer = new RecommendedItemsWriter(
-                client, indexInfo.getRecommendationIndex());
-        writer.setType(indexInfo.getRecommendationType());
+    protected ItemWriter createRecommendedItemsWriter(final IndexInfo indexInfo) {
+        final ItemWriter writer = new ItemWriter(client,
+                indexInfo.getRecommendationIndex(),
+                indexInfo.getRecommendationType(), indexInfo.getUserIdField());
         writer.setItemIdField(indexInfo.getItemIdField());
         writer.setItemsField(indexInfo.getItemsField());
-        writer.setUserIdField(indexInfo.getUserIdField());
         writer.setValueField(indexInfo.getValueField());
         writer.setTimestampField(indexInfo.getTimestampField());
+        try {
+            final XContentBuilder builder = XContentFactory.jsonBuilder()//
+                    .startObject()//
+                    .startObject(indexInfo.getRecommendationType())//
+                    .startObject("properties")//
 
+                    // @timestamp
+                    .startObject(indexInfo.getTimestampField())//
+                    .field("type", "date")//
+                    .field("format", "dateOptionalTime")//
+                    .endObject()//
+
+                    // user_id
+                    .startObject(indexInfo.getUserIdField())//
+                    .field("type", "long")//
+                    .endObject()//
+
+                    // items
+                    .startObject(indexInfo.getItemsField())//
+                    .startObject("properties")//
+
+                    // item_id
+                    .startObject(indexInfo.getItemIdField())//
+                    .field("type", "long")//
+                    .endObject()//
+
+                    // value
+                    .startObject(indexInfo.getValueField())//
+                    .field("type", "double")//
+                    .endObject()//
+
+                    .endObject()//
+                    .endObject()//
+
+                    .endObject()//
+                    .endObject()//
+                    .endObject();
+            writer.setMapping(builder);
+        } catch (final IOException e) {
+            logger.info("Failed to create a mapping {}/{}.", e,
+                    indexInfo.getReportIndex(), indexInfo.getReportType());
+        }
         writer.open();
 
         return writer;
     }
 
-    protected SimilarItemsWriter createSimilarItemsWriter(
-            final IndexInfo indexInfo) {
-        final SimilarItemsWriter writer = new SimilarItemsWriter(client,
-                indexInfo.getItemSimilarityIndex());
-        writer.setType(indexInfo.getItemSimilarityType());
+    protected ItemWriter createSimilarItemsWriter(final IndexInfo indexInfo) {
+        final ItemWriter writer = new ItemWriter(client,
+                indexInfo.getItemSimilarityIndex(),
+                indexInfo.getItemSimilarityType(), indexInfo.getItemIdField());
         writer.setItemIdField(indexInfo.getItemIdField());
         writer.setItemsField(indexInfo.getItemsField());
         writer.setValueField(indexInfo.getValueField());
         writer.setTimestampField(indexInfo.getTimestampField());
+        try {
+            final XContentBuilder builder = XContentFactory.jsonBuilder()//
+                    .startObject()//
+                    .startObject(indexInfo.getItemSimilarityType())//
+                    .startObject("properties")//
 
+                    // @timestamp
+                    .startObject(indexInfo.getTimestampField())//
+                    .field("type", "date")//
+                    .field("format", "dateOptionalTime")//
+                    .endObject()//
+
+                    // user_id
+                    .startObject(indexInfo.getItemIdField())//
+                    .field("type", "long")//
+                    .endObject()//
+
+                    // items
+                    .startObject(indexInfo.getItemsField())//
+                    .startObject("properties")//
+
+                    // item_id
+                    .startObject(indexInfo.getItemIdField())//
+                    .field("type", "long")//
+                    .endObject()//
+
+                    // value
+                    .startObject(indexInfo.getValueField())//
+                    .field("type", "double")//
+                    .endObject()//
+
+                    .endObject()//
+                    .endObject()//
+
+                    .endObject()//
+                    .endObject()//
+                    .endObject();
+            writer.setMapping(builder);
+        } catch (final IOException e) {
+            logger.info("Failed to create a mapping {}/{}.", e,
+                    indexInfo.getReportIndex(), indexInfo.getReportType());
+        }
         writer.open();
 
         return writer;
@@ -285,10 +379,87 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                     .field("format", "dateOptionalTime")//
                     .endObject()//
 
-                    // value
+                    // report_type
                     .startObject("report_type")//
                     .field("type", "string")//
                     .field("index", "not_analyzed")//
+                    .endObject()//
+
+                    // evaluator_id
+                    .startObject("evaluator_id")//
+                    .field("type", "string")//
+                    .field("index", "not_analyzed")//
+                    .endObject()//
+
+                    .endObject()//
+                    .endObject()//
+                    .endObject();
+            writer.setMapping(builder);
+        } catch (final IOException e) {
+            logger.info("Failed to create a mapping {}/{}.", e,
+                    indexInfo.getReportIndex(), indexInfo.getReportType());
+        }
+
+        writer.open();
+
+        return writer;
+    }
+
+    protected ResultWriter createResultWriter(final IndexInfo indexInfo,
+            final int maxQueueSize) {
+        final ResultWriter writer = new ResultWriter(client,
+                indexInfo.getResultIndex(), indexInfo.getResultType());
+        writer.setUserIdField(indexInfo.getUserIdField());
+        writer.setItemIdField(indexInfo.getItemIdField());
+        writer.setMaxQueueSize(maxQueueSize);
+        writer.setTimestampField(indexInfo.getTimestampField());
+        try {
+            final XContentBuilder builder = XContentFactory.jsonBuilder()//
+                    .startObject()//
+                    .startObject(indexInfo.getResultType())//
+                    .startObject("properties")//
+
+                    // @timestamp
+                    .startObject(indexInfo.getTimestampField())//
+                    .field("type", "date")//
+                    .field("format", "dateOptionalTime")//
+                    .endObject()//
+
+                    // result_type
+                    .startObject("result_type")//
+                    .field("type", "string")//
+                    .field("index", "not_analyzed")//
+                    .endObject()//
+
+                    // evaluator_id
+                    .startObject("evaluator_id")//
+                    .field("type", "string")//
+                    .field("index", "not_analyzed")//
+                    .endObject()//
+
+                    // user_id
+                    .startObject(indexInfo.getItemIdField())//
+                    .field("type", "long")//
+                    .endObject()//
+
+                    // item_id
+                    .startObject(indexInfo.getItemIdField())//
+                    .field("type", "long")//
+                    .endObject()//
+
+                    // actual
+                    .startObject("actual")//
+                    .field("type", "float")//
+                    .endObject()//
+
+                    // estimate
+                    .startObject("estimate")//
+                    .field("type", "float")//
+                    .endObject()//
+
+                    // computing_time
+                    .startObject("computing_time")//
+                    .field("type", "long")//
                     .endObject()//
 
                     .endObject()//

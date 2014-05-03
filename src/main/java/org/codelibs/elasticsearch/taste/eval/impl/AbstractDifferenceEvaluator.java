@@ -45,6 +45,8 @@ import org.apache.mahout.common.RandomUtils;
 import org.codelibs.elasticsearch.taste.eval.Evaluation;
 import org.codelibs.elasticsearch.taste.eval.EvaluationConfig;
 import org.codelibs.elasticsearch.taste.eval.Evaluator;
+import org.codelibs.elasticsearch.taste.writer.ResultWriter;
+import org.codelibs.elasticsearch.util.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,16 +61,30 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
     private static final Logger log = LoggerFactory
             .getLogger(AbstractDifferenceEvaluator.class);
 
-    private final Random random;
+    protected final Random random;
 
-    private float maxPreference;
+    protected float maxPreference;
 
-    private float minPreference;
+    protected float minPreference;
+
+    protected ResultWriter resultWriter;
+
+    protected String id;
 
     protected AbstractDifferenceEvaluator() {
         random = RandomUtils.getRandom();
         maxPreference = Float.NaN;
         minPreference = Float.NaN;
+    }
+
+    @Override
+    public void setId(final String id) {
+        this.id = id;
+    }
+
+    @Override
+    public void setResultWriter(final ResultWriter resultWriter) {
+        this.resultWriter = resultWriter;
     }
 
     public final float getMaxPreference() {
@@ -132,6 +148,11 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
         result.setTraining(trainingPrefs.size());
         result.setTest(testPrefs.size());
         log.info("Evaluation result: {}", result);
+
+        if (resultWriter != null) {
+            IOUtils.closeQuietly(resultWriter);
+        }
+
         return result;
     }
 
@@ -173,7 +194,7 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
             final Recommender recommender, final float marginForError)
             throws TasteException {
         reset();
-        final Collection<Callable<EstimateResult>> estimateCallables = Lists
+        final Collection<Callable<EstimateStatsResult>> estimateCallables = Lists
                 .newArrayList();
         for (final Map.Entry<Long, PreferenceArray> entry : testPrefs
                 .entrySet()) {
@@ -187,14 +208,14 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
                 .newFixedThreadPool(numProcessors);
         log.info("Starting timing of {} tasks in {} threads",
                 estimateCallables.size(), numProcessors);
-        EstimateResult finalResult = null;
+        EstimateStatsResult finalResult = null;
         try {
-            final List<Future<EstimateResult>> futures = executor
+            final List<Future<EstimateStatsResult>> futures = executor
                     .invokeAll(estimateCallables);
             int count = 0;
             // Go look for exceptions here, really
-            for (final Future<EstimateResult> future : futures) {
-                final EstimateResult result = future.get();
+            for (final Future<EstimateStatsResult> future : futures) {
+                final EstimateStatsResult result = future.get();
                 if (Thread.currentThread().isInterrupted()) {
                     throw new TasteException("Interrupted evaluator.");
                 }
@@ -259,7 +280,7 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
 
     protected abstract double computeFinalEvaluation();
 
-    protected static class EstimateResult {
+    protected static class EstimateStatsResult {
 
         private int noEstimate = 0;
 
@@ -277,7 +298,7 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
             noEstimate++;
         }
 
-        public void incrementSuccessful() {
+        public void incrementSuccess() {
             successful++;
         }
 
@@ -321,7 +342,7 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
             }
         }
 
-        public void merge(final EstimateResult result) {
+        public void merge(final EstimateStatsResult result) {
             noEstimate += result.noEstimate;
             successful += result.successful;
             failure += result.failure;
@@ -332,7 +353,7 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
     }
 
     protected class PreferenceEstimateCallable implements
-            Callable<EstimateResult> {
+            Callable<EstimateStatsResult> {
 
         private final Recommender recommender;
 
@@ -352,15 +373,16 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
         }
 
         @Override
-        public EstimateResult call() throws TasteException {
-            final EstimateResult result = new EstimateResult();
+        public EstimateStatsResult call() throws TasteException {
+            final EstimateStatsResult stats = new EstimateStatsResult();
             for (final Preference realPref : prefs) {
                 float estimatedPreference = Float.NaN;
+                final float actualPreference = realPref.getValue();
+                final long start = System.currentTimeMillis();
+                final long time;
                 try {
-                    final long time = System.currentTimeMillis();
                     estimatedPreference = recommender.estimatePreference(
                             testUserID, realPref.getItemID());
-                    result.addDuration(System.currentTimeMillis() - time);
                 } catch (final NoSuchUserException nsue) {
                     // It's possible that an item exists in the test data but not training data in which case
                     // NSEE will be thrown. Just ignore it and move on.
@@ -371,21 +393,34 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
                     log.info(
                             "Item exists in test data but not training data: {}",
                             realPref.getItemID());
+                } finally {
+                    time = System.currentTimeMillis() - start;
+                    stats.addDuration(time);
                 }
+
+                String estimateResultType;
                 if (Float.isNaN(estimatedPreference)) {
-                    result.incrementNoEstimate();
+                    estimateResultType = "no_estimate";
+                    stats.incrementNoEstimate();
                 } else {
                     estimatedPreference = capEstimatedPreference(estimatedPreference);
                     processOneEstimate(estimatedPreference, realPref);
                     if (Math.abs(estimatedPreference - realPref.getValue()) < marginForError) {
-                        result.incrementSuccessful();
+                        estimateResultType = "success";
+                        stats.incrementSuccess();
                     } else {
-                        result.incrementFailure();
+                        estimateResultType = "failure";
+                        stats.incrementFailure();
                     }
+                }
+                if (resultWriter != null) {
+                    resultWriter.write(id, testUserID, realPref.getItemID(),
+                            estimateResultType, actualPreference,
+                            estimatedPreference, time);
                 }
             }
 
-            return result;
+            return stats;
         }
 
     }

@@ -23,4 +23,6 @@ public class TasteConstants {
     public static final String TIMESTAMP_FIELD = "@timestamp";
 
     public static final String ITEMS_FILED = "items";
+
+    public static final String RESULT_TYPE = "result";
 }

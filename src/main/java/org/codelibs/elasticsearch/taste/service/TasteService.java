@@ -2,6 +2,7 @@ package org.codelibs.elasticsearch.taste.service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -20,7 +21,7 @@ import org.codelibs.elasticsearch.taste.eval.Evaluator;
 import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.worker.RecommendedItemsWorker;
 import org.codelibs.elasticsearch.taste.worker.SimilarItemsWorker;
-import org.codelibs.elasticsearch.taste.writer.ItemsWriter;
+import org.codelibs.elasticsearch.taste.writer.ItemWriter;
 import org.codelibs.elasticsearch.taste.writer.ObjectWriter;
 import org.codelibs.elasticsearch.util.IOUtils;
 import org.elasticsearch.ElasticsearchException;
@@ -53,7 +54,7 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
 
     public void compute(final DataModel dataModel,
             final RecommenderBuilder recommenderBuilder,
-            final ItemsWriter writer, final int numOfItems,
+            final ItemWriter writer, final int numOfItems,
             final int degreeOfParallelism, final int maxDuration) {
         try {
             final Recommender recommender = recommenderBuilder
@@ -74,7 +75,7 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
     }
 
     protected void compute(final DataModel dataModel,
-            final UserBasedRecommender recommender, final ItemsWriter writer,
+            final UserBasedRecommender recommender, final ItemWriter writer,
             final int numOfRecommendedItems, final int degreeOfParallelism,
             final int maxDuration) {
         final ExecutorService executorService = Executors
@@ -117,7 +118,7 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
     }
 
     protected void compute(final DataModel dataModel,
-            final ItemBasedRecommender recommender, final ItemsWriter writer,
+            final ItemBasedRecommender recommender, final ItemWriter writer,
             final int numOfMostSimilarItems, final int degreeOfParallelism,
             final int maxDuration) {
         logger.info("Recommender: {}", recommender.toString());
@@ -162,6 +163,11 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
             final RecommenderBuilder recommenderBuilder,
             final Evaluator evaluator, final ObjectWriter writer,
             final EvaluationConfig config) {
+
+        final String evaluatorId = UUID.randomUUID().toString()
+                .replace("-", "");
+        evaluator.setId(evaluatorId);
+
         RandomUtils.useTestSeed();
         try {
             long time = System.currentTimeMillis();
@@ -178,20 +184,28 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
 
             final Map<String, Object> rootObj = new HashMap<>();
             rootObj.put("report_type", reportType);
+            rootObj.put("evaluator_id", evaluator);
             final Map<String, Object> evaluationObj = new HashMap<>();
-            evaluationObj.put("average_processing_time",
+
+            final Map<String, Object> timeObj = new HashMap<>();
+            timeObj.put("average_processing",
                     evaluation.getAverageProcessingTime());
-            evaluationObj.put("max_processing_time",
-                    evaluation.getMaxProcessingTime());
-            evaluationObj.put("total_processing_time",
-                    evaluation.getTotalProcessingTime());
-            evaluationObj.put("successfull", evaluation.getSuccessful());
-            evaluationObj.put("failure", evaluation.getFailure());
-            evaluationObj.put("no_estimate", evaluation.getNoEstimate());
-            evaluationObj.put("total_preference",
-                    evaluation.getTotalPreference());
-            evaluationObj.put("training", evaluation.getTraining());
-            evaluationObj.put("test", evaluation.getTest());
+            timeObj.put("max_processing", evaluation.getMaxProcessingTime());
+            timeObj.put("total_processing", evaluation.getTotalProcessingTime());
+            evaluationObj.put("time", timeObj);
+
+            final Map<String, Object> preferenceObj = new HashMap<>();
+            preferenceObj.put("success", evaluation.getSuccessful());
+            preferenceObj.put("failure", evaluation.getFailure());
+            preferenceObj.put("no_estimate", evaluation.getNoEstimate());
+            preferenceObj.put("total", evaluation.getTotalPreference());
+            evaluationObj.put("preference", preferenceObj);
+
+            final Map<String, Object> targetObj = new HashMap<>();
+            targetObj.put("training", evaluation.getTraining());
+            targetObj.put("test", evaluation.getTest());
+            evaluationObj.put("target", targetObj);
+
             evaluationObj.put("score", evaluation.getScore());
             rootObj.put("evaluation", evaluationObj);
             final Map<String, Object> configObj = new HashMap<>();

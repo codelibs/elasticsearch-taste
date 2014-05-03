@@ -7,7 +7,7 @@ import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.common.MemoryUtil;
-import org.codelibs.elasticsearch.taste.writer.ItemsWriter;
+import org.codelibs.elasticsearch.taste.writer.ItemWriter;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 
@@ -23,11 +23,11 @@ public class RecommendedItemsWorker implements Runnable {
 
     protected int numOfRecommendedItems;
 
-    protected ItemsWriter writer;
+    protected ItemWriter writer;
 
     public RecommendedItemsWorker(final int number,
             final Recommender recommender, final LongPrimitiveIterator userIDs,
-            final int numOfRecommendedItems, final ItemsWriter writer) {
+            final int numOfRecommendedItems, final ItemWriter writer) {
         this.number = number;
         this.recommender = recommender;
         this.userIDs = userIDs;

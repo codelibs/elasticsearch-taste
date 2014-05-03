@@ -30,6 +30,10 @@ public class IndexInfo {
 
     private String reportType;
 
+    private String resultIndex;
+
+    private String resultType;
+
     private String userIdField;
 
     private String itemIdField;
@@ -82,6 +86,12 @@ public class IndexInfo {
         reportIndex = SettingsUtils.get(reportSettings, "index", defaultIndex);
         reportType = SettingsUtils.get(reportSettings, "type",
                 TasteConstants.REPORT_TYPE);
+
+        final Map<String, Object> resultSettings = SettingsUtils.get(
+                indexInfoSettings, "result");
+        resultIndex = SettingsUtils.get(resultSettings, "index", defaultIndex);
+        resultType = SettingsUtils.get(resultSettings, "type",
+                TasteConstants.RESULT_TYPE);
 
         final Map<String, Object> fieldSettings = SettingsUtils.get(
                 indexInfoSettings, "field");
@@ -143,6 +153,14 @@ public class IndexInfo {
 
     public String getReportType() {
         return reportType;
+    }
+
+    public String getResultIndex() {
+        return resultIndex;
+    }
+
+    public String getResultType() {
+        return resultType;
     }
 
     public String getUserIdField() {
