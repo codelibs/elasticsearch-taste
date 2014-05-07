@@ -2,7 +2,6 @@ package org.codelibs.elasticsearch.taste.service;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -164,10 +163,6 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
             final Evaluator evaluator, final ObjectWriter writer,
             final EvaluationConfig config) {
 
-        final String evaluatorId = UUID.randomUUID().toString()
-                .replace("-", "");
-        evaluator.setId(evaluatorId);
-
         RandomUtils.useTestSeed();
         try {
             long time = System.currentTimeMillis();
@@ -184,7 +179,7 @@ public class TasteService extends AbstractLifecycleComponent<TasteService> {
 
             final Map<String, Object> rootObj = new HashMap<>();
             rootObj.put("report_type", reportType);
-            rootObj.put("evaluator_id", evaluator);
+            rootObj.put("evaluator_id", evaluator.getId());
             final Map<String, Object> evaluationObj = new HashMap<>();
 
             final Map<String, Object> timeObj = new HashMap<>();

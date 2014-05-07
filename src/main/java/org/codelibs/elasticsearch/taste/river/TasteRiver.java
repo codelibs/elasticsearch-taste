@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
@@ -613,7 +614,11 @@ public class TasteRiver extends AbstractRiverComponent implements River {
             final EvaluatorFactory recommenderEvaluatorFactory = (EvaluatorFactory) clazz
                     .newInstance();
             recommenderEvaluatorFactory.init(evaluatorSettings);
-            return recommenderEvaluatorFactory.create();
+            final Evaluator evaluator = recommenderEvaluatorFactory.create();
+            final String evaluatorId = SettingsUtils.get(evaluatorSettings,
+                    "id", UUID.randomUUID().toString().replace("-", ""));
+            evaluator.setId(evaluatorId);
+            return evaluator;
         } catch (ClassNotFoundException | InstantiationException
                 | IllegalAccessException e) {
             throw new TasteSystemException("Could not create an instance of "

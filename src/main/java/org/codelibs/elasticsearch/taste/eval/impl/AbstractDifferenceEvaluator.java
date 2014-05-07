@@ -83,6 +83,11 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
     }
 
     @Override
+    public String getId() {
+        return id;
+    }
+
+    @Override
     public void setResultWriter(final ResultWriter resultWriter) {
         this.resultWriter = resultWriter;
     }

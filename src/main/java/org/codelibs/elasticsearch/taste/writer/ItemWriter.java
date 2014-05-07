@@ -113,7 +113,7 @@ public class ItemWriter extends ObjectWriter {
         this.cache = cache;
     }
 
-    public void setVerbose(boolean verbose) {
+    public void setVerbose(final boolean verbose) {
         this.verbose = verbose;
     }
 

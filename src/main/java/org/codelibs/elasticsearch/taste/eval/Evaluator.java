@@ -58,5 +58,7 @@ public interface Evaluator {
 
     void setResultWriter(ResultWriter resultWriter);
 
-    void setId(String evaluatorId);
+    void setId(String id);
+
+    String getId();
 }
