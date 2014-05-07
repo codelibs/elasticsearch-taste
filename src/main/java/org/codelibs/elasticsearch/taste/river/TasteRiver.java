@@ -23,6 +23,8 @@ import org.codelibs.elasticsearch.util.StringUtils;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.cache.Cache;
+import org.elasticsearch.common.cache.CacheBuilder;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -88,7 +90,8 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                         indexInfo.getPreferenceIndex(),
                         indexInfo.getRecommendationIndex());
 
-                final ItemWriter writer = createRecommendedItemsWriter(indexInfo);
+                final ItemWriter writer = createRecommendedItemsWriter(
+                        indexInfo, rootSettings);
 
                 final UserBasedRecommenderBuilder recommenderBuilder = new UserBasedRecommenderBuilder(
                         indexInfo, rootSettings);
@@ -132,7 +135,8 @@ public class TasteRiver extends AbstractRiverComponent implements River {
                 final ItemBasedRecommenderBuilder recommenderBuilder = new ItemBasedRecommenderBuilder(
                         indexInfo, rootSettings);
 
-                final ItemWriter writer = createSimilarItemsWriter(indexInfo);
+                final ItemWriter writer = createSimilarItemsWriter(indexInfo,
+                        rootSettings);
 
                 startRiverThread(new Runnable() {
                     @Override
@@ -253,10 +257,13 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         return degreeOfParallelism;
     }
 
-    protected ItemWriter createRecommendedItemsWriter(final IndexInfo indexInfo) {
+    protected ItemWriter createRecommendedItemsWriter(
+            final IndexInfo indexInfo, final Map<String, Object> rootSettings) {
         final ItemWriter writer = new ItemWriter(client,
                 indexInfo.getRecommendationIndex(),
                 indexInfo.getRecommendationType(), indexInfo.getUserIdField());
+        writer.setItemIndex(indexInfo.getItemIndex());
+        writer.setItemType(indexInfo.getItemType());
         writer.setItemIdField(indexInfo.getItemIdField());
         writer.setItemsField(indexInfo.getItemsField());
         writer.setValueField(indexInfo.getValueField());
@@ -303,12 +310,27 @@ public class TasteRiver extends AbstractRiverComponent implements River {
             logger.info("Failed to create a mapping {}/{}.", e,
                     indexInfo.getReportIndex(), indexInfo.getReportType());
         }
+
+        final Map<String, Object> writerSettings = SettingsUtils.get(
+                rootSettings, "writer");
+        final boolean verbose = SettingsUtils.get(writerSettings, "verbose",
+                false);
+        if (verbose) {
+            writer.setVerbose(verbose);
+            final int maxCacheSize = SettingsUtils.get(writerSettings,
+                    "cache_size", 1000);
+            final Cache<Long, Map<String, Object>> cache = CacheBuilder
+                    .newBuilder().maximumSize(maxCacheSize).build();
+            writer.setCache(cache);
+        }
+
         writer.open();
 
         return writer;
     }
 
-    protected ItemWriter createSimilarItemsWriter(final IndexInfo indexInfo) {
+    protected ItemWriter createSimilarItemsWriter(final IndexInfo indexInfo,
+            final Map<String, Object> rootSettings) {
         final ItemWriter writer = new ItemWriter(client,
                 indexInfo.getItemSimilarityIndex(),
                 indexInfo.getItemSimilarityType(), indexInfo.getItemIdField());
@@ -358,6 +380,20 @@ public class TasteRiver extends AbstractRiverComponent implements River {
             logger.info("Failed to create a mapping {}/{}.", e,
                     indexInfo.getReportIndex(), indexInfo.getReportType());
         }
+
+        final Map<String, Object> writerSettings = SettingsUtils.get(
+                rootSettings, "writer");
+        final boolean verbose = SettingsUtils.get(writerSettings, "verbose",
+                false);
+        if (verbose) {
+            writer.setVerbose(verbose);
+            final int maxCacheSize = SettingsUtils.get(writerSettings,
+                    "cache_size", 1000);
+            final Cache<Long, Map<String, Object>> cache = CacheBuilder
+                    .newBuilder().maximumSize(maxCacheSize).build();
+            writer.setCache(cache);
+        }
+
         writer.open();
 
         return writer;
