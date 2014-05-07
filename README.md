@@ -16,6 +16,8 @@ This plugin provides the following features on Elasticsearch:
 |:---------:|:-------------:|
 | master    | 1.1.X         |
 
+Note that this plugin does not support Java 6.
+
 ### Issues/Questions
 
 Please file an [issue](https://github.com/codelibs/elasticsearch-taste/issues "issue").
@@ -23,8 +25,6 @@ Please file an [issue](https://github.com/codelibs/elasticsearch-taste/issues "i
 ## Installation
 
 ### Install Taste Plugin
-
-TBD
 
     $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/0.1.0
 
@@ -145,7 +145,9 @@ If 10 recommended items are generated from similar users, the river configuratio
         "factory": "org.codelibs.elasticsearch.taste.similarity.LogLikelihoodSimilarityFactory"
       },
       "neighborhood": {
-        "factory": "org.codelibs.elasticsearch.taste.neighborhood.NearestNUserNeighborhoodFactory"
+        "factory": "org.codelibs.elasticsearch.taste.neighborhood.NearestNUserNeighborhoodFactory",
+        "min_similarity": 0.9,
+        "neighborhood_size": 10
       }
     }'
 
@@ -172,13 +174,13 @@ The value of "items" property is recommended items.
 
 ### Evaluate Result
 
-TBD
+To evaluate parameters for generating recommended items, you can use the following "evaluate\_items\_from\_user" action.
 
     curl -XPOST localhost:9200/_river/sample/_meta -d '{
       "type": "taste",
       "action": "evaluate_items_from_user",
+      "evaluation_percentage": 0.5,
       "training_percentage": 0.9,
-      "evaluation_percentage": 0.1,
       "data_model": {
         "class": "org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel",
         "scroll": {
@@ -220,6 +222,13 @@ TBD
         "factory": "org.codelibs.elasticsearch.taste.neighborhood.NearestNUserNeighborhoodFactory"
       }
     }'
+
+| Name | Type | Description |
+|:-----|:-----|:------------|
+| evaluation\_percentage | float | A sampling rate for a data model. 50% data is used if 0.5, |
+| training\_percentage | float | A rate for a training data set of sampled data model. If 0.9, 90% data is used as training one and 10% data is for testing. |
+
+The result is stored in report index(This example is sample/report).
 
 ## Item Recommender
 
@@ -283,7 +292,7 @@ The value of "items" property is recommended items.
 
 ## Getting Started
 
-### Create Data
+### Insert Data
 
 In this section, using [MovieLens](http://grouplens.org/datasets/movielens/ "MovieLens") data set, you can learn about Taste plugin.
 For more information about MovieLens, see [MovieLens](http://grouplens.org/datasets/movielens/ "MovieLens") site.
@@ -302,7 +311,7 @@ After inserting data, check them in the index:
 
 To compute recommended items from users, execute the following request:
 
-    curl -XPOST localhost:9200/_river/movielens_from_user/_meta -d '{
+    curl -XPOST localhost:9200/_river/movielens_items_from_user/_meta -d '{
       "type": "taste",
       "action": "recommended_items_from_user",
       "num_of_items": 10,
@@ -327,6 +336,28 @@ A "value" property is a value of similarity.
 The computation might take a long time...
 If you want to stop it, execute below:
 
-    curl -XDELETE localhost:9200/_river/movielens_from_user/
+    curl -XDELETE localhost:9200/_river/movielens_items_from_user/
 
+### Evaluate Result
+
+You can evaluate parameters, such as similarity and neighborhood, with the following "evaluate\_items\_from\_user" action.
+
+    curl -XPOST localhost:9200/_river/movielens_evaluate_items/_meta -d '{
+      "type": "taste",
+      "action": "evaluate_items_from_user",
+      "evaluation_percentage": 1.0,
+      "training_percentage": 0.9,
+      "data_model": {
+        "cache": {
+          "weight": "100m"
+        }
+      },
+      "index_info": {
+        "index": "movielens"
+      }
+    }'
+
+The result is stored in report type:
+
+    curl -XGET "localhost:9200/movielens/report/_search?q=*:*&pretty"
 
