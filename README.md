@@ -28,7 +28,117 @@ Please file an [issue](https://github.com/codelibs/elasticsearch-taste/issues "i
 
     $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/0.1.0
 
-If you want to try this plugin quickly, see [Getting Started](https://github.com/codelibs/elasticsearch-taste#getting-started "Getting Started").
+
+## Getting Started
+
+### Insert Data
+
+In this section, using [MovieLens](http://grouplens.org/datasets/movielens/ "MovieLens") data set, you can learn about Taste plugin.
+For more information about MovieLens, see [MovieLens](http://grouplens.org/datasets/movielens/ "MovieLens") site.
+The preference data set is u.data, it contains user id, item id, rating and timestamp.
+Download it and then insert data by [Event API](https://github.com/codelibs/elasticsearch-taste/blob/master/README.md#insert-preference-value "Event API"):
+
+    curl -o u.data http://files.grouplens.org/datasets/movielens/ml-100k/u.data
+    cat u.data | awk '{system("curl -XPOST localhost:9200/movielens/_taste/event?pretty -d {\"user\":{\"id\":" $1 "},\"item\":{\"id\":" $2 "},\"value\":" $3 ",\"timestamp\":" $4 "000}")}'
+
+By the above request, the preference values are stored in "movielens" index.
+After inserting data, check them in the index:
+
+    curl -XGET "localhost:9200/movielens/_search?q=*:*&pretty"
+
+### Recommend Items From Users
+
+To compute recommended items from users, execute the following request:
+
+    curl -XPOST localhost:9200/_river/movielens_items_from_user/_meta -d '{
+      "type": "taste",
+      "action": "recommended_items_from_user",
+      "num_of_items": 10,
+      "data_model": {
+        "cache": {
+          "weight": "100m"
+        }
+      },
+      "index_info": {
+        "index": "movielens"
+      }
+    }'
+
+The result is stored in movielens/recommendation.
+You can check:
+
+    curl -XGET "localhost:9200/movielens/recommendation/_search?q=*:*&pretty"
+
+A value of "user\_id" property is a target user, "items" property is recommended items which contains "item\_id" and "value" property.
+A "value" property is a value of similarity.
+
+The computation might take a long time...
+If you want to stop it, execute below:
+
+    curl -XDELETE localhost:9200/_river/movielens_items_from_user/
+
+### Evaluate Result
+
+You can evaluate parameters, such as similarity and neighborhood, with the following "evaluate\_items\_from\_user" action.
+
+    curl -XPOST localhost:9200/_river/movielens_evaluate_items/_meta -d '{
+      "type": "taste",
+      "action": "evaluate_items_from_user",
+      "evaluation_percentage": 1.0,
+      "training_percentage": 0.9,
+      "margin_for_error": 1.0,
+      "data_model": {
+        "cache": {
+          "weight": "100m"
+        }
+      },
+      "index_info": {
+        "index": "movielens"
+      },
+      "neighborhood": {
+        "factory": "org.codelibs.elasticsearch.taste.neighborhood.NearestNUserNeighborhoodFactory",
+        "neighborhood_size": 100
+      }
+    }'
+
+The result is stored in report type:
+
+    curl -XGET "localhost:9200/movielens/report/_search?q=*:*&pretty"
+    {
+      _index: movielens
+      _type: report
+      _id: COscswwlQIugP2Rf0XKH-w
+      _version: 1
+      _score: 1
+      _source: {
+        evaluation: {
+          score: 1.0199981244413419
+          preference: {
+            total: 10092
+            no_estimate: 178
+            success: 6671
+            failure: 3243
+          }
+          time: {
+            average_processing: 18
+            total_processing: 184813
+            max_processing: 22881
+          }
+          target: {
+            test: 915
+            training: 943
+          }
+        }
+        @timestamp: 2014-05-07T21:15:43.948Z
+        evaluator_id: RMSEvaluator
+        report_type: user_based
+        config: {
+          training_percentage: 0.9
+          evaluation_percentage: 1
+          margin_for_error: 1
+        }
+      }
+    }
 
 ## Data management
 
@@ -289,75 +399,4 @@ You can see the result by:
     curl -XGET "localhost:9200/sample/item_similarity/_search?q=*:*&pretty"
 
 The value of "items" property is recommended items.
-
-## Getting Started
-
-### Insert Data
-
-In this section, using [MovieLens](http://grouplens.org/datasets/movielens/ "MovieLens") data set, you can learn about Taste plugin.
-For more information about MovieLens, see [MovieLens](http://grouplens.org/datasets/movielens/ "MovieLens") site.
-The preference data set is u.data, it contains user id, item id, rating and timestamp.
-Download it and then insert data by [Event API](https://github.com/codelibs/elasticsearch-taste/blob/master/README.md#insert-preference-value "Event API"):
-
-    curl -o u.data http://files.grouplens.org/datasets/movielens/ml-100k/u.data
-    cat u.data | awk '{system("curl -XPOST localhost:9200/movielens/_taste/event?pretty -d {\"user\":{\"id\":" $1 "},\"item\":{\"id\":" $2 "},\"value\":" $3 ",\"timestamp\":" $4 "000}")}'
-
-By the above request, the preference values are stored in "movielens" index.
-After inserting data, check them in the index:
-
-    curl -XGET "localhost:9200/movielens/_search?q=*:*&pretty"
-
-### Recommend Items From Users
-
-To compute recommended items from users, execute the following request:
-
-    curl -XPOST localhost:9200/_river/movielens_items_from_user/_meta -d '{
-      "type": "taste",
-      "action": "recommended_items_from_user",
-      "num_of_items": 10,
-      "data_model": {
-        "cache": {
-          "weight": "100m"
-        }
-      },
-      "index_info": {
-        "index": "movielens"
-      }
-    }'
-
-The result is stored in movielens/recommendation.
-You can check:
-
-    curl -XGET "localhost:9200/movielens/recommendation/_search?q=*:*&pretty"
-
-A value of "user\_id" property is a target user, "items" property is recommended items which contains "item\_id" and "value" property.
-A "value" property is a value of similarity.
-
-The computation might take a long time...
-If you want to stop it, execute below:
-
-    curl -XDELETE localhost:9200/_river/movielens_items_from_user/
-
-### Evaluate Result
-
-You can evaluate parameters, such as similarity and neighborhood, with the following "evaluate\_items\_from\_user" action.
-
-    curl -XPOST localhost:9200/_river/movielens_evaluate_items/_meta -d '{
-      "type": "taste",
-      "action": "evaluate_items_from_user",
-      "evaluation_percentage": 1.0,
-      "training_percentage": 0.9,
-      "data_model": {
-        "cache": {
-          "weight": "100m"
-        }
-      },
-      "index_info": {
-        "index": "movielens"
-      }
-    }'
-
-The result is stored in report type:
-
-    curl -XGET "localhost:9200/movielens/report/_search?q=*:*&pretty"
 
