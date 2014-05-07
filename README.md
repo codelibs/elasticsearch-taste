@@ -28,7 +28,6 @@ Please file an [issue](https://github.com/codelibs/elasticsearch-taste/issues "i
 
     $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/0.1.0
 
-
 ## Getting Started
 
 ### Insert Data
@@ -98,12 +97,16 @@ You can evaluate parameters, such as similarity and neighborhood, with the follo
       "neighborhood": {
         "factory": "org.codelibs.elasticsearch.taste.neighborhood.NearestNUserNeighborhoodFactory",
         "neighborhood_size": 100
+      },
+      "evaluator": {
+        "id": "movielens_result",
+        "factory": "org.codelibs.elasticsearch.taste.eval.RMSEvaluatorFactory"
       }
     }'
 
 The result is stored in report type:
 
-    curl -XGET "localhost:9200/movielens/report/_search?q=*:*&pretty"
+    curl -XGET localh"ost:9200/movielens/report/_search?q=evaluator_id:movielens_result&pretty"
     {
       _index: movielens
       _type: report
@@ -130,7 +133,7 @@ The result is stored in report type:
           }
         }
         @timestamp: 2014-05-07T21:15:43.948Z
-        evaluator_id: RMSEvaluator
+        evaluator_id: movielens_result
         report_type: user_based
         config: {
           training_percentage: 0.9
@@ -139,6 +142,7 @@ The result is stored in report type:
         }
       }
     }
+
 
 ## Data management
 
