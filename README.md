@@ -144,7 +144,7 @@ The result is stored in report type:
       }
     }
 
-## Specifications
+## Specification
 
 ### Data management
 
