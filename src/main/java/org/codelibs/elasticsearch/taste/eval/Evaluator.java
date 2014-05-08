@@ -41,15 +41,9 @@ public interface Evaluator {
      *          object that can build a {@link org.apache.mahout.cf.taste.recommender.Recommender} to test
      * @param dataModel
      *          dataset to test on
-     * @param trainingPercentage
-     *          percentage of each user's preferences to use to produce recommendations; the rest are compared
-     *          to estimated preference values to evaluate
-     *          {@link org.apache.mahout.cf.taste.recommender.Recommender} performance
-     * @param evaluationPercentage
-     *          percentage of users to use in evaluation
-     * @return a "score" representing how well the {@link org.apache.mahout.cf.taste.recommender.Recommender}'s
-     *         estimated preferences match real values; <em>lower</em> scores mean a better match and 0 is a
-     *         perfect match
+     * @param config
+     *          configuration for an evaluation
+     * @return a evaluation result
      * @throws TasteException
      *           if an error occurs while accessing the {@link DataModel}
      */
