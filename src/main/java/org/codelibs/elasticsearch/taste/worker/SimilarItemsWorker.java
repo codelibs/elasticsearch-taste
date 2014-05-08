@@ -63,7 +63,11 @@ public class SimilarItemsWorker implements Runnable {
                     }
                 }
             } catch (final Exception e) {
-                logger.error("Item {} could not be processed.", e, itemID);
+                if (!Thread.currentThread().isInterrupted()) {
+                    logger.error("Item {} could not be processed.", e, itemID);
+                } else {
+                    break;
+                }
             }
             count++;
         }

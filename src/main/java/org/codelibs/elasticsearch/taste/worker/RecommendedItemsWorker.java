@@ -62,7 +62,11 @@ public class RecommendedItemsWorker implements Runnable {
                     }
                 }
             } catch (final Exception e) {
-                logger.error("User {} could not be processed.", e, userID);
+                if (!Thread.currentThread().isInterrupted()) {
+                    logger.error("User {} could not be processed.", e, userID);
+                } else {
+                    break;
+                }
             }
             count++;
         }
