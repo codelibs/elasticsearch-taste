@@ -15,6 +15,7 @@ This plugin provides the following features on Elasticsearch:
 | Taste     | Elasticsearch |
 |:---------:|:-------------:|
 | master    | 1.1.X         |
+| 0.1.0     | 1.1.1         |
 
 Note that this plugin does not support Java 6.
 
@@ -106,45 +107,46 @@ You can evaluate parameters, such as similarity and neighborhood, with the follo
 
 The result is stored in report type:
 
-    curl -XGET localh"ost:9200/movielens/report/_search?q=evaluator_id:movielens_result&pretty"
+    curl -XGET "localhost:9200/movielens/report/_search?q=evaluator_id:movielens_result&pretty"
     {
-      _index: movielens
-      _type: report
-      _id: COscswwlQIugP2Rf0XKH-w
-      _version: 1
-      _score: 1
-      _source: {
-        evaluation: {
-          score: 1.0199981244413419
-          preference: {
-            total: 10092
-            no_estimate: 178
-            success: 6671
-            failure: 3243
+      "_index": "movielens",
+      "_type": "report",
+      "_id": "COscswwlQIugP2Rf0XKH-w",
+      "_version": 1,
+      "_score": 1,
+      "_source": {
+        "evaluation": {
+          "score": 1.0199981244413419,
+          "preference": {
+            "total": 10092,
+            "no_estimate": 178,
+            "success": 6671,
+            "failure": 3243
+          },
+          "time": {
+            "average_processing": 18,
+            "total_processing": 184813,
+            "max_processing": 22881
           }
-          time: {
-            average_processing: 18
-            total_processing: 184813
-            max_processing: 22881
-          }
-          target: {
-            test: 915
-            training: 943
+          "target": {
+            "test": 915,
+            "training": 943
           }
         }
-        @timestamp: 2014-05-07T21:15:43.948Z
-        evaluator_id: movielens_result
-        report_type: user_based
-        config: {
-          training_percentage: 0.9
-          evaluation_percentage: 1
-          margin_for_error: 1
+        "@timestamp": "2014-05-07T21:15:43.948Z",
+        "evaluator_id": "movielens_result",
+        "report_type": "user_based",
+        "config": {
+          "training_percentage": 0.9,
+          "evaluation_percentage": 1,
+          "margin_for_error": 1
         }
       }
     }
 
+## Specifications
 
-## Data management
+### Data management
 
 This plugin manages data of Users, Items and Preferences on Elasticsearch.
 These data are stored in each index and type.
@@ -186,7 +188,7 @@ Preference index manages values rated by an user for an item.
 
 You can create/update/delete the above index and document with Elasticsearch manner. 
 
-### Insert Preference Value
+#### Insert Preference Value
 
 Taste plugin provides an useful API to register a preference value.
 If you send it to http://.../{index}/\_taste/event, user\_id and item\_id are generated and then the preference value is inserted.
@@ -207,9 +209,9 @@ Values of user\_id, item\_id and @timestamp are generated automatically.
 They are stored in "sample" index.
 The index name can be changed to any name you want.
 
-## User Recommender
+### User Recommender
 
-### Precompute Recommended Items From Users
+#### Precompute Recommended Items From Users
 
 Recommended items for an user are computed from similar users.
 The computing process is started by creating a river configuration.
@@ -286,7 +288,7 @@ You can see the result by:
 
 The value of "items" property is recommended items.
 
-### Evaluate Result
+#### Evaluate Result
 
 To evaluate parameters for generating recommended items, you can use the following "evaluate\_items\_from\_user" action.
 
@@ -344,9 +346,9 @@ To evaluate parameters for generating recommended items, you can use the followi
 
 The result is stored in report index(This example is sample/report).
 
-## Item Recommender
+### Item Recommender
 
-### Precompute Recommended Items From Items
+#### Precompute Recommended Items From Items
 
 Recommended items for an item are computed from similar items.
 The computing process is started by creating a river configuration.
