@@ -28,14 +28,13 @@ import org.elasticsearch.common.joda.time.format.ISODateTimeFormat;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.rest.BaseRestHandler;
+import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.rest.XContentRestResponse;
-import org.elasticsearch.rest.XContentThrowableRestResponse;
-import org.elasticsearch.rest.action.support.RestXContentBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
 import org.elasticsearch.search.SearchHits;
@@ -757,13 +756,13 @@ public class TasteEventRestAction extends BaseRestHandler {
                     @Override
                     public void onResponse(final IndexResponse response) {
                         try {
-                            final XContentBuilder builder = RestXContentBuilder
-                                    .restContentBuilder(request);
+                            final XContentBuilder builder = JsonXContent
+                                    .contentBuilder();
                             builder.startObject();
                             builder.field("acknowledged", true);
                             builder.endObject();
-                            channel.sendResponse(new XContentRestResponse(
-                                    request, OK, builder));
+                            channel.sendResponse(new BytesRestResponse(OK,
+                                    builder));
                         } catch (final IOException e) {
                             sendErrorResponse(request, channel, e);
                         }
@@ -938,7 +937,7 @@ public class TasteEventRestAction extends BaseRestHandler {
     private void sendErrorResponse(final RestRequest request,
             final RestChannel channel, final Throwable t) {
         try {
-            channel.sendResponse(new XContentThrowableRestResponse(request, t));
+            channel.sendResponse(new BytesRestResponse(channel, t));
         } catch (final Exception e) {
             logger.error("Failed to send a failure response.", e);
         }
