@@ -32,7 +32,7 @@ public class PreferenceRequestHandler extends RequestHandler {
     }
 
     @Override
-    public void process(final RestRequest request, final RestChannel channel,
+    public void execute(final RestRequest request, final RestChannel channel,
             final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final Chain chain) {
         final String index = request.param("index");
@@ -80,7 +80,7 @@ public class PreferenceRequestHandler extends RequestHandler {
                 .execute(new ActionListener<IndexResponse>() {
                     @Override
                     public void onResponse(final IndexResponse response) {
-                        chain.process(request, channel, requestMap, paramMap);
+                        chain.execute(request, channel, requestMap, paramMap);
                     }
 
                     @Override
@@ -96,14 +96,14 @@ public class PreferenceRequestHandler extends RequestHandler {
                             sendErrorResponse(request, channel, t);
                         } else {
                             errorList.add(t);
-                            handlePreferenceIndexCreation(request, channel,
+                            doPreferenceIndexCreation(request, channel,
                                     requestMap, paramMap, chain);
                         }
                     }
                 });
     }
 
-    private void handlePreferenceIndexCreation(final RestRequest request,
+    private void doPreferenceIndexCreation(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final Chain chain) {
         final String index = request.param("index");
@@ -115,7 +115,7 @@ public class PreferenceRequestHandler extends RequestHandler {
                     public void onResponse(
                             final IndicesExistsResponse indicesExistsResponse) {
                         if (indicesExistsResponse.isExists()) {
-                            handlePreferenceMappingCreation(request, channel,
+                            doPreferenceMappingCreation(request, channel,
                                     requestMap, paramMap, chain);
                         } else {
                             client.admin()
@@ -129,7 +129,7 @@ public class PreferenceRequestHandler extends RequestHandler {
                                                         final CreateIndexResponse createIndexResponse) {
                                                     if (createIndexResponse
                                                             .isAcknowledged()) {
-                                                        handlePreferenceMappingCreation(
+                                                        doPreferenceMappingCreation(
                                                                 request,
                                                                 channel,
                                                                 requestMap,
@@ -158,7 +158,7 @@ public class PreferenceRequestHandler extends RequestHandler {
                 });
     }
 
-    private void handlePreferenceMappingCreation(final RestRequest request,
+    private void doPreferenceMappingCreation(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final Chain chain) {
         final String index = request.param("index");
@@ -212,7 +212,7 @@ public class PreferenceRequestHandler extends RequestHandler {
                         public void onResponse(
                                 final PutMappingResponse queueMappingResponse) {
                             if (queueMappingResponse.isAcknowledged()) {
-                                process(request, channel, requestMap, paramMap,
+                                execute(request, channel, requestMap, paramMap,
                                         chain);
                             } else {
                                 onFailure(new OperationFailedException(

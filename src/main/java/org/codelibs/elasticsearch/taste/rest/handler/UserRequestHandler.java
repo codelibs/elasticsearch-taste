@@ -38,7 +38,7 @@ public class UserRequestHandler extends RequestHandler {
     }
 
     @Override
-    public void process(final RestRequest request, final RestChannel channel,
+    public void execute(final RestRequest request, final RestChannel channel,
             final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final Chain chain) {
         final String index = request
@@ -77,7 +77,7 @@ public class UserRequestHandler extends RequestHandler {
 
                                 final SearchHits hits = response.getHits();
                                 if (hits.getTotalHits() == 0) {
-                                    handleUserCreation(request, channel,
+                                    doUserCreation(request, channel,
                                             requestMap, paramMap, userMap,
                                             index, userType, userIdField,
                                             timestampField, chain);
@@ -93,11 +93,10 @@ public class UserRequestHandler extends RequestHandler {
                                                     .equalsIgnoreCase(updateType)
                                                     || TasteConstants.YES
                                                             .equalsIgnoreCase(updateType)) {
-                                                handleUserUpdate(request,
-                                                        channel, requestMap,
-                                                        paramMap, userMap,
-                                                        index, userType,
-                                                        userIdField,
+                                                doUserUpdate(request, channel,
+                                                        requestMap, paramMap,
+                                                        userMap, index,
+                                                        userType, userIdField,
                                                         timestampField,
                                                         userId.longValue(),
                                                         OpType.INDEX, chain);
@@ -105,7 +104,7 @@ public class UserRequestHandler extends RequestHandler {
                                             } else {
                                                 paramMap.put(userIdField,
                                                         userId.longValue());
-                                                chain.process(request, channel,
+                                                chain.execute(request, channel,
                                                         requestMap, paramMap);
                                             }
                                             return;
@@ -133,7 +132,7 @@ public class UserRequestHandler extends RequestHandler {
                                 sendErrorResponse(request, channel, t);
                             } else {
                                 errorList.add(t);
-                                handleUserIndexCreation(request, channel,
+                                doUserIndexCreation(request, channel,
                                         requestMap, paramMap, chain);
                             }
                         }
@@ -150,13 +149,13 @@ public class UserRequestHandler extends RequestHandler {
                 sendErrorResponse(request, channel, e);
             } else {
                 errorList.add(e);
-                handleUserIndexCreation(request, channel, requestMap, paramMap,
+                doUserIndexCreation(request, channel, requestMap, paramMap,
                         chain);
             }
         }
     }
 
-    private void handleUserIndexCreation(final RestRequest request,
+    private void doUserIndexCreation(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final Chain chain) {
         final String index = request
@@ -169,8 +168,8 @@ public class UserRequestHandler extends RequestHandler {
                     public void onResponse(
                             final IndicesExistsResponse indicesExistsResponse) {
                         if (indicesExistsResponse.isExists()) {
-                            handleUserMappingCreation(request, channel,
-                                    requestMap, paramMap, chain);
+                            doUserMappingCreation(request, channel, requestMap,
+                                    paramMap, chain);
                         } else {
                             client.admin()
                                     .indices()
@@ -183,7 +182,7 @@ public class UserRequestHandler extends RequestHandler {
                                                         final CreateIndexResponse createIndexResponse) {
                                                     if (createIndexResponse
                                                             .isAcknowledged()) {
-                                                        handleUserMappingCreation(
+                                                        doUserMappingCreation(
                                                                 request,
                                                                 channel,
                                                                 requestMap,
@@ -212,7 +211,7 @@ public class UserRequestHandler extends RequestHandler {
                 });
     }
 
-    private void handleUserMappingCreation(final RestRequest request,
+    private void doUserMappingCreation(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final Chain chain) {
         final String index = request
@@ -259,7 +258,7 @@ public class UserRequestHandler extends RequestHandler {
                         public void onResponse(
                                 final PutMappingResponse queueMappingResponse) {
                             if (queueMappingResponse.isAcknowledged()) {
-                                process(request, channel, requestMap, paramMap,
+                                execute(request, channel, requestMap, paramMap,
                                         chain);
                             } else {
                                 onFailure(new OperationFailedException(
@@ -278,7 +277,7 @@ public class UserRequestHandler extends RequestHandler {
         }
     }
 
-    private void handleUserCreation(final RestRequest request,
+    private void doUserCreation(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap,
             final Map<String, Object> userMap, final String index,
@@ -309,7 +308,7 @@ public class UserRequestHandler extends RequestHandler {
                             } else {
                                 userId = Long.valueOf(currentId.longValue() + 1);
                             }
-                            handleUserUpdate(request, channel, requestMap,
+                            doUserUpdate(request, channel, requestMap,
                                     paramMap, userMap, index, type,
                                     userIdField, timestampField, userId,
                                     OpType.CREATE, chain);
@@ -325,7 +324,7 @@ public class UserRequestHandler extends RequestHandler {
                 });
     }
 
-    private void handleUserUpdate(final RestRequest request,
+    private void doUserUpdate(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap,
             final Map<String, Object> userMap, final String index,
@@ -341,7 +340,7 @@ public class UserRequestHandler extends RequestHandler {
                     @Override
                     public void onResponse(final IndexResponse response) {
                         paramMap.put(userIdField, userId);
-                        chain.process(request, channel, requestMap, paramMap);
+                        chain.execute(request, channel, requestMap, paramMap);
                     }
 
                     @Override

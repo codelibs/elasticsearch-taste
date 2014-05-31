@@ -85,7 +85,7 @@ public abstract class RequestHandler {
         }
     }
 
-    public abstract void process(final RestRequest request,
+    public abstract void execute(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, Chain chain);
 
@@ -98,7 +98,7 @@ public abstract class RequestHandler {
             this.handlers = handlers;
         }
 
-        public void process(final RestRequest request,
+        public void execute(final RestRequest request,
                 final RestChannel channel,
                 final Map<String, Object> requestMap,
                 final Map<String, Object> paramMap) {
@@ -106,7 +106,7 @@ public abstract class RequestHandler {
                 if (position < handlers.length) {
                     final RequestHandler handler = handlers[position];
                     position++;
-                    handler.process(request, channel, requestMap, paramMap,
+                    handler.execute(request, channel, requestMap, paramMap,
                             this);
                 }
             }

@@ -37,7 +37,7 @@ public class ItemRequestHandler extends RequestHandler {
     }
 
     @Override
-    public void process(final RestRequest request, final RestChannel channel,
+    public void execute(final RestRequest request, final RestChannel channel,
             final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final Chain chain) {
         final String index = request
@@ -76,7 +76,7 @@ public class ItemRequestHandler extends RequestHandler {
 
                                 final SearchHits hits = response.getHits();
                                 if (hits.getTotalHits() == 0) {
-                                    handleItemCreation(request, channel,
+                                    doItemCreation(request, channel,
                                             requestMap, paramMap, itemMap,
                                             index, itemType, itemIdField,
                                             timestampField, chain);
@@ -92,18 +92,17 @@ public class ItemRequestHandler extends RequestHandler {
                                                     .equalsIgnoreCase(updateType)
                                                     || TasteConstants.YES
                                                             .equalsIgnoreCase(updateType)) {
-                                                handleItemUpdate(request,
-                                                        channel, requestMap,
-                                                        paramMap, itemMap,
-                                                        index, itemType,
-                                                        itemIdField,
+                                                doItemUpdate(request, channel,
+                                                        requestMap, paramMap,
+                                                        itemMap, index,
+                                                        itemType, itemIdField,
                                                         timestampField,
                                                         itemId.longValue(),
                                                         OpType.INDEX, chain);
                                             } else {
                                                 paramMap.put(itemIdField,
                                                         itemId.longValue());
-                                                chain.process(request, channel,
+                                                chain.execute(request, channel,
                                                         requestMap, paramMap);
                                             }
                                             return;
@@ -131,7 +130,7 @@ public class ItemRequestHandler extends RequestHandler {
                                 sendErrorResponse(request, channel, t);
                             } else {
                                 errorList.add(t);
-                                handleItemIndexCreation(request, channel,
+                                doItemIndexCreation(request, channel,
                                         requestMap, paramMap, chain);
                             }
                         }
@@ -148,13 +147,13 @@ public class ItemRequestHandler extends RequestHandler {
                 sendErrorResponse(request, channel, e);
             } else {
                 errorList.add(e);
-                handleItemIndexCreation(request, channel, requestMap, paramMap,
+                doItemIndexCreation(request, channel, requestMap, paramMap,
                         chain);
             }
         }
     }
 
-    private void handleItemIndexCreation(final RestRequest request,
+    private void doItemIndexCreation(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final Chain chain) {
         final String index = request
@@ -167,8 +166,8 @@ public class ItemRequestHandler extends RequestHandler {
                     public void onResponse(
                             final IndicesExistsResponse indicesExistsResponse) {
                         if (indicesExistsResponse.isExists()) {
-                            handleItemMappingCreation(request, channel,
-                                    requestMap, paramMap, chain);
+                            doItemMappingCreation(request, channel, requestMap,
+                                    paramMap, chain);
                         } else {
                             client.admin()
                                     .indices()
@@ -181,7 +180,7 @@ public class ItemRequestHandler extends RequestHandler {
                                                         final CreateIndexResponse createIndexResponse) {
                                                     if (createIndexResponse
                                                             .isAcknowledged()) {
-                                                        handleItemMappingCreation(
+                                                        doItemMappingCreation(
                                                                 request,
                                                                 channel,
                                                                 requestMap,
@@ -210,7 +209,7 @@ public class ItemRequestHandler extends RequestHandler {
                 });
     }
 
-    private void handleItemMappingCreation(final RestRequest request,
+    private void doItemMappingCreation(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final Chain chain) {
         final String index = request
@@ -257,7 +256,7 @@ public class ItemRequestHandler extends RequestHandler {
                         public void onResponse(
                                 final PutMappingResponse queueMappingResponse) {
                             if (queueMappingResponse.isAcknowledged()) {
-                                process(request, channel, requestMap, paramMap,
+                                execute(request, channel, requestMap, paramMap,
                                         chain);
                             } else {
                                 onFailure(new OperationFailedException(
@@ -276,7 +275,7 @@ public class ItemRequestHandler extends RequestHandler {
         }
     }
 
-    private void handleItemCreation(final RestRequest request,
+    private void doItemCreation(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap,
             final Map<String, Object> itemMap, final String index,
@@ -307,7 +306,7 @@ public class ItemRequestHandler extends RequestHandler {
                             } else {
                                 itemId = Long.valueOf(currentId.longValue() + 1);
                             }
-                            handleItemUpdate(request, channel, requestMap,
+                            doItemUpdate(request, channel, requestMap,
                                     paramMap, itemMap, index, type,
                                     itemIdField, timestampField, itemId,
                                     OpType.CREATE, chain);
@@ -323,7 +322,7 @@ public class ItemRequestHandler extends RequestHandler {
                 });
     }
 
-    private void handleItemUpdate(final RestRequest request,
+    private void doItemUpdate(final RestRequest request,
             final RestChannel channel, final Map<String, Object> requestMap,
             final Map<String, Object> paramMap,
             final Map<String, Object> itemMap, final String index,
@@ -339,7 +338,7 @@ public class ItemRequestHandler extends RequestHandler {
                     @Override
                     public void onResponse(final IndexResponse response) {
                         paramMap.put(itemIdField, itemId);
-                        chain.process(request, channel, requestMap, paramMap);
+                        chain.execute(request, channel, requestMap, paramMap);
                     }
 
                     @Override

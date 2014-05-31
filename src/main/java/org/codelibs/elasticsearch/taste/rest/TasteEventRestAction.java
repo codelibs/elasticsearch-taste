@@ -45,7 +45,7 @@ public class TasteEventRestAction extends BaseRestHandler {
                 client);
         acknowledgedHandler = new RequestHandler(settings, client) {
             @Override
-            public void process(final RestRequest request,
+            public void execute(final RestRequest request,
                     final RestChannel channel,
                     final Map<String, Object> requestMap,
                     final Map<String, Object> paramMap, final Chain chain) {
@@ -73,15 +73,15 @@ public class TasteEventRestAction extends BaseRestHandler {
                 final Chain chain = new Chain(new RequestHandler[] {
                         userRequestHandler, itemRequestHandler,
                         preferenceRequestHandler, acknowledgedHandler });
-                chain.process(request, channel, requestMap, paramMap);
+                chain.execute(request, channel, requestMap, paramMap);
             } else if (hasUser) {
                 final Chain chain = new Chain(new RequestHandler[] {
                         userRequestHandler, acknowledgedHandler });
-                chain.process(request, channel, requestMap, paramMap);
+                chain.execute(request, channel, requestMap, paramMap);
             } else if (hasItem) {
                 final Chain chain = new Chain(new RequestHandler[] {
                         itemRequestHandler, acknowledgedHandler });
-                chain.process(request, channel, requestMap, paramMap);
+                chain.execute(request, channel, requestMap, paramMap);
             } else {
                 throw new InvalidParameterException("No preference data.");
             }
