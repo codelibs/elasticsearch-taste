@@ -2,6 +2,10 @@ package org.codelibs.elasticsearch.taste;
 
 public class TasteConstants {
 
+    public static final String TRUE = "true";
+
+    public static final String YES = "yes";
+
     public static final String ITEM_TYPE = "item";
 
     public static final String USER_TYPE = "user";
