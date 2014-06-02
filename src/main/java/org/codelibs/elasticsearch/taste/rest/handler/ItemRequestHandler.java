@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.codelibs.elasticsearch.taste.TasteConstants;
-import org.codelibs.elasticsearch.taste.rest.exception.OperationFailedException;
+import org.codelibs.elasticsearch.taste.exception.OperationFailedException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
@@ -17,17 +17,18 @@ import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.ToXContent.Params;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.index.engine.DocumentAlreadyExistsException;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.rest.RestChannel;
-import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.sort.SortOrder;
 
-public class ItemRequestHandler extends RequestHandler {
+public class ItemRequestHandler extends DefaultRequestHandler {
     public ItemRequestHandler(final Settings settings, final Client client) {
         super(settings, client);
     }
@@ -37,16 +38,16 @@ public class ItemRequestHandler extends RequestHandler {
     }
 
     @Override
-    public void execute(final RestRequest request, final RestChannel channel,
+    public void execute(final Params params,
+            final RequestHandler.OnErrorListener listener,
             final Map<String, Object> requestMap,
-            final Map<String, Object> paramMap, final Chain chain) {
-        final String index = request
-                .param("item_index", request.param("index"));
-        final String itemType = request.param("item_type",
+            final Map<String, Object> paramMap, final RequestHandlerChain chain) {
+        final String index = params.param("item_index", params.param("index"));
+        final String itemType = params.param("item_type",
                 TasteConstants.ITEM_TYPE);
-        final String itemIdField = request.param(FIELD_ITEM_ID,
+        final String itemIdField = params.param(FIELD_ITEM_ID,
                 TasteConstants.ITEM_ID_FIELD);
-        final String timestampField = request.param(FIELD_TIMESTAMP,
+        final String timestampField = params.param(FIELD_TIMESTAMP,
                 TasteConstants.TIMESTAMP_FIELD);
 
         @SuppressWarnings("unchecked")
@@ -71,12 +72,12 @@ public class ItemRequestHandler extends RequestHandler {
                         public void onResponse(final SearchResponse response) {
                             try {
                                 validateRespose(response);
-                                final String updateType = request
+                                final String updateType = params
                                         .param("update");
 
                                 final SearchHits hits = response.getHits();
                                 if (hits.getTotalHits() == 0) {
-                                    doItemCreation(request, channel,
+                                    doItemCreation(params, listener,
                                             requestMap, paramMap, itemMap,
                                             index, itemType, itemIdField,
                                             timestampField, chain);
@@ -92,7 +93,7 @@ public class ItemRequestHandler extends RequestHandler {
                                                     .equalsIgnoreCase(updateType)
                                                     || TasteConstants.YES
                                                             .equalsIgnoreCase(updateType)) {
-                                                doItemUpdate(request, channel,
+                                                doItemUpdate(params, listener,
                                                         requestMap, paramMap,
                                                         itemMap, index,
                                                         itemType, itemIdField,
@@ -102,7 +103,7 @@ public class ItemRequestHandler extends RequestHandler {
                                             } else {
                                                 paramMap.put(itemIdField,
                                                         itemId.longValue());
-                                                chain.execute(request, channel,
+                                                chain.execute(params, listener,
                                                         requestMap, paramMap);
                                             }
                                             return;
@@ -127,10 +128,10 @@ public class ItemRequestHandler extends RequestHandler {
                                 paramMap.put(ERROR_LIST, errorList);
                             }
                             if (errorList.size() >= maxRetryCount) {
-                                sendErrorResponse(request, channel, t);
+                                listener.onError(t);
                             } else {
                                 errorList.add(t);
-                                doItemIndexCreation(request, channel,
+                                doItemIndexCreation(params, listener,
                                         requestMap, paramMap, chain);
                             }
                         }
@@ -144,20 +145,20 @@ public class ItemRequestHandler extends RequestHandler {
                 paramMap.put(ERROR_LIST, errorList);
             }
             if (errorList.size() >= maxRetryCount) {
-                sendErrorResponse(request, channel, e);
+                listener.onError(e);
             } else {
                 errorList.add(e);
-                doItemIndexCreation(request, channel, requestMap, paramMap,
+                doItemIndexCreation(params, listener, requestMap, paramMap,
                         chain);
             }
         }
     }
 
-    private void doItemIndexCreation(final RestRequest request,
-            final RestChannel channel, final Map<String, Object> requestMap,
-            final Map<String, Object> paramMap, final Chain chain) {
-        final String index = request
-                .param("item_index", request.param("index"));
+    private void doItemIndexCreation(final Params params,
+            final RequestHandler.OnErrorListener listener,
+            final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap, final RequestHandlerChain chain) {
+        final String index = params.param("item_index", params.param("index"));
 
         client.admin().indices().prepareExists(index)
                 .execute(new ActionListener<IndicesExistsResponse>() {
@@ -166,7 +167,7 @@ public class ItemRequestHandler extends RequestHandler {
                     public void onResponse(
                             final IndicesExistsResponse indicesExistsResponse) {
                         if (indicesExistsResponse.isExists()) {
-                            doItemMappingCreation(request, channel, requestMap,
+                            doItemMappingCreation(params, listener, requestMap,
                                     paramMap, chain);
                         } else {
                             client.admin()
@@ -181,8 +182,8 @@ public class ItemRequestHandler extends RequestHandler {
                                                     if (createIndexResponse
                                                             .isAcknowledged()) {
                                                         doItemMappingCreation(
-                                                                request,
-                                                                channel,
+                                                                params,
+                                                                listener,
                                                                 requestMap,
                                                                 paramMap, chain);
                                                     } else {
@@ -195,8 +196,15 @@ public class ItemRequestHandler extends RequestHandler {
                                                 @Override
                                                 public void onFailure(
                                                         final Throwable t) {
-                                                    sendErrorResponse(request,
-                                                            channel, t);
+                                                    if (t instanceof IndexAlreadyExistsException) {
+                                                        doItemIndexCreation(
+                                                                params,
+                                                                listener,
+                                                                requestMap,
+                                                                paramMap, chain);
+                                                    } else {
+                                                        listener.onError(t);
+                                                    }
                                                 }
                                             });
                         }
@@ -204,21 +212,20 @@ public class ItemRequestHandler extends RequestHandler {
 
                     @Override
                     public void onFailure(final Throwable t) {
-                        sendErrorResponse(request, channel, t);
+                        listener.onError(t);
                     }
                 });
     }
 
-    private void doItemMappingCreation(final RestRequest request,
-            final RestChannel channel, final Map<String, Object> requestMap,
-            final Map<String, Object> paramMap, final Chain chain) {
-        final String index = request
-                .param("item_index", request.param("index"));
-        final String type = request
-                .param("item_type", TasteConstants.ITEM_TYPE);
-        final String itemIdField = request.param(FIELD_ITEM_ID,
+    private void doItemMappingCreation(final Params params,
+            final RequestHandler.OnErrorListener listener,
+            final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap, final RequestHandlerChain chain) {
+        final String index = params.param("item_index", params.param("index"));
+        final String type = params.param("item_type", TasteConstants.ITEM_TYPE);
+        final String itemIdField = params.param(FIELD_ITEM_ID,
                 TasteConstants.ITEM_ID_FIELD);
-        final String timestampField = request.param(FIELD_TIMESTAMP,
+        final String timestampField = params.param(FIELD_TIMESTAMP,
                 TasteConstants.TIMESTAMP_FIELD);
 
         try {
@@ -256,7 +263,7 @@ public class ItemRequestHandler extends RequestHandler {
                         public void onResponse(
                                 final PutMappingResponse queueMappingResponse) {
                             if (queueMappingResponse.isAcknowledged()) {
-                                execute(request, channel, requestMap, paramMap,
+                                execute(params, listener, requestMap, paramMap,
                                         chain);
                             } else {
                                 onFailure(new OperationFailedException(
@@ -267,20 +274,21 @@ public class ItemRequestHandler extends RequestHandler {
 
                         @Override
                         public void onFailure(final Throwable t) {
-                            sendErrorResponse(request, channel, t);
+                            listener.onError(t);
                         }
                     });
         } catch (final Exception e) {
-            sendErrorResponse(request, channel, e);
+            listener.onError(e);
         }
     }
 
-    private void doItemCreation(final RestRequest request,
-            final RestChannel channel, final Map<String, Object> requestMap,
+    private void doItemCreation(final Params params,
+            final RequestHandler.OnErrorListener listener,
+            final Map<String, Object> requestMap,
             final Map<String, Object> paramMap,
             final Map<String, Object> itemMap, final String index,
             final String type, final String itemIdField,
-            final String timestampField, final Chain chain) {
+            final String timestampField, final RequestHandlerChain chain) {
         client.prepareSearch(index).setTypes(type)
                 .setQuery(QueryBuilders.matchAllQuery()).addField(itemIdField)
                 .addSort(itemIdField, SortOrder.DESC).setSize(1)
@@ -306,29 +314,30 @@ public class ItemRequestHandler extends RequestHandler {
                             } else {
                                 itemId = Long.valueOf(currentId.longValue() + 1);
                             }
-                            doItemUpdate(request, channel, requestMap,
+                            doItemUpdate(params, listener, requestMap,
                                     paramMap, itemMap, index, type,
                                     itemIdField, timestampField, itemId,
                                     OpType.CREATE, chain);
                         } catch (final Exception e) {
-                            sendErrorResponse(request, channel, e);
+                            listener.onError(e);
                         }
                     }
 
                     @Override
                     public void onFailure(final Throwable t) {
-                        sendErrorResponse(request, channel, t);
+                        listener.onError(t);
                     }
                 });
     }
 
-    private void doItemUpdate(final RestRequest request,
-            final RestChannel channel, final Map<String, Object> requestMap,
+    private void doItemUpdate(final Params params,
+            final RequestHandler.OnErrorListener listener,
+            final Map<String, Object> requestMap,
             final Map<String, Object> paramMap,
             final Map<String, Object> itemMap, final String index,
             final String type, final String itemIdField,
             final String timestampField, final Long itemId,
-            final OpType opType, final Chain chain) {
+            final OpType opType, final RequestHandlerChain chain) {
         itemMap.put(itemIdField, itemId);
         itemMap.put(timestampField, new Date());
         client.prepareIndex(index, type, itemId.toString()).setSource(itemMap)
@@ -338,12 +347,17 @@ public class ItemRequestHandler extends RequestHandler {
                     @Override
                     public void onResponse(final IndexResponse response) {
                         paramMap.put(itemIdField, itemId);
-                        chain.execute(request, channel, requestMap, paramMap);
+                        chain.execute(params, listener, requestMap, paramMap);
                     }
 
                     @Override
                     public void onFailure(final Throwable t) {
-                        sendErrorResponse(request, channel, t);
+                        if (t instanceof DocumentAlreadyExistsException) {
+                            execute(params, listener, requestMap, paramMap,
+                                    chain);
+                        } else {
+                            listener.onError(t);
+                        }
                     }
                 });
     }

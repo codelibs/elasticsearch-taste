@@ -4,6 +4,7 @@ import java.util.Map;
 
 import org.codelibs.elasticsearch.taste.river.handler.ActionHandler;
 import org.codelibs.elasticsearch.taste.river.handler.EvalItemsFromUserHandler;
+import org.codelibs.elasticsearch.taste.river.handler.GenTermValuesHandler;
 import org.codelibs.elasticsearch.taste.river.handler.RmdItemsFromItemHandler;
 import org.codelibs.elasticsearch.taste.river.handler.RmdItemsFromUserHandler;
 import org.codelibs.elasticsearch.taste.service.TasteService;
@@ -16,7 +17,9 @@ import org.elasticsearch.river.RiverName;
 import org.elasticsearch.river.RiverSettings;
 
 public class TasteRiver extends AbstractRiverComponent implements River {
-    private static final String RIVER_THREAD_NAME_PREFIX = "River-";
+    private static final String RIVER_THREAD_NAME_PREFIX = "TasteRiver-";
+
+    private static final String GENERATE_TERM_VALUES = "generate_term_values";
 
     private static final String EVALUATE_ITEMS_FROM_USER = "evaluate_items_from_user";
 
@@ -57,6 +60,10 @@ public class TasteRiver extends AbstractRiverComponent implements River {
             } else if (EVALUATE_ITEMS_FROM_USER.equals(actionObj)) {
                 final EvalItemsFromUserHandler handler = new EvalItemsFromUserHandler(
                         settings, client, tasteService);
+                startRiverThread(handler);
+            } else if (GENERATE_TERM_VALUES.equals(actionObj)) {
+                final GenTermValuesHandler handler = new GenTermValuesHandler(
+                        settings, client);
                 startRiverThread(handler);
             } else {
                 logger.info("River {} has no actions. Deleting...",

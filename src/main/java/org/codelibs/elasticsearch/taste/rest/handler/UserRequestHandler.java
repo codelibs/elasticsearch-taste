@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.codelibs.elasticsearch.taste.TasteConstants;
-import org.codelibs.elasticsearch.taste.rest.exception.OperationFailedException;
+import org.codelibs.elasticsearch.taste.exception.OperationFailedException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
@@ -17,17 +17,18 @@ import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.ToXContent.Params;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.index.engine.DocumentAlreadyExistsException;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.rest.RestChannel;
-import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.sort.SortOrder;
 
-public class UserRequestHandler extends RequestHandler {
+public class UserRequestHandler extends DefaultRequestHandler {
 
     public UserRequestHandler(final Settings settings, final Client client) {
         super(settings, client);
@@ -38,16 +39,16 @@ public class UserRequestHandler extends RequestHandler {
     }
 
     @Override
-    public void execute(final RestRequest request, final RestChannel channel,
+    public void execute(final Params params,
+            final RequestHandler.OnErrorListener listener,
             final Map<String, Object> requestMap,
-            final Map<String, Object> paramMap, final Chain chain) {
-        final String index = request
-                .param("user_index", request.param("index"));
-        final String userType = request.param("user_type",
+            final Map<String, Object> paramMap, final RequestHandlerChain chain) {
+        final String index = params.param("user_index", params.param("index"));
+        final String userType = params.param("user_type",
                 TasteConstants.USER_TYPE);
-        final String userIdField = request.param(FIELD_USER_ID,
+        final String userIdField = params.param(FIELD_USER_ID,
                 TasteConstants.USER_ID_FIELD);
-        final String timestampField = request.param(FIELD_TIMESTAMP,
+        final String timestampField = params.param(FIELD_TIMESTAMP,
                 TasteConstants.TIMESTAMP_FIELD);
 
         @SuppressWarnings("unchecked")
@@ -72,12 +73,12 @@ public class UserRequestHandler extends RequestHandler {
                         public void onResponse(final SearchResponse response) {
                             try {
                                 validateRespose(response);
-                                final String updateType = request
+                                final String updateType = params
                                         .param("update");
 
                                 final SearchHits hits = response.getHits();
                                 if (hits.getTotalHits() == 0) {
-                                    doUserCreation(request, channel,
+                                    doUserCreation(params, listener,
                                             requestMap, paramMap, userMap,
                                             index, userType, userIdField,
                                             timestampField, chain);
@@ -93,7 +94,7 @@ public class UserRequestHandler extends RequestHandler {
                                                     .equalsIgnoreCase(updateType)
                                                     || TasteConstants.YES
                                                             .equalsIgnoreCase(updateType)) {
-                                                doUserUpdate(request, channel,
+                                                doUserUpdate(params, listener,
                                                         requestMap, paramMap,
                                                         userMap, index,
                                                         userType, userIdField,
@@ -104,7 +105,7 @@ public class UserRequestHandler extends RequestHandler {
                                             } else {
                                                 paramMap.put(userIdField,
                                                         userId.longValue());
-                                                chain.execute(request, channel,
+                                                chain.execute(params, listener,
                                                         requestMap, paramMap);
                                             }
                                             return;
@@ -129,10 +130,10 @@ public class UserRequestHandler extends RequestHandler {
                                 paramMap.put(ERROR_LIST, errorList);
                             }
                             if (errorList.size() >= maxRetryCount) {
-                                sendErrorResponse(request, channel, t);
+                                listener.onError(t);
                             } else {
                                 errorList.add(t);
-                                doUserIndexCreation(request, channel,
+                                doUserIndexCreation(params, listener,
                                         requestMap, paramMap, chain);
                             }
                         }
@@ -146,20 +147,20 @@ public class UserRequestHandler extends RequestHandler {
                 paramMap.put(ERROR_LIST, errorList);
             }
             if (errorList.size() >= maxRetryCount) {
-                sendErrorResponse(request, channel, e);
+                listener.onError(e);
             } else {
                 errorList.add(e);
-                doUserIndexCreation(request, channel, requestMap, paramMap,
+                doUserIndexCreation(params, listener, requestMap, paramMap,
                         chain);
             }
         }
     }
 
-    private void doUserIndexCreation(final RestRequest request,
-            final RestChannel channel, final Map<String, Object> requestMap,
-            final Map<String, Object> paramMap, final Chain chain) {
-        final String index = request
-                .param("user_index", request.param("index"));
+    private void doUserIndexCreation(final Params params,
+            final RequestHandler.OnErrorListener listener,
+            final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap, final RequestHandlerChain chain) {
+        final String index = params.param("user_index", params.param("index"));
 
         client.admin().indices().prepareExists(index)
                 .execute(new ActionListener<IndicesExistsResponse>() {
@@ -168,7 +169,7 @@ public class UserRequestHandler extends RequestHandler {
                     public void onResponse(
                             final IndicesExistsResponse indicesExistsResponse) {
                         if (indicesExistsResponse.isExists()) {
-                            doUserMappingCreation(request, channel, requestMap,
+                            doUserMappingCreation(params, listener, requestMap,
                                     paramMap, chain);
                         } else {
                             client.admin()
@@ -183,8 +184,8 @@ public class UserRequestHandler extends RequestHandler {
                                                     if (createIndexResponse
                                                             .isAcknowledged()) {
                                                         doUserMappingCreation(
-                                                                request,
-                                                                channel,
+                                                                params,
+                                                                listener,
                                                                 requestMap,
                                                                 paramMap, chain);
                                                     } else {
@@ -197,8 +198,15 @@ public class UserRequestHandler extends RequestHandler {
                                                 @Override
                                                 public void onFailure(
                                                         final Throwable t) {
-                                                    sendErrorResponse(request,
-                                                            channel, t);
+                                                    if (t instanceof IndexAlreadyExistsException) {
+                                                        doUserIndexCreation(
+                                                                params,
+                                                                listener,
+                                                                requestMap,
+                                                                paramMap, chain);
+                                                    } else {
+                                                        listener.onError(t);
+                                                    }
                                                 }
                                             });
                         }
@@ -206,21 +214,20 @@ public class UserRequestHandler extends RequestHandler {
 
                     @Override
                     public void onFailure(final Throwable t) {
-                        sendErrorResponse(request, channel, t);
+                        listener.onError(t);
                     }
                 });
     }
 
-    private void doUserMappingCreation(final RestRequest request,
-            final RestChannel channel, final Map<String, Object> requestMap,
-            final Map<String, Object> paramMap, final Chain chain) {
-        final String index = request
-                .param("user_index", request.param("index"));
-        final String type = request
-                .param("user_type", TasteConstants.USER_TYPE);
-        final String userIdField = request.param(FIELD_USER_ID,
+    private void doUserMappingCreation(final Params params,
+            final RequestHandler.OnErrorListener listener,
+            final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap, final RequestHandlerChain chain) {
+        final String index = params.param("user_index", params.param("index"));
+        final String type = params.param("user_type", TasteConstants.USER_TYPE);
+        final String userIdField = params.param(FIELD_USER_ID,
                 TasteConstants.USER_ID_FIELD);
-        final String timestampField = request.param(FIELD_TIMESTAMP,
+        final String timestampField = params.param(FIELD_TIMESTAMP,
                 TasteConstants.TIMESTAMP_FIELD);
 
         try {
@@ -258,7 +265,7 @@ public class UserRequestHandler extends RequestHandler {
                         public void onResponse(
                                 final PutMappingResponse queueMappingResponse) {
                             if (queueMappingResponse.isAcknowledged()) {
-                                execute(request, channel, requestMap, paramMap,
+                                execute(params, listener, requestMap, paramMap,
                                         chain);
                             } else {
                                 onFailure(new OperationFailedException(
@@ -269,20 +276,21 @@ public class UserRequestHandler extends RequestHandler {
 
                         @Override
                         public void onFailure(final Throwable t) {
-                            sendErrorResponse(request, channel, t);
+                            listener.onError(t);
                         }
                     });
         } catch (final Exception e) {
-            sendErrorResponse(request, channel, e);
+            listener.onError(e);
         }
     }
 
-    private void doUserCreation(final RestRequest request,
-            final RestChannel channel, final Map<String, Object> requestMap,
+    private void doUserCreation(final Params params,
+            final RequestHandler.OnErrorListener listener,
+            final Map<String, Object> requestMap,
             final Map<String, Object> paramMap,
             final Map<String, Object> userMap, final String index,
             final String type, final String userIdField,
-            final String timestampField, final Chain chain) {
+            final String timestampField, final RequestHandlerChain chain) {
         client.prepareSearch(index).setTypes(type)
                 .setQuery(QueryBuilders.matchAllQuery()).addField(userIdField)
                 .addSort(userIdField, SortOrder.DESC).setSize(1)
@@ -308,29 +316,30 @@ public class UserRequestHandler extends RequestHandler {
                             } else {
                                 userId = Long.valueOf(currentId.longValue() + 1);
                             }
-                            doUserUpdate(request, channel, requestMap,
+                            doUserUpdate(params, listener, requestMap,
                                     paramMap, userMap, index, type,
                                     userIdField, timestampField, userId,
                                     OpType.CREATE, chain);
                         } catch (final Exception e) {
-                            sendErrorResponse(request, channel, e);
+                            listener.onError(e);
                         }
                     }
 
                     @Override
                     public void onFailure(final Throwable t) {
-                        sendErrorResponse(request, channel, t);
+                        listener.onError(t);
                     }
                 });
     }
 
-    private void doUserUpdate(final RestRequest request,
-            final RestChannel channel, final Map<String, Object> requestMap,
+    private void doUserUpdate(final Params params,
+            final RequestHandler.OnErrorListener listener,
+            final Map<String, Object> requestMap,
             final Map<String, Object> paramMap,
             final Map<String, Object> userMap, final String index,
             final String type, final String userIdField,
             final String timestampField, final Long userId,
-            final OpType opType, final Chain chain) {
+            final OpType opType, final RequestHandlerChain chain) {
         userMap.put(userIdField, userId);
         userMap.put(timestampField, new Date());
         client.prepareIndex(index, type, userId.toString()).setSource(userMap)
@@ -340,12 +349,17 @@ public class UserRequestHandler extends RequestHandler {
                     @Override
                     public void onResponse(final IndexResponse response) {
                         paramMap.put(userIdField, userId);
-                        chain.execute(request, channel, requestMap, paramMap);
+                        chain.execute(params, listener, requestMap, paramMap);
                     }
 
                     @Override
                     public void onFailure(final Throwable t) {
-                        sendErrorResponse(request, channel, t);
+                        if (t instanceof DocumentAlreadyExistsException) {
+                            execute(params, listener, requestMap, paramMap,
+                                    chain);
+                        } else {
+                            listener.onError(t);
+                        }
                     }
                 });
     }

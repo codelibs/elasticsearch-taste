@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.codelibs.elasticsearch.taste.TasteConstants;
-import org.codelibs.elasticsearch.taste.rest.exception.OperationFailedException;
+import org.codelibs.elasticsearch.taste.exception.OperationFailedException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
@@ -17,12 +17,12 @@ import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.joda.time.format.ISODateTimeFormat;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.ToXContent.Params;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.rest.RestChannel;
-import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.indices.IndexAlreadyExistsException;
 
-public class PreferenceRequestHandler extends RequestHandler {
+public class PreferenceRequestHandler extends DefaultRequestHandler {
     public PreferenceRequestHandler(final Settings settings, final Client client) {
         super(settings, client);
     }
@@ -32,19 +32,21 @@ public class PreferenceRequestHandler extends RequestHandler {
     }
 
     @Override
-    public void execute(final RestRequest request, final RestChannel channel,
+    public void execute(final Params params,
+            final RequestHandler.OnErrorListener listener,
             final Map<String, Object> requestMap,
-            final Map<String, Object> paramMap, final Chain chain) {
-        final String index = request.param("index");
-        final String type = request.param("type",
-                TasteConstants.PREFERENCE_TYPE);
-        final String userIdField = request.param(FIELD_USER_ID,
+            final Map<String, Object> paramMap, final RequestHandlerChain chain) {
+        final String index = params.param("preference_index",
+                params.param("index"));
+        final String type = params.param("preference_type",
+                params.param("type", TasteConstants.PREFERENCE_TYPE));
+        final String userIdField = params.param(FIELD_USER_ID,
                 TasteConstants.USER_ID_FIELD);
-        final String itemIdField = request.param(FIELD_ITEM_ID,
+        final String itemIdField = params.param(FIELD_ITEM_ID,
                 TasteConstants.ITEM_ID_FIELD);
-        final String valueField = request.param(FIELD_VALUE,
+        final String valueField = params.param(FIELD_VALUE,
                 TasteConstants.VALUE_FIELD);
-        final String timestampField = request.param(FIELD_TIMESTAMP,
+        final String timestampField = params.param(FIELD_TIMESTAMP,
                 TasteConstants.TIMESTAMP_FIELD);
 
         final Number value = (Number) requestMap.get("value");
@@ -80,7 +82,7 @@ public class PreferenceRequestHandler extends RequestHandler {
                 .execute(new ActionListener<IndexResponse>() {
                     @Override
                     public void onResponse(final IndexResponse response) {
-                        chain.execute(request, channel, requestMap, paramMap);
+                        chain.execute(params, listener, requestMap, paramMap);
                     }
 
                     @Override
@@ -93,20 +95,21 @@ public class PreferenceRequestHandler extends RequestHandler {
                             paramMap.put(ERROR_LIST, errorList);
                         }
                         if (errorList.size() >= maxRetryCount) {
-                            sendErrorResponse(request, channel, t);
+                            listener.onError(t);
                         } else {
                             errorList.add(t);
-                            doPreferenceIndexCreation(request, channel,
+                            doPreferenceIndexCreation(params, listener,
                                     requestMap, paramMap, chain);
                         }
                     }
                 });
     }
 
-    private void doPreferenceIndexCreation(final RestRequest request,
-            final RestChannel channel, final Map<String, Object> requestMap,
-            final Map<String, Object> paramMap, final Chain chain) {
-        final String index = request.param("index");
+    private void doPreferenceIndexCreation(final Params params,
+            final RequestHandler.OnErrorListener listener,
+            final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap, final RequestHandlerChain chain) {
+        final String index = params.param("index");
 
         client.admin().indices().prepareExists(index)
                 .execute(new ActionListener<IndicesExistsResponse>() {
@@ -115,7 +118,7 @@ public class PreferenceRequestHandler extends RequestHandler {
                     public void onResponse(
                             final IndicesExistsResponse indicesExistsResponse) {
                         if (indicesExistsResponse.isExists()) {
-                            doPreferenceMappingCreation(request, channel,
+                            doPreferenceMappingCreation(params, listener,
                                     requestMap, paramMap, chain);
                         } else {
                             client.admin()
@@ -130,8 +133,8 @@ public class PreferenceRequestHandler extends RequestHandler {
                                                     if (createIndexResponse
                                                             .isAcknowledged()) {
                                                         doPreferenceMappingCreation(
-                                                                request,
-                                                                channel,
+                                                                params,
+                                                                listener,
                                                                 requestMap,
                                                                 paramMap, chain);
                                                     } else {
@@ -144,8 +147,15 @@ public class PreferenceRequestHandler extends RequestHandler {
                                                 @Override
                                                 public void onFailure(
                                                         final Throwable t) {
-                                                    sendErrorResponse(request,
-                                                            channel, t);
+                                                    if (t instanceof IndexAlreadyExistsException) {
+                                                        doPreferenceIndexCreation(
+                                                                params,
+                                                                listener,
+                                                                requestMap,
+                                                                paramMap, chain);
+                                                    } else {
+                                                        listener.onError(t);
+                                                    }
                                                 }
                                             });
                         }
@@ -153,24 +163,25 @@ public class PreferenceRequestHandler extends RequestHandler {
 
                     @Override
                     public void onFailure(final Throwable t) {
-                        sendErrorResponse(request, channel, t);
+                        listener.onError(t);
                     }
                 });
     }
 
-    private void doPreferenceMappingCreation(final RestRequest request,
-            final RestChannel channel, final Map<String, Object> requestMap,
-            final Map<String, Object> paramMap, final Chain chain) {
-        final String index = request.param("index");
-        final String type = request.param("type",
-                TasteConstants.PREFERENCE_TYPE);
-        final String userIdField = request.param(FIELD_USER_ID,
+    private void doPreferenceMappingCreation(final Params params,
+            final RequestHandler.OnErrorListener listener,
+            final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap, final RequestHandlerChain chain) {
+        final String index = params.param("index");
+        final String type = params
+                .param("type", TasteConstants.PREFERENCE_TYPE);
+        final String userIdField = params.param(FIELD_USER_ID,
                 TasteConstants.USER_ID_FIELD);
-        final String itemIdField = request.param(FIELD_ITEM_ID,
+        final String itemIdField = params.param(FIELD_ITEM_ID,
                 TasteConstants.ITEM_ID_FIELD);
-        final String valueField = request.param(FIELD_VALUE,
+        final String valueField = params.param(FIELD_VALUE,
                 TasteConstants.VALUE_FIELD);
-        final String timestampField = request.param(FIELD_TIMESTAMP,
+        final String timestampField = params.param(FIELD_TIMESTAMP,
                 TasteConstants.TIMESTAMP_FIELD);
 
         try {
@@ -212,7 +223,7 @@ public class PreferenceRequestHandler extends RequestHandler {
                         public void onResponse(
                                 final PutMappingResponse queueMappingResponse) {
                             if (queueMappingResponse.isAcknowledged()) {
-                                execute(request, channel, requestMap, paramMap,
+                                execute(params, listener, requestMap, paramMap,
                                         chain);
                             } else {
                                 onFailure(new OperationFailedException(
@@ -223,11 +234,11 @@ public class PreferenceRequestHandler extends RequestHandler {
 
                         @Override
                         public void onFailure(final Throwable t) {
-                            sendErrorResponse(request, channel, t);
+                            listener.onError(t);
                         }
                     });
         } catch (final Exception e) {
-            sendErrorResponse(request, channel, e);
+            listener.onError(e);
         }
     }
 

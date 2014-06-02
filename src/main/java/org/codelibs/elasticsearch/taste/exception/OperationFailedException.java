@@ -1,6 +1,8 @@
-package org.codelibs.elasticsearch.taste.rest.exception;
+package org.codelibs.elasticsearch.taste.exception;
 
-public class OperationFailedException extends RuntimeException {
+import org.codelibs.elasticsearch.taste.TasteSystemException;
+
+public class OperationFailedException extends TasteSystemException {
 
     private static final long serialVersionUID = 1L;
 

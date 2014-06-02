@@ -16,7 +16,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.river.RiverSettings;
 
-public class RmdItemsFromItemHandler extends ActionHandler {
+public class RmdItemsFromItemHandler extends RmdItemsHandler {
     public RmdItemsFromItemHandler(final RiverSettings settings,
             final Client client, final TasteService tasteService) {
         super(settings, client, tasteService);

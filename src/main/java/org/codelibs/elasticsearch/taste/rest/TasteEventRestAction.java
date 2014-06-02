@@ -1,18 +1,23 @@
 package org.codelibs.elasticsearch.taste.rest;
 
+import static org.elasticsearch.rest.RestStatus.OK;
+
 import java.util.HashMap;
 import java.util.Map;
 
-import org.codelibs.elasticsearch.taste.rest.exception.InvalidParameterException;
+import org.codelibs.elasticsearch.taste.exception.InvalidParameterException;
 import org.codelibs.elasticsearch.taste.rest.handler.ItemRequestHandler;
 import org.codelibs.elasticsearch.taste.rest.handler.PreferenceRequestHandler;
 import org.codelibs.elasticsearch.taste.rest.handler.RequestHandler;
-import org.codelibs.elasticsearch.taste.rest.handler.RequestHandler.Chain;
+import org.codelibs.elasticsearch.taste.rest.handler.RequestHandlerChain;
 import org.codelibs.elasticsearch.taste.rest.handler.UserRequestHandler;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.ToXContent.Params;
+import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
@@ -26,8 +31,6 @@ public class TasteEventRestAction extends BaseRestHandler {
     private ItemRequestHandler itemRequestHandler;
 
     private PreferenceRequestHandler preferenceRequestHandler;
-
-    private RequestHandler acknowledgedHandler;
 
     @Inject
     public TasteEventRestAction(final Settings settings, final Client client,
@@ -43,15 +46,6 @@ public class TasteEventRestAction extends BaseRestHandler {
         itemRequestHandler = new ItemRequestHandler(settings, client);
         preferenceRequestHandler = new PreferenceRequestHandler(settings,
                 client);
-        acknowledgedHandler = new RequestHandler(settings, client) {
-            @Override
-            public void execute(final RestRequest request,
-                    final RestChannel channel,
-                    final Map<String, Object> requestMap,
-                    final Map<String, Object> paramMap, final Chain chain) {
-                sendAcknowledgedResponse(request, channel);
-            }
-        };
     }
 
     @Override
@@ -70,33 +64,71 @@ public class TasteEventRestAction extends BaseRestHandler {
                     .hasPreference(requestMap);
 
             if (hasPreference) {
-                final Chain chain = new Chain(new RequestHandler[] {
-                        userRequestHandler, itemRequestHandler,
-                        preferenceRequestHandler, acknowledgedHandler });
-                chain.execute(request, channel, requestMap, paramMap);
+                final RequestHandlerChain chain = new RequestHandlerChain(
+                        new RequestHandler[] { userRequestHandler,
+                                itemRequestHandler, preferenceRequestHandler,
+                                createAcknowledgedHandler(channel) });
+                chain.execute(request, createOnErrorListener(channel),
+                        requestMap, paramMap);
             } else if (hasUser) {
-                final Chain chain = new Chain(new RequestHandler[] {
-                        userRequestHandler, acknowledgedHandler });
-                chain.execute(request, channel, requestMap, paramMap);
+                final RequestHandlerChain chain = new RequestHandlerChain(
+                        new RequestHandler[] { userRequestHandler,
+                                createAcknowledgedHandler(channel) });
+                chain.execute(request, createOnErrorListener(channel),
+                        requestMap, paramMap);
             } else if (hasItem) {
-                final Chain chain = new Chain(new RequestHandler[] {
-                        itemRequestHandler, acknowledgedHandler });
-                chain.execute(request, channel, requestMap, paramMap);
+                final RequestHandlerChain chain = new RequestHandlerChain(
+                        new RequestHandler[] { itemRequestHandler,
+                                createAcknowledgedHandler(channel) });
+                chain.execute(request, createOnErrorListener(channel),
+                        requestMap, paramMap);
             } else {
                 throw new InvalidParameterException("No preference data.");
             }
         } catch (final Exception e) {
-            sendErrorResponse(request, channel, e);
+            createOnErrorListener(channel).onError(e);
         }
 
     }
 
-    protected void sendErrorResponse(final RestRequest request,
-            final RestChannel channel, final Throwable t) {
-        try {
-            channel.sendResponse(new BytesRestResponse(channel, t));
-        } catch (final Exception e) {
-            logger.error("Failed to send a failure response.", e);
-        }
+    private RequestHandler createAcknowledgedHandler(final RestChannel channel) {
+        return new RequestHandler() {
+            @Override
+            public void execute(final Params request,
+                    final RequestHandler.OnErrorListener listener,
+                    final Map<String, Object> requestMap,
+                    final Map<String, Object> paramMap,
+                    final RequestHandlerChain chain) {
+                try {
+                    final XContentBuilder builder = JsonXContent
+                            .contentBuilder();
+                    builder.startObject();
+                    builder.field("acknowledged", true);
+                    builder.endObject();
+                    channel.sendResponse(new BytesRestResponse(OK, builder));
+                } catch (final Exception e) {
+                    try {
+                        channel.sendResponse(new BytesRestResponse(channel, e));
+                    } catch (final Exception ex) {
+                        logger.error("Failed to send a failure response.", ex);
+                    }
+                }
+            }
+        };
     }
+
+    private RequestHandler.OnErrorListener createOnErrorListener(
+            final RestChannel channel) {
+        return new RequestHandler.OnErrorListener() {
+            @Override
+            public void onError(final Throwable t) {
+                try {
+                    channel.sendResponse(new BytesRestResponse(channel, t));
+                } catch (final Exception e) {
+                    logger.error("Failed to send a failure response.", e);
+                }
+            }
+        };
+    }
+
 }
