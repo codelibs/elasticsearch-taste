@@ -1,6 +1,7 @@
 package org.codelibs.elasticsearch.taste.rest.handler;
 
 import java.util.Map;
+import java.util.Random;
 
 import org.codelibs.elasticsearch.taste.exception.MissingShardsException;
 import org.codelibs.elasticsearch.taste.exception.OperationFailedException;
@@ -24,6 +25,8 @@ public abstract class DefaultRequestHandler implements RequestHandler {
 
     public static final String FIELD_USER_ID = "field.user_id";
 
+    protected static Random random = new Random();
+
     protected Settings settings;
 
     protected Client client;
@@ -35,7 +38,7 @@ public abstract class DefaultRequestHandler implements RequestHandler {
     public DefaultRequestHandler(final Settings settings, final Client client) {
         this.settings = settings;
         this.client = client;
-        maxRetryCount = settings.getAsInt("taste.rest.retry", 3);
+        maxRetryCount = settings.getAsInt("taste.rest.retry", 5);
         logger = Loggers.getLogger(getClass(), settings);
     }
 
@@ -54,6 +57,20 @@ public abstract class DefaultRequestHandler implements RequestHandler {
             }
             throw new OperationFailedException("Search Operation Failed: "
                     + buf.toString());
+        }
+    }
+
+    protected void sleep() {
+        final long waitTime = random.nextInt(500) + 500;
+        if (logger.isDebugEnabled()) {
+            logger.debug(
+                    "The search request is rejected. Waiting for {} and retrying it.",
+                    waitTime);
+        }
+        try {
+            Thread.sleep(waitTime);
+        } catch (final InterruptedException e1) {
+            // ignore
         }
     }
 

@@ -17,6 +17,7 @@ import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.util.concurrent.EsRejectedExecutionException;
 import org.elasticsearch.common.xcontent.ToXContent.Params;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
@@ -137,6 +138,9 @@ public class ItemRequestHandler extends DefaultRequestHandler {
                         }
                     });
         } catch (final Exception e) {
+            if (e instanceof EsRejectedExecutionException) {
+                sleep();
+            }
             @SuppressWarnings("unchecked")
             List<Throwable> errorList = (List<Throwable>) paramMap
                     .get(ERROR_LIST);
