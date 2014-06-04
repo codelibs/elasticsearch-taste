@@ -59,6 +59,8 @@ public class GenTermValuesHandler extends ActionHandler {
 
     private CountDownLatch scrollSearchGate;
 
+    private boolean interrupted = false;
+
     public GenTermValuesHandler(final RiverSettings settings,
             final Client client) {
         super(settings, client);
@@ -108,11 +110,12 @@ public class GenTermValuesHandler extends ActionHandler {
                 .setScroll(new TimeValue(keepAlive.longValue()))
                 .setQuery(QueryBuilders.matchAllQuery())
                 .setSize(size.intValue()).addField("id")
-                .setListenerThreaded(false).execute(new ScrollSearchListener());
+                .setListenerThreaded(true).execute(new ScrollSearchListener());
 
         try {
             scrollSearchGate.await();
         } catch (final InterruptedException e) {
+            interrupted = true;
             if (logger.isDebugEnabled()) {
                 logger.debug("Interrupted.", e);
             }
@@ -131,7 +134,7 @@ public class GenTermValuesHandler extends ActionHandler {
                 initialized = true;
                 client.prepareSearchScroll(response.getScrollId())
                         .setScroll(new TimeValue(keepAlive.longValue()))
-                        .setListenerThreaded(false).execute(this);
+                        .setListenerThreaded(true).execute(this);
                 return;
             }
 
@@ -143,6 +146,10 @@ public class GenTermValuesHandler extends ActionHandler {
                         logger.debug("Interrupted.", e);
                     }
                 }
+            }
+
+            if (interrupted) {
+                return;
             }
 
             final SearchHits searchHits = response.getHits();
@@ -170,7 +177,7 @@ public class GenTermValuesHandler extends ActionHandler {
 
                 client.prepareSearchScroll(response.getScrollId())
                         .setScroll(new TimeValue(keepAlive.longValue()))
-                        .listenerThreaded(true).execute(this);
+                        .setListenerThreaded(true).execute(this);
             }
         }
 
