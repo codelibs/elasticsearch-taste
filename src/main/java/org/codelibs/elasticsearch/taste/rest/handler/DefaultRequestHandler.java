@@ -60,12 +60,12 @@ public abstract class DefaultRequestHandler implements RequestHandler {
         }
     }
 
-    protected void sleep() {
-        final long waitTime = random.nextInt(500) + 500;
+    protected void sleep(final Exception e) {
+        final long waitTime = random.nextInt(1500) + 500;
         if (logger.isDebugEnabled()) {
             logger.debug(
                     "The search request is rejected. Waiting for {} and retrying it.",
-                    waitTime);
+                    e, waitTime);
         }
         try {
             Thread.sleep(waitTime);

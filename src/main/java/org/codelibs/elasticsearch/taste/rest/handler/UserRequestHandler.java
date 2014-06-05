@@ -139,10 +139,10 @@ public class UserRequestHandler extends DefaultRequestHandler {
                             }
                         }
                     });
+        } catch (final EsRejectedExecutionException e) {
+            sleep(e);
+            doUserIndexCreation(params, listener, requestMap, paramMap, chain);
         } catch (final Exception e) {
-            if (e instanceof EsRejectedExecutionException) {
-                sleep();
-            }
             @SuppressWarnings("unchecked")
             List<Throwable> errorList = (List<Throwable>) paramMap
                     .get(ERROR_LIST);
