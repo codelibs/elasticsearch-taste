@@ -3,7 +3,6 @@ package org.codelibs.elasticsearch.taste.recommender.impl;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.common.TasteException;
@@ -52,12 +51,9 @@ public class DefaultUserBasedRecommender extends AbstractRecommender implements
                 "neighborhood is null");
         this.neighborhood = neighborhood;
         this.similarity = similarity;
-        refreshHelper = new RefreshHelper(new Callable<Void>() {
-            @Override
-            public Void call() {
-                capper = buildCapper();
-                return null;
-            }
+        refreshHelper = new RefreshHelper(() -> {
+            capper = buildCapper();
+            return null;
         });
         refreshHelper.addDependency(dataModel);
         refreshHelper.addDependency(similarity);

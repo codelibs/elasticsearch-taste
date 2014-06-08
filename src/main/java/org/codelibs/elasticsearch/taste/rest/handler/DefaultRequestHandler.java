@@ -1,7 +1,12 @@
 package org.codelibs.elasticsearch.taste.rest.handler;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.codelibs.elasticsearch.taste.exception.MissingShardsException;
 import org.codelibs.elasticsearch.taste.exception.OperationFailedException;
@@ -35,11 +40,14 @@ public abstract class DefaultRequestHandler implements RequestHandler {
 
     protected final ESLogger logger;
 
+    protected Lock indexCreationLock;
+
     public DefaultRequestHandler(final Settings settings, final Client client) {
         this.settings = settings;
         this.client = client;
-        maxRetryCount = settings.getAsInt("taste.rest.retry", 5);
+        maxRetryCount = settings.getAsInt("taste.rest.retry", 20);
         logger = Loggers.getLogger(getClass(), settings);
+        indexCreationLock = new ReentrantLock();
     }
 
     protected void validateRespose(final SearchResponse response) {
@@ -60,18 +68,32 @@ public abstract class DefaultRequestHandler implements RequestHandler {
         }
     }
 
-    protected void sleep(final Exception e) {
-        final long waitTime = random.nextInt(1500) + 500;
+    protected void sleep(final Throwable t) {
+        final long waitTime = random.nextInt(2500) + 500;
         if (logger.isDebugEnabled()) {
             logger.debug(
-                    "The search request is rejected. Waiting for {} and retrying it.",
-                    e, waitTime);
+                    "Waiting for {} and retrying it. The cause is: "
+                            + t.getMessage(), waitTime);
         }
         try {
             Thread.sleep(waitTime);
         } catch (final InterruptedException e1) {
             // ignore
         }
+    }
+
+    protected List<Throwable> getErrorList(final Map<String, Object> paramMap) {
+        @SuppressWarnings("unchecked")
+        List<Throwable> errorList = (List<Throwable>) paramMap.get(ERROR_LIST);
+        if (errorList == null) {
+            errorList = new ArrayList<>(maxRetryCount);
+            paramMap.put(ERROR_LIST, errorList);
+        }
+        return errorList;
+    }
+
+    protected void fork(final Runnable task) {
+        ForkJoinPool.commonPool().execute(task);
     }
 
     /* (non-Javadoc)

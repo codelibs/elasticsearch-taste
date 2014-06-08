@@ -81,7 +81,7 @@ public abstract class RmdItemsHandler extends ActionHandler {
             model.setScrollSize(SettingsUtils.get(scrollSettings, "size", 1000));
             model.setScrollKeepAlive(new Scroll(TimeValue
                     .timeValueSeconds(SettingsUtils.get(scrollSettings,
-                            "keep_alive", 60))));
+                            "keep_alive", 60L))));
 
             final Map<String, Object> querySettings = SettingsUtils.get(
                     modelInfoSettings, "query");

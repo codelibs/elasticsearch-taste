@@ -106,13 +106,10 @@ public class ElasticsearchDataModel implements DataModel {
     }
 
     public void setMaxCacheWeight(final long weight) {
+        final Weigher<DmKey, DmValue> weigher = (key, value) -> 24 + value
+                .getSize();
         cache = CacheBuilder.newBuilder().maximumWeight(weight)
-                .weigher(new Weigher<DmKey, DmValue>() {
-                    @Override
-                    public int weigh(final DmKey key, final DmValue value) {
-                        return 24 + value.getSize();
-                    }
-                }).build();
+                .weigher(weigher).build();
     }
 
     @Override

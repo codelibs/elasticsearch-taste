@@ -1,7 +1,8 @@
 package org.codelibs.elasticsearch.taste.rest.handler;
 
+import static org.codelibs.elasticsearch.util.ListenerUtils.on;
+
 import java.security.InvalidParameterException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -9,7 +10,8 @@ import java.util.Map;
 
 import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.exception.OperationFailedException;
-import org.elasticsearch.action.ActionListener;
+import org.codelibs.elasticsearch.util.ListenerUtils.OnFailureListener;
+import org.codelibs.elasticsearch.util.ListenerUtils.OnResponseListener;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
@@ -78,94 +80,84 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
         rootObj.put(itemIdField, itemId);
         rootObj.put(valueField, value);
         rootObj.put(timestampField, timestamp);
+        final OnResponseListener<IndexResponse> responseListener = response -> {
+            chain.execute(params, listener, requestMap, paramMap);
+        };
+        final OnFailureListener failureListener = t -> {
+            final List<Throwable> errorList = getErrorList(paramMap);
+            if (errorList.size() >= maxRetryCount) {
+                listener.onError(t);
+            } else {
+                errorList.add(t);
+                doPreferenceIndexExists(params, listener, requestMap, paramMap,
+                        chain);
+            }
+        };
         client.prepareIndex(index, type).setSource(rootObj)
-                .execute(new ActionListener<IndexResponse>() {
-                    @Override
-                    public void onResponse(final IndexResponse response) {
-                        chain.execute(params, listener, requestMap, paramMap);
-                    }
-
-                    @Override
-                    public void onFailure(final Throwable t) {
-                        @SuppressWarnings("unchecked")
-                        List<Throwable> errorList = (List<Throwable>) paramMap
-                                .get(ERROR_LIST);
-                        if (errorList == null) {
-                            errorList = new ArrayList<>();
-                            paramMap.put(ERROR_LIST, errorList);
-                        }
-                        if (errorList.size() >= maxRetryCount) {
-                            listener.onError(t);
-                        } else {
-                            errorList.add(t);
-                            doPreferenceIndexCreation(params, listener,
-                                    requestMap, paramMap, chain);
-                        }
-                    }
-                });
+                .execute(on(responseListener, failureListener));
     }
 
-    private void doPreferenceIndexCreation(final Params params,
+    private void doPreferenceIndexExists(final Params params,
             final RequestHandler.OnErrorListener listener,
             final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final RequestHandlerChain chain) {
         final String index = params.param("index");
 
-        client.admin().indices().prepareExists(index)
-                .execute(new ActionListener<IndicesExistsResponse>() {
+        try {
+            indexCreationLock.lock();
+            final IndicesExistsResponse indicesExistsResponse = client.admin()
+                    .indices().prepareExists(index).execute().actionGet();
+            if (indicesExistsResponse.isExists()) {
+                doPreferenceMappingCreation(params, listener, requestMap,
+                        paramMap, chain);
+            } else {
+                doPreferenceIndexCreation(params, listener, requestMap,
+                        paramMap, chain, index);
+            }
+        } catch (final Exception e) {
+            final List<Throwable> errorList = getErrorList(paramMap);
+            if (errorList.size() >= maxRetryCount) {
+                listener.onError(e);
+            } else {
+                sleep(e);
+                errorList.add(e);
+                fork(() -> execute(params, listener, requestMap, paramMap,
+                        chain));
+            }
+        } finally {
+            indexCreationLock.unlock();
+        }
+    }
 
-                    @Override
-                    public void onResponse(
-                            final IndicesExistsResponse indicesExistsResponse) {
-                        if (indicesExistsResponse.isExists()) {
-                            doPreferenceMappingCreation(params, listener,
-                                    requestMap, paramMap, chain);
-                        } else {
-                            client.admin()
-                                    .indices()
-                                    .prepareCreate(index)
-                                    .execute(
-                                            new ActionListener<CreateIndexResponse>() {
-
-                                                @Override
-                                                public void onResponse(
-                                                        final CreateIndexResponse createIndexResponse) {
-                                                    if (createIndexResponse
-                                                            .isAcknowledged()) {
-                                                        doPreferenceMappingCreation(
-                                                                params,
-                                                                listener,
-                                                                requestMap,
-                                                                paramMap, chain);
-                                                    } else {
-                                                        onFailure(new OperationFailedException(
-                                                                "Failed to create "
-                                                                        + index));
-                                                    }
-                                                }
-
-                                                @Override
-                                                public void onFailure(
-                                                        final Throwable t) {
-                                                    if (t instanceof IndexAlreadyExistsException) {
-                                                        doPreferenceIndexCreation(
-                                                                params,
-                                                                listener,
-                                                                requestMap,
-                                                                paramMap, chain);
-                                                    } else {
-                                                        listener.onError(t);
-                                                    }
-                                                }
-                                            });
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(final Throwable t) {
-                        listener.onError(t);
-                    }
-                });
+    private void doPreferenceIndexCreation(final Params params,
+            final RequestHandler.OnErrorListener listener,
+            final Map<String, Object> requestMap,
+            final Map<String, Object> paramMap,
+            final RequestHandlerChain chain, final String index) {
+        try {
+            final CreateIndexResponse createIndexResponse = client.admin()
+                    .indices().prepareCreate(index).execute().actionGet();
+            if (createIndexResponse.isAcknowledged()) {
+                doPreferenceMappingCreation(params, listener, requestMap,
+                        paramMap, chain);
+            } else {
+                listener.onError(new OperationFailedException(
+                        "Failed to create " + index));
+            }
+        } catch (final IndexAlreadyExistsException e) {
+            fork(() -> doPreferenceIndexExists(params, listener, requestMap,
+                    paramMap, chain));
+        } catch (final Exception e) {
+            final List<Throwable> errorList = getErrorList(paramMap);
+            if (errorList.size() >= maxRetryCount) {
+                listener.onError(e);
+            } else {
+                sleep(e);
+                errorList.add(e);
+                fork(() -> execute(params, listener, requestMap, paramMap,
+                        chain));
+            }
+        }
     }
 
     private void doPreferenceMappingCreation(final Params params,
@@ -215,28 +207,16 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
                     .endObject()//
                     .endObject();
 
-            client.admin().indices().preparePutMapping(index).setType(type)
-                    .setSource(builder)
-                    .execute(new ActionListener<PutMappingResponse>() {
-
-                        @Override
-                        public void onResponse(
-                                final PutMappingResponse queueMappingResponse) {
-                            if (queueMappingResponse.isAcknowledged()) {
-                                execute(params, listener, requestMap, paramMap,
-                                        chain);
-                            } else {
-                                onFailure(new OperationFailedException(
-                                        "Failed to create mapping for " + index
-                                                + "/" + type));
-                            }
-                        }
-
-                        @Override
-                        public void onFailure(final Throwable t) {
-                            listener.onError(t);
-                        }
-                    });
+            final PutMappingResponse mappingResponse = client.admin().indices()
+                    .preparePutMapping(index).setType(type).setSource(builder)
+                    .execute().actionGet();
+            if (mappingResponse.isAcknowledged()) {
+                fork(() -> execute(params, listener, requestMap, paramMap,
+                        chain));
+            } else {
+                listener.onError(new OperationFailedException(
+                        "Failed to create mapping for " + index + "/" + type));
+            }
         } catch (final Exception e) {
             listener.onError(e);
         }

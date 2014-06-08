@@ -6,8 +6,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ForkJoinPool;
 
 import org.apache.lucene.index.DocsAndPositionsEnum;
 import org.apache.lucene.index.Fields;
@@ -61,6 +64,8 @@ public class GenTermValuesHandler extends ActionHandler {
 
     private boolean interrupted = false;
 
+    private Number numOfThread;
+
     public GenTermValuesHandler(final RiverSettings settings,
             final Client client) {
         super(settings, client);
@@ -68,6 +73,9 @@ public class GenTermValuesHandler extends ActionHandler {
 
     @Override
     public void execute() {
+        numOfThread = SettingsUtils.get(rootSettings, "num_of_thread", Runtime
+                .getRuntime().availableProcessors());
+
         final Map<String, Object> sourceIndexSettings = SettingsUtils.get(
                 rootSettings, "source");
         sourceIndex = SettingsUtils.get(sourceIndexSettings, "index",
@@ -171,8 +179,9 @@ public class GenTermValuesHandler extends ActionHandler {
                     termVectorRequest.selectedFields(sourceFields);
                     requestBuilder.add(termVectorRequest);
                 }
-                mTVListener = new MultiTermVectorsListener(requestHandlers,
-                        eventParams, idMap, logger);
+                mTVListener = new MultiTermVectorsListener(
+                        numOfThread.intValue(), requestHandlers, eventParams,
+                        idMap, logger);
                 requestBuilder.execute(mTVListener);
 
                 client.prepareSearchScroll(response.getScrollId())
@@ -201,13 +210,17 @@ public class GenTermValuesHandler extends ActionHandler {
 
         private volatile List<CountDownLatch> genTVGateList;
 
-        public MultiTermVectorsListener(final RequestHandler[] requestHandlers,
+        private int numOfThread;
+
+        public MultiTermVectorsListener(final int numOfThread,
+                final RequestHandler[] requestHandlers,
                 final Params eventParams, final Map<String, String> idMap,
                 final ESLogger logger) {
             this.requestHandlers = requestHandlers;
             this.eventParams = eventParams;
             this.idMap = idMap;
             this.logger = logger;
+            this.numOfThread = numOfThread > 1 ? numOfThread : 1;
         }
 
         public void await() throws InterruptedException {
@@ -224,6 +237,7 @@ public class GenTermValuesHandler extends ActionHandler {
             final Date now = new Date();
             final List<CountDownLatch> gateList = new ArrayList<>();
             try {
+                final Queue<Map<String, Object>> eventMapQueue = new ConcurrentLinkedQueue<>();
                 for (final MultiTermVectorsItemResponse mTVItemResponse : response) {
                     if (mTVItemResponse.isFailed()) {
                         final Failure failure = mTVItemResponse.getFailure();
@@ -243,7 +257,6 @@ public class GenTermValuesHandler extends ActionHandler {
                                     .getFields();
                             final Iterator<String> fieldIter = fields
                                     .iterator();
-                            final List<Map<String, Object>> eventMapList = new ArrayList<>();
                             while (fieldIter.hasNext()) {
                                 final String fieldName = fieldIter.next();
                                 final Terms curTerms = fields.terms(fieldName);
@@ -274,50 +287,9 @@ public class GenTermValuesHandler extends ActionHandler {
                                                             TasteConstants.TIMESTAMP_FIELD),
                                                     now);
 
-                                    eventMapList.add(requestMap);
+                                    eventMapQueue.add(requestMap);
                                 }
                             }
-
-                            final CountDownLatch genTVGate = new CountDownLatch(
-                                    eventMapList.size());
-                            for (final Map<String, Object> eventMap : eventMapList) {
-                                final RequestHandler[] handlers = new RequestHandler[requestHandlers.length + 1];
-                                for (int i = 0; i < requestHandlers.length; i++) {
-                                    handlers[i] = requestHandlers[i];
-                                }
-                                handlers[requestHandlers.length] = new RequestHandler() {
-                                    boolean done = false;
-
-                                    @Override
-                                    public void execute(
-                                            final Params params,
-                                            final RequestHandler.OnErrorListener listener,
-                                            final Map<String, Object> requestMap,
-                                            final Map<String, Object> paramMap,
-                                            final RequestHandlerChain chain) {
-                                        if (!done) {
-                                            done = true;
-                                            genTVGate.countDown();
-                                        }
-                                    }
-                                };
-                                final Map<String, Object> paramMap = new HashMap<>();
-                                new RequestHandlerChain(handlers).execute(
-                                        eventParams,
-                                        new RequestHandler.OnErrorListener() {
-                                            boolean done = false;
-
-                                            @Override
-                                            public void onError(
-                                                    final Throwable t) {
-                                                if (!done) {
-                                                    done = true;
-                                                    genTVGate.countDown();
-                                                }
-                                            }
-                                        }, eventMap, paramMap);
-                            }
-                            gateList.add(genTVGate);
                         } catch (final Exception e) {
                             logger.error("[{}/{}/{}] Failed to send an event.",
                                     e, mTVItemResponse.getIndex(),
@@ -326,9 +298,41 @@ public class GenTermValuesHandler extends ActionHandler {
                         }
                     }
                 }
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("doc/term event size: {}",
+                            eventMapQueue.size());
+                }
+
+                final CountDownLatch genTVGate = new CountDownLatch(numOfThread);
+                for (int i = 0; i < numOfThread; i++) {
+                    ForkJoinPool.commonPool().execute(
+                            () -> processEvent(eventMapQueue, genTVGate));
+                }
+                gateList.add(genTVGate);
             } finally {
                 genTVGateList = gateList;
             }
+        }
+
+        private void processEvent(
+                final Queue<Map<String, Object>> eventMapQueue,
+                final CountDownLatch genTVGate) {
+            final Map<String, Object> eventMap = eventMapQueue.poll();
+            if (eventMap == null) {
+                genTVGate.countDown();
+                return;
+            }
+            final RequestHandler[] handlers = new RequestHandler[requestHandlers.length + 1];
+            for (int i = 0; i < requestHandlers.length; i++) {
+                handlers[i] = requestHandlers[i];
+            }
+            handlers[requestHandlers.length] = (params, listener, requestMap,
+                    paramMap, chain) -> processEvent(eventMapQueue, genTVGate);
+            new RequestHandlerChain(handlers).execute(eventParams, t -> {
+                logger.error("Failed to store: " + eventMap, t);
+                processEvent(eventMapQueue, genTVGate);
+            }, eventMap, new HashMap<>());
         }
 
         @Override
