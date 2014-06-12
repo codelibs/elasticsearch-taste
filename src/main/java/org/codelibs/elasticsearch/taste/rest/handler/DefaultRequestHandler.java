@@ -20,6 +20,8 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent.Params;
 
 public abstract class DefaultRequestHandler implements RequestHandler {
+    protected static final String DEFAULT_HEALTH_REQUEST_TIMEOUT = "30s";
+
     protected static final String ERROR_LIST = "error.list";
 
     public static final String FIELD_TIMESTAMP = "field.timestamp";

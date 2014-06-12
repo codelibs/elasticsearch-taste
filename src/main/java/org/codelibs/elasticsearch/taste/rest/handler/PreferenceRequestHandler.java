@@ -12,6 +12,7 @@ import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.exception.OperationFailedException;
 import org.codelibs.elasticsearch.util.ListenerUtils.OnFailureListener;
 import org.codelibs.elasticsearch.util.ListenerUtils.OnResponseListener;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
@@ -177,6 +178,20 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
                 TasteConstants.TIMESTAMP_FIELD);
 
         try {
+            ClusterHealthResponse healthResponse = client
+                    .admin()
+                    .cluster()
+                    .prepareHealth(index)
+                    .setWaitForYellowStatus()
+                    .setTimeout(
+                            params.param("timeout",
+                                    DEFAULT_HEALTH_REQUEST_TIMEOUT)).execute()
+                    .actionGet();
+            if (healthResponse.isTimedOut()) {
+                listener.onError(new OperationFailedException(
+                        "Failed to create index: " + index + "/" + type));
+            }
+
             final XContentBuilder builder = XContentFactory.jsonBuilder()//
                     .startObject()//
                     .startObject(type)//
