@@ -55,7 +55,7 @@ public class SimilarUsersHandler extends RecommendationHandler {
 
         ClusterUtils.waitForAvailable(client, indexInfo.getUserIndex(),
                 indexInfo.getItemIndex(), indexInfo.getPreferenceIndex(),
-                indexInfo.getItemSimilarityIndex());
+                indexInfo.getUserSimilarityIndex());
 
         final UserBasedRecommenderBuilder recommenderBuilder = new UserBasedRecommenderBuilder(
                 indexInfo, rootSettings);
