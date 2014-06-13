@@ -64,7 +64,7 @@ public class GenTermValuesHandler extends ActionHandler {
 
     private boolean interrupted = false;
 
-    private Number numOfThread;
+    private int numOfThread;
 
     public GenTermValuesHandler(final RiverSettings settings,
             final Client client) {
@@ -73,8 +73,7 @@ public class GenTermValuesHandler extends ActionHandler {
 
     @Override
     public void execute() {
-        numOfThread = SettingsUtils.get(rootSettings, "num_of_thread", Runtime
-                .getRuntime().availableProcessors());
+        numOfThread = getNumOfThread();
 
         final Map<String, Object> sourceIndexSettings = SettingsUtils.get(
                 rootSettings, "source");
@@ -179,9 +178,8 @@ public class GenTermValuesHandler extends ActionHandler {
                     termVectorRequest.selectedFields(sourceFields);
                     requestBuilder.add(termVectorRequest);
                 }
-                mTVListener = new MultiTermVectorsListener(
-                        numOfThread.intValue(), requestHandlers, eventParams,
-                        idMap, logger);
+                mTVListener = new MultiTermVectorsListener(numOfThread,
+                        requestHandlers, eventParams, idMap, logger);
                 requestBuilder.execute(mTVListener);
 
                 client.prepareSearchScroll(response.getScrollId())

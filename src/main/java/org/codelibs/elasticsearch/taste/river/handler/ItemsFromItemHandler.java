@@ -43,7 +43,7 @@ public class ItemsFromItemHandler extends RecommendationHandler {
                 10);
         final int maxDuration = SettingsUtils.get(rootSettings, "max_duration",
                 0);
-        final int degreeOfParallelism = getDegreeOfParallelism();
+        final int degreeOfParallelism = getNumOfThread();
 
         final Map<String, Object> indexInfoSettings = SettingsUtils.get(
                 rootSettings, "index_info");

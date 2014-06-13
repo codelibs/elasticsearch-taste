@@ -104,14 +104,6 @@ public abstract class RecommendationHandler extends ActionHandler {
         }
     }
 
-    protected int getDegreeOfParallelism() {
-        int degreeOfParallelism = Runtime.getRuntime().availableProcessors() - 1;
-        if (degreeOfParallelism < 1) {
-            degreeOfParallelism = 1;
-        }
-        return degreeOfParallelism;
-    }
-
     protected void waitForTasks(final ForkJoinTask<?>[] tasks,
             final int maxDuration) {
         final long endTime = maxDuration > 0 ? System.currentTimeMillis()

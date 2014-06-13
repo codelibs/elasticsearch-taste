@@ -2,6 +2,7 @@ package org.codelibs.elasticsearch.taste.river.handler;
 
 import java.util.Map;
 
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
@@ -27,4 +28,9 @@ public abstract class ActionHandler {
     public abstract void execute();
 
     public abstract void close();
+
+    protected int getNumOfThread() {
+        return SettingsUtils.get(rootSettings, "num_of_thread", Runtime
+                .getRuntime().availableProcessors());
+    }
 }
