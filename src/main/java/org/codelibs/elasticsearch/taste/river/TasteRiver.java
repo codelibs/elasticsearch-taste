@@ -5,10 +5,11 @@ import java.util.Map;
 import org.codelibs.elasticsearch.taste.river.handler.ActionHandler;
 import org.codelibs.elasticsearch.taste.river.handler.EvalItemsFromUserHandler;
 import org.codelibs.elasticsearch.taste.river.handler.GenTermValuesHandler;
-import org.codelibs.elasticsearch.taste.river.handler.RmdItemsFromItemHandler;
-import org.codelibs.elasticsearch.taste.river.handler.RmdItemsFromUserHandler;
+import org.codelibs.elasticsearch.taste.river.handler.ItemsFromItemHandler;
+import org.codelibs.elasticsearch.taste.river.handler.ItemsFromUserHandler;
+import org.codelibs.elasticsearch.taste.river.handler.SimilarUsersHandler;
 import org.codelibs.elasticsearch.taste.service.TasteService;
-import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingResponse;
+import org.codelibs.elasticsearch.util.river.RiverUtils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.river.AbstractRiverComponent;
@@ -26,6 +27,8 @@ public class TasteRiver extends AbstractRiverComponent implements River {
     private static final String RECOMMENDED_ITEMS_FROM_ITEM = "recommended_items_from_item";
 
     private static final String RECOMMENDED_ITEMS_FROM_USER = "recommended_items_from_user";
+
+    private static final String SIMILAR_USERS = "similar_users";
 
     private final Client client;
 
@@ -50,11 +53,15 @@ public class TasteRiver extends AbstractRiverComponent implements River {
             final Map<String, Object> rootSettings = settings.settings();
             final Object actionObj = rootSettings.get("action");
             if (RECOMMENDED_ITEMS_FROM_USER.equals(actionObj)) {
-                final RmdItemsFromUserHandler handler = new RmdItemsFromUserHandler(
+                final ItemsFromUserHandler handler = new ItemsFromUserHandler(
                         settings, client, tasteService);
                 startRiverThread(handler);
             } else if (RECOMMENDED_ITEMS_FROM_ITEM.equals(actionObj)) {
-                final RmdItemsFromItemHandler handler = new RmdItemsFromItemHandler(
+                final ItemsFromItemHandler handler = new ItemsFromItemHandler(
+                        settings, client, tasteService);
+                startRiverThread(handler);
+            } else if (SIMILAR_USERS.equals(actionObj)) {
+                final SimilarUsersHandler handler = new SimilarUsersHandler(
                         settings, client, tasteService);
                 startRiverThread(handler);
             } else if (EVALUATE_ITEMS_FROM_USER.equals(actionObj)) {
@@ -71,20 +78,32 @@ public class TasteRiver extends AbstractRiverComponent implements River {
             }
         } finally {
             if (riverThread == null) {
-                deleteRiver();
+                try {
+                    RiverUtils.delete(client, riverName);
+                    logger.info("Deleted " + riverName.name() + "river.");
+                } catch (final Exception e) {
+                    logger.warn("Failed to delete " + riverName.name(), e);
+                }
             }
         }
     }
 
     protected void startRiverThread(final ActionHandler handler) {
         final String name = RIVER_THREAD_NAME_PREFIX + riverName.name();
-        riverThread = new Thread((Runnable) () -> {
+        riverThread = new Thread(() -> {
             try {
                 handler.execute();
             } catch (final Exception e) {
-                logger.error("River {} is failed.", e, riverName.name());
+                logger.error("River {} is failed.", e, riverName.name(), e);
             } finally {
-                deleteRiver();
+                try {
+                    RiverUtils.delete(client, riverName);
+                    logger.info("Deleted " + riverName.name() + "river.");
+                } catch (final Exception e) {
+                    logger.warn("Failed to delete " + riverName.name(), e);
+                } finally {
+                    handler.close();
+                }
             }
         }, name);
         try {
@@ -101,18 +120,6 @@ public class TasteRiver extends AbstractRiverComponent implements River {
         if (riverThread != null) {
             riverThread.interrupt();
             riverThread = null;
-        }
-    }
-
-    protected void deleteRiver() {
-        final DeleteMappingResponse deleteMappingResponse = client.admin()
-                .indices().prepareDeleteMapping("_river")
-                .setType(riverName.name()).execute().actionGet();
-        if (deleteMappingResponse.isAcknowledged()) {
-            logger.info("Deleted " + riverName.name() + "river.");
-        } else {
-            logger.warn("Failed to delete " + riverName.name() + ". Response: "
-                    + deleteMappingResponse.toString());
         }
     }
 

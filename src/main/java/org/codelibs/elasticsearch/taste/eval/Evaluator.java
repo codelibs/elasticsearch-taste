@@ -55,4 +55,7 @@ public interface Evaluator {
     void setId(String id);
 
     String getId();
+
+    void interrupt();
+
 }

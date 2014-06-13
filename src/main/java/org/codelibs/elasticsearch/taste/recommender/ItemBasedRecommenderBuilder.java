@@ -9,7 +9,7 @@ import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.cf.taste.similarity.ItemSimilarity;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
-import org.codelibs.elasticsearch.util.SettingsUtils;
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public class ItemBasedRecommenderBuilder extends AbstractRecommenderBuilder {
 

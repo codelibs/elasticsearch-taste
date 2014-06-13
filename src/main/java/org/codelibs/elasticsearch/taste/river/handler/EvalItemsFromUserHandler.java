@@ -5,8 +5,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
+import org.apache.mahout.cf.taste.model.DataModel;
+import org.apache.mahout.common.RandomUtils;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
+import org.codelibs.elasticsearch.taste.eval.Evaluation;
 import org.codelibs.elasticsearch.taste.eval.EvaluationConfig;
 import org.codelibs.elasticsearch.taste.eval.Evaluator;
 import org.codelibs.elasticsearch.taste.eval.EvaluatorFactory;
@@ -16,13 +20,17 @@ import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.service.TasteService;
 import org.codelibs.elasticsearch.taste.writer.ObjectWriter;
 import org.codelibs.elasticsearch.taste.writer.ResultWriter;
-import org.codelibs.elasticsearch.util.SettingsUtils;
+import org.codelibs.elasticsearch.util.admin.ClusterUtils;
+import org.codelibs.elasticsearch.util.io.IOUtils;
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.river.RiverSettings;
 
-public class EvalItemsFromUserHandler extends RmdItemsHandler {
+public class EvalItemsFromUserHandler extends RecommendationHandler {
+    private Evaluator evaluator;
+
     public EvalItemsFromUserHandler(final RiverSettings settings,
             final Client client, final TasteService tasteService) {
         super(settings, client, tasteService);
@@ -50,7 +58,7 @@ public class EvalItemsFromUserHandler extends RmdItemsHandler {
         final ElasticsearchDataModel dataModel = createDataModel(client,
                 indexInfo, modelInfoSettings);
 
-        waitForClusterStatus(indexInfo.getUserIndex(),
+        ClusterUtils.waitForAvailable(client, indexInfo.getUserIndex(),
                 indexInfo.getItemIndex(), indexInfo.getPreferenceIndex(),
                 indexInfo.getReportIndex());
 
@@ -59,7 +67,7 @@ public class EvalItemsFromUserHandler extends RmdItemsHandler {
 
         final Map<String, Object> evaluatorSettings = SettingsUtils.get(
                 rootSettings, "evaluator");
-        final Evaluator evaluator = createEvaluator(evaluatorSettings);
+        evaluator = createEvaluator(evaluatorSettings);
 
         final ObjectWriter writer = createReportWriter(indexInfo);
 
@@ -77,8 +85,68 @@ public class EvalItemsFromUserHandler extends RmdItemsHandler {
             }
         }
 
-        tasteService.evaluate(dataModel, recommenderBuilder, evaluator, writer,
-                config);
+        evaluate(dataModel, recommenderBuilder, evaluator, writer, config);
+    }
+
+    protected void evaluate(final DataModel dataModel,
+            final RecommenderBuilder recommenderBuilder,
+            final Evaluator evaluator, final ObjectWriter writer,
+            final EvaluationConfig config) {
+
+        RandomUtils.useTestSeed();
+        try {
+            long time = System.currentTimeMillis();
+            final Evaluation evaluation = evaluator.evaluate(
+                    recommenderBuilder, dataModel, config);
+            time = System.currentTimeMillis() - time;
+
+            String reportType;
+            if (recommenderBuilder instanceof UserBasedRecommenderBuilder) {
+                reportType = "user_based";
+            } else {
+                reportType = "unknown";
+            }
+
+            final Map<String, Object> rootObj = new HashMap<>();
+            rootObj.put("report_type", reportType);
+            rootObj.put("evaluator_id", evaluator.getId());
+            final Map<String, Object> evaluationObj = new HashMap<>();
+
+            final Map<String, Object> timeObj = new HashMap<>();
+            timeObj.put("average_processing",
+                    evaluation.getAverageProcessingTime());
+            timeObj.put("max_processing", evaluation.getMaxProcessingTime());
+            timeObj.put("total_processing", evaluation.getTotalProcessingTime());
+            evaluationObj.put("time", timeObj);
+
+            final Map<String, Object> preferenceObj = new HashMap<>();
+            preferenceObj.put("success", evaluation.getSuccessful());
+            preferenceObj.put("failure", evaluation.getFailure());
+            preferenceObj.put("no_estimate", evaluation.getNoEstimate());
+            preferenceObj.put("total", evaluation.getTotalPreference());
+            evaluationObj.put("preference", preferenceObj);
+
+            final Map<String, Object> targetObj = new HashMap<>();
+            targetObj.put("training", evaluation.getTraining());
+            targetObj.put("test", evaluation.getTest());
+            evaluationObj.put("target", targetObj);
+
+            evaluationObj.put("score", evaluation.getScore());
+            rootObj.put("evaluation", evaluationObj);
+            final Map<String, Object> configObj = new HashMap<>();
+            configObj
+                    .put("training_percentage", config.getTrainingPercentage());
+            configObj.put("evaluation_percentage",
+                    config.getEvaluationPercentage());
+            configObj.put("margin_for_error", config.getMarginForError());
+            rootObj.put("config", configObj);
+
+            writer.write(rootObj);
+        } catch (final TasteException e) {
+            logger.error("Evaluator {}({}) is failed.", e, evaluator, config);
+        } finally {
+            IOUtils.closeQuietly(writer);
+        }
     }
 
     protected ResultWriter createResultWriter(final IndexInfo indexInfo,
@@ -214,5 +282,10 @@ public class EvalItemsFromUserHandler extends RmdItemsHandler {
         writer.open();
 
         return writer;
+    }
+
+    @Override
+    public void close() {
+        evaluator.interrupt();
     }
 }

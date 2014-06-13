@@ -12,7 +12,7 @@ import org.codelibs.elasticsearch.taste.TasteSystemException;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.neighborhood.UserNeighborhoodFactory;
 import org.codelibs.elasticsearch.taste.recommender.impl.DefaultUserBasedRecommender;
-import org.codelibs.elasticsearch.util.SettingsUtils;
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public class UserBasedRecommenderBuilder extends AbstractRecommenderBuilder {
 

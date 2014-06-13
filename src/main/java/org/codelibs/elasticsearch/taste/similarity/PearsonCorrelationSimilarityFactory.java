@@ -6,7 +6,7 @@ import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.common.Weighting;
 import org.apache.mahout.cf.taste.impl.similarity.PearsonCorrelationSimilarity;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
-import org.codelibs.elasticsearch.util.SettingsUtils;
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public class PearsonCorrelationSimilarityFactory<T> extends
         AbstractUserSimilarityFactory<T> {

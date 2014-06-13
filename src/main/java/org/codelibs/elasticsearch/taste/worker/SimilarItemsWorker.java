@@ -25,6 +25,8 @@ public class SimilarItemsWorker implements Runnable {
 
     protected ItemWriter writer;
 
+    private boolean running;
+
     public SimilarItemsWorker(final int number,
             final ItemBasedRecommender recommender,
             final LongPrimitiveIterator itemIDs,
@@ -42,7 +44,8 @@ public class SimilarItemsWorker implements Runnable {
         final long startTime = System.currentTimeMillis();
         logger.info("Worker {} is started.", number);
         long itemID;
-        while ((itemID = nextId(itemIDs)) != -1) {
+        running = true;
+        while ((itemID = nextId(itemIDs)) != -1 && running) {
             try {
                 long time = System.nanoTime();
                 final List<RecommendedItem> recommendedItems = recommender
@@ -83,5 +86,9 @@ public class SimilarItemsWorker implements Runnable {
                 return -1;
             }
         }
+    }
+
+    public void stop() {
+        running = false;
     }
 }

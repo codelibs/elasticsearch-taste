@@ -4,7 +4,7 @@ import java.util.Map;
 
 import org.apache.mahout.cf.taste.impl.neighborhood.ThresholdUserNeighborhood;
 import org.apache.mahout.cf.taste.neighborhood.UserNeighborhood;
-import org.codelibs.elasticsearch.util.SettingsUtils;
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public class ThresholdUserNeighborhoodFactory extends
         AbstractUserNeighborhoodFactory {

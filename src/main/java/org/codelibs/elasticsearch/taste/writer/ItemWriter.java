@@ -23,6 +23,10 @@ public class ItemWriter extends ObjectWriter {
 
     protected boolean verbose = false;
 
+    protected String targetIndex;
+
+    protected String targetType;
+
     protected String itemIndex;
 
     protected String itemType;
@@ -35,14 +39,14 @@ public class ItemWriter extends ObjectWriter {
         this.targetIdField = targetIdField;
     }
 
-    public void write(final long userID,
+    public void write(final long id,
             final List<RecommendedItem> recommendedItems) {
         final Map<String, Object> rootObj = new HashMap<>();
-        rootObj.put(targetIdField, userID);
+        rootObj.put(targetIdField, id);
         if (verbose) {
             final GetResponse response = client
-                    .prepareGet(index, type, Long.toString(userID)).execute()
-                    .actionGet();
+                    .prepareGet(targetIndex, targetType, Long.toString(id))
+                    .execute().actionGet();
             if (response.isExists()) {
                 final Map<String, Object> map = response.getSourceAsMap();
                 map.remove(targetIdField);
@@ -87,6 +91,14 @@ public class ItemWriter extends ObjectWriter {
             return map;
         }
         return null;
+    }
+
+    public void setTargetIndex(final String targetIndex) {
+        this.targetIndex = targetIndex;
+    }
+
+    public void setTargetType(final String targetType) {
+        this.targetType = targetType;
     }
 
     public void setItemIdField(final String itemIdField) {

@@ -27,8 +27,8 @@ import org.codelibs.elasticsearch.taste.rest.handler.PreferenceRequestHandler;
 import org.codelibs.elasticsearch.taste.rest.handler.RequestHandler;
 import org.codelibs.elasticsearch.taste.rest.handler.RequestHandlerChain;
 import org.codelibs.elasticsearch.taste.rest.handler.UserRequestHandler;
-import org.codelibs.elasticsearch.util.SettingsUtils;
-import org.codelibs.elasticsearch.util.StringUtils;
+import org.codelibs.elasticsearch.util.lang.StringUtils;
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
@@ -403,5 +403,10 @@ public class GenTermValuesHandler extends ActionHandler {
         public String param(final String key) {
             return param(key, null);
         }
+    }
+
+    @Override
+    public void close() {
+        interrupted = true;
     }
 }

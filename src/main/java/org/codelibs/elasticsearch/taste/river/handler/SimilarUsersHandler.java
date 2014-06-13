@@ -1,14 +1,25 @@
 package org.codelibs.elasticsearch.taste.river.handler;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
 
+import org.apache.mahout.cf.taste.common.TasteException;
+import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
+import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
+import org.apache.mahout.cf.taste.recommender.Recommender;
+import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.service.TasteService;
-import org.codelibs.elasticsearch.taste.writer.ItemWriter;
-import org.codelibs.elasticsearch.util.SettingsUtils;
+import org.codelibs.elasticsearch.taste.worker.SimilarUsersWorker;
+import org.codelibs.elasticsearch.taste.writer.UserWriter;
+import org.codelibs.elasticsearch.util.admin.ClusterUtils;
+import org.codelibs.elasticsearch.util.io.IOUtils;
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.cache.Cache;
 import org.elasticsearch.common.cache.CacheBuilder;
@@ -16,15 +27,18 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.river.RiverSettings;
 
-public class RmdItemsFromUserHandler extends RmdItemsHandler {
-    public RmdItemsFromUserHandler(final RiverSettings settings,
+public class SimilarUsersHandler extends RecommendationHandler {
+
+    private SimilarUsersWorker[] workers;
+
+    public SimilarUsersHandler(final RiverSettings settings,
             final Client client, final TasteService tasteService) {
         super(settings, client, tasteService);
     }
 
     @Override
     public void execute() {
-        final int numOfItems = SettingsUtils.get(rootSettings, "num_of_items",
+        final int numOfUsers = SettingsUtils.get(rootSettings, "num_of_users",
                 10);
         final int maxDuration = SettingsUtils.get(rootSettings, "max_duration",
                 0);
@@ -39,35 +53,68 @@ public class RmdItemsFromUserHandler extends RmdItemsHandler {
         final ElasticsearchDataModel dataModel = createDataModel(client,
                 indexInfo, modelInfoSettings);
 
-        waitForClusterStatus(indexInfo.getUserIndex(),
+        ClusterUtils.waitForAvailable(client, indexInfo.getUserIndex(),
                 indexInfo.getItemIndex(), indexInfo.getPreferenceIndex(),
-                indexInfo.getRecommendationIndex());
-
-        final ItemWriter writer = createRecommendedItemsWriter(indexInfo,
-                rootSettings);
+                indexInfo.getItemSimilarityIndex());
 
         final UserBasedRecommenderBuilder recommenderBuilder = new UserBasedRecommenderBuilder(
                 indexInfo, rootSettings);
 
-        tasteService.compute(dataModel, recommenderBuilder, writer, numOfItems,
+        final UserWriter writer = createSimilarUsersWriter(indexInfo,
+                rootSettings);
+
+        compute(dataModel, recommenderBuilder, writer, numOfUsers,
                 degreeOfParallelism, maxDuration);
     }
 
-    protected ItemWriter createRecommendedItemsWriter(
-            final IndexInfo indexInfo, final Map<String, Object> rootSettings) {
-        final ItemWriter writer = new ItemWriter(client,
-                indexInfo.getRecommendationIndex(),
-                indexInfo.getRecommendationType(), indexInfo.getUserIdField());
-        writer.setItemIndex(indexInfo.getItemIndex());
-        writer.setItemType(indexInfo.getItemType());
-        writer.setItemIdField(indexInfo.getItemIdField());
-        writer.setItemsField(indexInfo.getItemsField());
+    protected void compute(final ElasticsearchDataModel dataModel,
+            final RecommenderBuilder recommenderBuilder,
+            final UserWriter writer, final int numOfUsers,
+            final int degreeOfParallelism, final int maxDuration) {
+        Recommender recommender = null;
+        try {
+            recommender = recommenderBuilder.buildRecommender(dataModel);
+
+            logger.info("Recommender: {}", recommender);
+            logger.info("NumOfSimilarUsers: {}", numOfUsers);
+            logger.info("MaxDuration: {}", maxDuration);
+
+            final ForkJoinPool commonPool = ForkJoinPool.commonPool();
+
+            final LongPrimitiveIterator userIDs = dataModel.getUserIDs();
+
+            final ForkJoinTask<?>[] tasks = new ForkJoinTask<?>[degreeOfParallelism];
+            workers = new SimilarUsersWorker[degreeOfParallelism];
+            for (int n = 0; n < degreeOfParallelism; n++) {
+                final SimilarUsersWorker worker = new SimilarUsersWorker(n,
+                        (UserBasedRecommender) recommender, userIDs,
+                        numOfUsers, writer);
+                workers[n] = worker;
+                tasks[n] = commonPool.submit(worker);
+            }
+
+            waitForTasks(tasks, maxDuration);
+        } catch (final TasteException e) {
+            logger.error("Recommender {} is failed.", e, recommender);
+        } finally {
+            IOUtils.closeQuietly(writer);
+        }
+
+    }
+
+    protected UserWriter createSimilarUsersWriter(final IndexInfo indexInfo,
+            final Map<String, Object> rootSettings) {
+        final UserWriter writer = new UserWriter(client,
+                indexInfo.getUserSimilarityIndex(),
+                indexInfo.getUserSimilarityType(), indexInfo.getUserIdField());
+        writer.setUserIdField(indexInfo.getUserIdField());
+        writer.setUsersField(indexInfo.getUsersField());
         writer.setValueField(indexInfo.getValueField());
         writer.setTimestampField(indexInfo.getTimestampField());
         try {
             final XContentBuilder builder = XContentFactory.jsonBuilder()//
                     .startObject()//
-                    .startObject(indexInfo.getRecommendationType())//
+                    .startObject(indexInfo.getUserSimilarityType())//
                     .startObject("properties")//
 
                     // @timestamp
@@ -81,12 +128,12 @@ public class RmdItemsFromUserHandler extends RmdItemsHandler {
                     .field("type", "long")//
                     .endObject()//
 
-                    // items
-                    .startObject(indexInfo.getItemsField())//
+                    // users
+                    .startObject(indexInfo.getUsersField())//
                     .startObject("properties")//
 
-                    // item_id
-                    .startObject(indexInfo.getItemIdField())//
+                    // user_id
+                    .startObject(indexInfo.getUserIdField())//
                     .field("type", "long")//
                     .endObject()//
 
@@ -123,5 +170,14 @@ public class RmdItemsFromUserHandler extends RmdItemsHandler {
         writer.open();
 
         return writer;
+    }
+
+    @Override
+    public void close() {
+        if (workers != null) {
+            Arrays.stream(workers).forEach(worker -> {
+                worker.stop();
+            });
+        }
     }
 }

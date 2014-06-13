@@ -3,7 +3,7 @@ package org.codelibs.elasticsearch.taste.similarity;
 import java.util.Map;
 
 import org.apache.mahout.cf.taste.model.DataModel;
-import org.codelibs.elasticsearch.util.SettingsUtils;
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public abstract class AbstractUserSimilarityFactory<T> implements
         SimilarityFactory<T> {

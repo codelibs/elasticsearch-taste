@@ -46,7 +46,7 @@ import org.codelibs.elasticsearch.taste.eval.Evaluation;
 import org.codelibs.elasticsearch.taste.eval.EvaluationConfig;
 import org.codelibs.elasticsearch.taste.eval.Evaluator;
 import org.codelibs.elasticsearch.taste.writer.ResultWriter;
-import org.codelibs.elasticsearch.util.IOUtils;
+import org.codelibs.elasticsearch.util.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +70,8 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
     protected ResultWriter resultWriter;
 
     protected String id;
+
+    private boolean interrupted = false;
 
     protected AbstractDifferenceEvaluator() {
         random = RandomUtils.getRandom();
@@ -381,6 +383,9 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
         public EstimateStatsResult call() throws TasteException {
             final EstimateStatsResult stats = new EstimateStatsResult();
             for (final Preference realPref : prefs) {
+                if (interrupted) {
+                    break;
+                }
                 float estimatedPreference = Float.NaN;
                 final float actualPreference = realPref.getValue();
                 final long start = System.currentTimeMillis();
@@ -430,4 +435,8 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
 
     }
 
+    @Override
+    public void interrupt() {
+        interrupted = true;
+    }
 }

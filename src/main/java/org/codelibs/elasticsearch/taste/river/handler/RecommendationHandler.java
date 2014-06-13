@@ -1,27 +1,28 @@
 package org.codelibs.elasticsearch.taste.river.handler;
 
-import java.util.List;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.TimeUnit;
 
 import org.codelibs.elasticsearch.taste.TasteSystemException;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.service.TasteService;
-import org.codelibs.elasticsearch.util.SettingsUtils;
-import org.codelibs.elasticsearch.util.StringUtils;
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.codelibs.elasticsearch.util.lang.StringUtils;
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.search.Scroll;
 
-public abstract class RmdItemsHandler extends ActionHandler {
+public abstract class RecommendationHandler extends ActionHandler {
 
     protected TasteService tasteService;
 
-    public RmdItemsHandler(final RiverSettings settings, final Client client,
-            final TasteService tasteService) {
+    public RecommendationHandler(final RiverSettings settings,
+            final Client client, final TasteService tasteService) {
         super(settings, client);
         this.tasteService = tasteService;
     }
@@ -31,17 +32,6 @@ public abstract class RmdItemsHandler extends ActionHandler {
      */
     @Override
     public abstract void execute();
-
-    protected void waitForClusterStatus(final String... indices) {
-        final ClusterHealthResponse response = client.admin().cluster()
-                .prepareHealth(indices).setWaitForYellowStatus().execute()
-                .actionGet();
-        final List<String> failures = response.getAllValidationFailures();
-        if (!failures.isEmpty()) {
-            throw new TasteSystemException("Cluster is not available: "
-                    + failures.toString());
-        }
-    }
 
     protected ElasticsearchDataModel createDataModel(final Client client,
             final IndexInfo indexInfo,
@@ -78,10 +68,11 @@ public abstract class RmdItemsHandler extends ActionHandler {
 
             final Map<String, Object> scrollSettings = SettingsUtils.get(
                     modelInfoSettings, "scroll");
-            model.setScrollSize(SettingsUtils.get(scrollSettings, "size", 1000));
+            model.setScrollSize(((Number) SettingsUtils.get(scrollSettings,
+                    "size", 1000)).intValue());
             model.setScrollKeepAlive(new Scroll(TimeValue
-                    .timeValueSeconds(SettingsUtils.get(scrollSettings,
-                            "keep_alive", 60L))));
+                    .timeValueSeconds(((Number) SettingsUtils.get(
+                            scrollSettings, "keep_alive", 60L)).longValue())));
 
             final Map<String, Object> querySettings = SettingsUtils.get(
                     modelInfoSettings, "query");
@@ -119,6 +110,35 @@ public abstract class RmdItemsHandler extends ActionHandler {
             degreeOfParallelism = 1;
         }
         return degreeOfParallelism;
+    }
+
+    protected void waitForTasks(final ForkJoinTask<?>[] tasks,
+            final int maxDuration) {
+        final long endTime = maxDuration > 0 ? System.currentTimeMillis()
+                + maxDuration * 60 * 1000 : 0;
+        try {
+            Arrays.stream(tasks).forEach(
+                    task -> {
+                        try {
+                            if (endTime > 0) {
+                                task.get(endTime - System.currentTimeMillis(),
+                                        TimeUnit.MILLISECONDS);
+                            } else {
+                                task.get();
+                            }
+                        } catch (final Exception e) {
+                            throw new TasteSystemException(
+                                    "Failed to process tasks.", e);
+                        }
+                    });
+        } catch (final Exception e) {
+            logger.warn("Unable to complete the computation.", e);
+            Arrays.stream(tasks).forEach(task -> {
+                if (!task.isCancelled()) {
+                    task.cancel(true);
+                }
+            });
+        }
     }
 
     private long parseWeight(final String value) {

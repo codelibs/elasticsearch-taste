@@ -9,15 +9,16 @@ This plugin provides the following features on Elasticsearch:
 * Data management for Users/Items/Preferences.
 * Item-based Recommender.
 * User-based Recommender.
+* Similar Users
 
 ## Version
 
 | Taste     | Elasticsearch |
 |:---------:|:-------------:|
-| master    | 1.1.X         |
+| master    | 1.2.X         |
 | 0.1.0     | 1.1.1         |
 
-Note that this plugin does not support Java 6.
+Note that this plugin supports Java 8 or the above.
 
 ### Issues/Questions
 
@@ -144,9 +145,32 @@ The result is stored in report type:
       }
     }
 
+### Similar Users
+
+Calcurating similar users, run the following request:
+
+    curl -XPOST localhost:9200/_river/movielens_similar_users/_meta -d '{
+      "type": "taste",
+      "action": "similar_users",
+      "num_of_users": 10,
+      "data_model": {
+        "cache": {
+          "weight": "100m"
+        }
+      },
+      "index_info": {
+        "index": "movielens"
+      }
+    }'
+
+If you check similar users for User ID 1, type the below:
+
+    curl -XGET "localhost:9200/movielens/user_similarity/_search?q=user_id:1&pretty"
+
+
 ## Specification
 
-### Data management
+### Data Management
 
 This plugin manages data of Users, Items and Preferences on Elasticsearch.
 These data are stored in each index and type.

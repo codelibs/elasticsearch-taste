@@ -6,7 +6,7 @@ import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.neighborhood.NearestNUserNeighborhood;
 import org.apache.mahout.cf.taste.neighborhood.UserNeighborhood;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
-import org.codelibs.elasticsearch.util.SettingsUtils;
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public class NearestNUserNeighborhoodFactory extends
         AbstractUserNeighborhoodFactory {

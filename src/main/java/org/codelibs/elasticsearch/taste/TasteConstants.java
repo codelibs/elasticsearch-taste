@@ -14,6 +14,8 @@ public class TasteConstants {
 
     public static final String ITEM_SIMILARITY_TYPE = "item_similarity";
 
+    public static final String USER_SIMILARITY_TYPE = "user_similarity";
+
     public static final String REPORT_TYPE = "report";
 
     public static final String RECOMMENDATION_TYPE = "recommendation";
@@ -29,4 +31,6 @@ public class TasteConstants {
     public static final String ITEMS_FILED = "items";
 
     public static final String RESULT_TYPE = "result";
+
+    public static final String USERS_FILED = "users";
 }

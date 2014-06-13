@@ -3,7 +3,7 @@ package org.codelibs.elasticsearch.taste.model;
 import java.util.Map;
 
 import org.codelibs.elasticsearch.taste.TasteConstants;
-import org.codelibs.elasticsearch.util.SettingsUtils;
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public class IndexInfo {
     private String preferenceIndex;
@@ -26,6 +26,10 @@ public class IndexInfo {
 
     private String itemSimilarityType;
 
+    private String userSimilarityIndex;
+
+    private String userSimilarityType;
+
     private String reportIndex;
 
     private String reportType;
@@ -43,6 +47,8 @@ public class IndexInfo {
     private String timestampField;
 
     private String itemsField;
+
+    private String usersField;
 
     public IndexInfo(final Map<String, Object> indexInfoSettings) {
         final String defaultIndex = SettingsUtils.get(indexInfoSettings,
@@ -81,6 +87,13 @@ public class IndexInfo {
         itemSimilarityType = SettingsUtils.get(itemSimilaritySettings, "type",
                 TasteConstants.ITEM_SIMILARITY_TYPE);
 
+        final Map<String, Object> userSimilaritySettings = SettingsUtils.get(
+                indexInfoSettings, "user_similarity");
+        userSimilarityIndex = SettingsUtils.get(userSimilaritySettings,
+                "index", defaultIndex);
+        userSimilarityType = SettingsUtils.get(userSimilaritySettings, "type",
+                TasteConstants.USER_SIMILARITY_TYPE);
+
         final Map<String, Object> reportSettings = SettingsUtils.get(
                 indexInfoSettings, "report");
         reportIndex = SettingsUtils.get(reportSettings, "index", defaultIndex);
@@ -105,6 +118,8 @@ public class IndexInfo {
                 TasteConstants.TIMESTAMP_FIELD);
         itemsField = SettingsUtils.get(fieldSettings, "items",
                 TasteConstants.ITEMS_FILED);
+        usersField = SettingsUtils.get(fieldSettings, "users",
+                TasteConstants.USERS_FILED);
     }
 
     public String getPreferenceIndex() {
@@ -147,6 +162,14 @@ public class IndexInfo {
         return itemSimilarityType;
     }
 
+    public String getUserSimilarityIndex() {
+        return userSimilarityIndex;
+    }
+
+    public String getUserSimilarityType() {
+        return userSimilarityType;
+    }
+
     public String getReportIndex() {
         return reportIndex;
     }
@@ -181,5 +204,9 @@ public class IndexInfo {
 
     public String getItemsField() {
         return itemsField;
+    }
+
+    public String getUsersField() {
+        return usersField;
     }
 }

@@ -9,7 +9,7 @@ import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.similarity.SimilarityFactory;
-import org.codelibs.elasticsearch.util.SettingsUtils;
+import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public abstract class AbstractRecommenderBuilder implements RecommenderBuilder {
     protected static final String DATA_MODEL_ATTR = "dataModel";

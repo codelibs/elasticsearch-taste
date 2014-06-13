@@ -1,39 +1,40 @@
 package org.codelibs.elasticsearch.taste.worker;
 
-import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
-import org.apache.mahout.cf.taste.recommender.RecommendedItem;
-import org.apache.mahout.cf.taste.recommender.Recommender;
+import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
 import org.apache.mahout.common.MemoryUtil;
-import org.codelibs.elasticsearch.taste.writer.ItemWriter;
+import org.codelibs.elasticsearch.taste.writer.UserWriter;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 
-public class RecommendedItemsWorker implements Runnable {
+import com.google.common.primitives.Longs;
+
+public class SimilarUsersWorker implements Runnable {
     private static final ESLogger logger = Loggers
-            .getLogger(RecommendedItemsWorker.class);
+            .getLogger(SimilarUsersWorker.class);
 
     protected int number;
 
-    protected Recommender recommender;
+    protected UserBasedRecommender recommender;
 
     protected LongPrimitiveIterator userIDs;
 
-    protected int numOfRecommendedItems;
+    protected int numOfSimilarUsers;
 
-    protected ItemWriter writer;
+    protected UserWriter writer;
 
     private boolean running;
 
-    public RecommendedItemsWorker(final int number,
-            final Recommender recommender, final LongPrimitiveIterator userIDs,
-            final int numOfRecommendedItems, final ItemWriter writer) {
+    public SimilarUsersWorker(final int number,
+            final UserBasedRecommender recommender,
+            final LongPrimitiveIterator userIDs, final int numOfSimilarUsers,
+            final UserWriter writer) {
         this.number = number;
         this.recommender = recommender;
         this.userIDs = userIDs;
-        this.numOfRecommendedItems = numOfRecommendedItems;
+        this.numOfSimilarUsers = numOfSimilarUsers;
         this.writer = writer;
     }
 
@@ -47,19 +48,19 @@ public class RecommendedItemsWorker implements Runnable {
         while ((userID = nextId(userIDs)) != -1 && running) {
             try {
                 long time = System.nanoTime();
-                final List<RecommendedItem> recommendedItems = recommender
-                        .recommend(userID, numOfRecommendedItems);
-                writer.write(userID, recommendedItems);
+                final long[] mostSimilarUserIDs = recommender
+                        .mostSimilarUserIDs(userID, numOfSimilarUsers);
+                writer.write(userID, mostSimilarUserIDs);
                 time = (System.nanoTime() - time) / 1000000;
                 if (logger.isDebugEnabled()) {
                     logger.debug("User {} => Time: {} ms, Result: {}", userID,
-                            time, recommendedItems);
+                            time, Longs.join(",", mostSimilarUserIDs));
                     if (count % 100 == 0) {
                         MemoryUtil.logMemoryStatistics();
                     }
                 } else {
                     logger.info("User {} => Time: {} ms, Result: {} items",
-                            userID, time, recommendedItems.size());
+                            userID, time, mostSimilarUserIDs.length);
                     if (count % 1000 == 0) {
                         MemoryUtil.logMemoryStatistics();
                     }
@@ -77,6 +78,10 @@ public class RecommendedItemsWorker implements Runnable {
                 System.currentTimeMillis() - startTime);
     }
 
+    public void stop() {
+        running = false;
+    }
+
     private long nextId(final LongPrimitiveIterator userIDs) {
         synchronized (userIDs) {
             try {
@@ -85,9 +90,5 @@ public class RecommendedItemsWorker implements Runnable {
                 return -1;
             }
         }
-    }
-
-    public void stop() {
-        running = false;
     }
 }

@@ -26,4 +26,5 @@ public abstract class ActionHandler {
 
     public abstract void execute();
 
+    public abstract void close();
 }
