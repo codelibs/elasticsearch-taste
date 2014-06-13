@@ -29,8 +29,8 @@ public abstract class ActionHandler {
 
     public abstract void close();
 
-    protected int getNumOfThread() {
-        return SettingsUtils.get(rootSettings, "num_of_thread", Runtime
+    protected int getNumOfThreads() {
+        return SettingsUtils.get(rootSettings, "num_of_threads", Runtime
                 .getRuntime().availableProcessors());
     }
 }

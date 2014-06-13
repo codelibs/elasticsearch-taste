@@ -1,8 +1,7 @@
 package org.codelibs.elasticsearch.taste.river.handler;
 
-import java.util.Arrays;
 import java.util.Map;
-import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.codelibs.elasticsearch.taste.TasteSystemException;
@@ -104,32 +103,28 @@ public abstract class RecommendationHandler extends ActionHandler {
         }
     }
 
-    protected void waitForTasks(final ForkJoinTask<?>[] tasks,
+    protected void waitFor(final ExecutorService executorService,
             final int maxDuration) {
-        final long endTime = maxDuration > 0 ? System.currentTimeMillis()
-                + maxDuration * 60 * 1000 : 0;
+        executorService.shutdown();
+        boolean succeeded = false;
         try {
-            Arrays.stream(tasks).forEach(
-                    task -> {
-                        try {
-                            if (endTime > 0) {
-                                task.get(endTime - System.currentTimeMillis(),
-                                        TimeUnit.MILLISECONDS);
-                            } else {
-                                task.get();
-                            }
-                        } catch (final Exception e) {
-                            throw new TasteSystemException(
-                                    "Failed to process tasks.", e);
-                        }
-                    });
-        } catch (final Exception e) {
-            logger.warn("Unable to complete the computation.", e);
-            Arrays.stream(tasks).forEach(task -> {
-                if (!task.isCancelled()) {
-                    task.cancel(true);
-                }
-            });
+            if (maxDuration == 0) {
+                succeeded = executorService.awaitTermination(Long.MAX_VALUE,
+                        TimeUnit.NANOSECONDS);
+            } else {
+                succeeded = executorService.awaitTermination(maxDuration,
+                        TimeUnit.MINUTES);
+            }
+            if (!succeeded) {
+                logger.warn(
+                        "Unable to complete the computation in {} minutes!",
+                        maxDuration);
+            }
+        } catch (final InterruptedException e) {
+            logger.warn("Interrupted a executor.", e);
+        }
+        if (!succeeded) {
+            executorService.shutdownNow();
         }
     }
 

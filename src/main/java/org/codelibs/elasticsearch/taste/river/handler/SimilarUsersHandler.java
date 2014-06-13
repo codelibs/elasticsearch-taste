@@ -1,10 +1,9 @@
 package org.codelibs.elasticsearch.taste.river.handler;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Map;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
@@ -29,8 +28,6 @@ import org.elasticsearch.river.RiverSettings;
 
 public class SimilarUsersHandler extends RecommendationHandler {
 
-    private SimilarUsersWorker[] workers;
-
     public SimilarUsersHandler(final RiverSettings settings,
             final Client client, final TasteService tasteService) {
         super(settings, client, tasteService);
@@ -42,7 +39,7 @@ public class SimilarUsersHandler extends RecommendationHandler {
                 10);
         final int maxDuration = SettingsUtils.get(rootSettings, "max_duration",
                 0);
-        final int degreeOfParallelism = getNumOfThread();
+        final int numOfThreads = getNumOfThreads();
 
         final Map<String, Object> indexInfoSettings = SettingsUtils.get(
                 rootSettings, "index_info");
@@ -64,13 +61,16 @@ public class SimilarUsersHandler extends RecommendationHandler {
                 rootSettings);
 
         compute(dataModel, recommenderBuilder, writer, numOfUsers,
-                degreeOfParallelism, maxDuration);
+                numOfThreads, maxDuration);
     }
 
     protected void compute(final ElasticsearchDataModel dataModel,
             final RecommenderBuilder recommenderBuilder,
             final UserWriter writer, final int numOfUsers,
             final int degreeOfParallelism, final int maxDuration) {
+        final ExecutorService executorService = Executors
+                .newFixedThreadPool(degreeOfParallelism);
+
         Recommender recommender = null;
         try {
             recommender = recommenderBuilder.buildRecommender(dataModel);
@@ -79,21 +79,16 @@ public class SimilarUsersHandler extends RecommendationHandler {
             logger.info("NumOfSimilarUsers: {}", numOfUsers);
             logger.info("MaxDuration: {}", maxDuration);
 
-            final ForkJoinPool commonPool = ForkJoinPool.commonPool();
-
             final LongPrimitiveIterator userIDs = dataModel.getUserIDs();
 
-            final ForkJoinTask<?>[] tasks = new ForkJoinTask<?>[degreeOfParallelism];
-            workers = new SimilarUsersWorker[degreeOfParallelism];
             for (int n = 0; n < degreeOfParallelism; n++) {
                 final SimilarUsersWorker worker = new SimilarUsersWorker(n,
                         (UserBasedRecommender) recommender, userIDs,
                         numOfUsers, writer);
-                workers[n] = worker;
-                tasks[n] = commonPool.submit(worker);
+                executorService.execute(worker);
             }
 
-            waitForTasks(tasks, maxDuration);
+            waitFor(executorService, maxDuration);
         } catch (final TasteException e) {
             logger.error("Recommender {} is failed.", e, recommender);
         } finally {
@@ -174,10 +169,5 @@ public class SimilarUsersHandler extends RecommendationHandler {
 
     @Override
     public void close() {
-        if (workers != null) {
-            Arrays.stream(workers).forEach(worker -> {
-                worker.stop();
-            });
-        }
     }
 }
