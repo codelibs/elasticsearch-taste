@@ -7,6 +7,7 @@ import java.util.concurrent.Executors;
 
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
+import org.apache.mahout.cf.taste.impl.common.LongPrimitiveArrayIterator;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.Recommender;
@@ -54,17 +55,20 @@ public class ItemsFromUserHandler extends RecommendationHandler {
                 indexInfo.getItemIndex(), indexInfo.getPreferenceIndex(),
                 indexInfo.getRecommendationIndex());
 
+        final long[] userIDs = getTargetIDs(indexInfo.getUserIndex(),
+                indexInfo.getUserType(), indexInfo.getUserIdField(), "users");
+
         final UserBasedRecommenderBuilder recommenderBuilder = new UserBasedRecommenderBuilder(
                 indexInfo, rootSettings);
 
         final ItemWriter writer = createRecommendedItemsWriter(indexInfo,
                 rootSettings);
 
-        compute(dataModel, recommenderBuilder, writer, numOfItems,
+        compute(userIDs, dataModel, recommenderBuilder, writer, numOfItems,
                 numOfThreads, maxDuration);
     }
 
-    protected void compute(final DataModel dataModel,
+    protected void compute(final long[] userIDs, final DataModel dataModel,
             final RecommenderBuilder recommenderBuilder,
             final ItemWriter writer, final int numOfRecommendedItems,
             final int degreeOfParallelism, final int maxDuration) {
@@ -79,11 +83,13 @@ public class ItemsFromUserHandler extends RecommendationHandler {
             logger.info("NumOfRecommendedItems: {}", numOfRecommendedItems);
             logger.info("MaxDuration: {}", maxDuration);
 
-            final LongPrimitiveIterator userIDs = dataModel.getUserIDs();
+            final LongPrimitiveIterator userIdIter = userIDs == null ? dataModel
+                    .getUserIDs() : new LongPrimitiveArrayIterator(userIDs);
 
             for (int n = 0; n < degreeOfParallelism; n++) {
                 final RecommendedItemsWorker worker = new RecommendedItemsWorker(
-                        n, recommender, userIDs, numOfRecommendedItems, writer);
+                        n, recommender, userIdIter, numOfRecommendedItems,
+                        writer);
                 executorService.execute(worker);
             }
 

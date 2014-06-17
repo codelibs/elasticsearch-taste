@@ -7,6 +7,7 @@ import java.util.concurrent.Executors;
 
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
+import org.apache.mahout.cf.taste.impl.common.LongPrimitiveArrayIterator;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
@@ -54,17 +55,21 @@ public class SimilarUsersHandler extends RecommendationHandler {
                 indexInfo.getItemIndex(), indexInfo.getPreferenceIndex(),
                 indexInfo.getUserSimilarityIndex());
 
+        final long[] userIDs = getTargetIDs(indexInfo.getUserIndex(),
+                indexInfo.getUserType(), indexInfo.getUserIdField(), "users");
+
         final UserBasedRecommenderBuilder recommenderBuilder = new UserBasedRecommenderBuilder(
                 indexInfo, rootSettings);
 
         final UserWriter writer = createSimilarUsersWriter(indexInfo,
                 rootSettings);
 
-        compute(dataModel, recommenderBuilder, writer, numOfUsers,
+        compute(userIDs, dataModel, recommenderBuilder, writer, numOfUsers,
                 numOfThreads, maxDuration);
     }
 
-    protected void compute(final ElasticsearchDataModel dataModel,
+    protected void compute(final long[] userIDs,
+            final ElasticsearchDataModel dataModel,
             final RecommenderBuilder recommenderBuilder,
             final UserWriter writer, final int numOfUsers,
             final int degreeOfParallelism, final int maxDuration) {
@@ -79,11 +84,12 @@ public class SimilarUsersHandler extends RecommendationHandler {
             logger.info("NumOfSimilarUsers: {}", numOfUsers);
             logger.info("MaxDuration: {}", maxDuration);
 
-            final LongPrimitiveIterator userIDs = dataModel.getUserIDs();
+            final LongPrimitiveIterator userIdIter = userIDs == null ? dataModel
+                    .getUserIDs() : new LongPrimitiveArrayIterator(userIDs);
 
             for (int n = 0; n < degreeOfParallelism; n++) {
                 final SimilarUsersWorker worker = new SimilarUsersWorker(n,
-                        (UserBasedRecommender) recommender, userIDs,
+                        (UserBasedRecommender) recommender, userIdIter,
                         numOfUsers, writer);
                 executorService.execute(worker);
             }

@@ -7,6 +7,7 @@ import java.util.concurrent.Executors;
 
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
+import org.apache.mahout.cf.taste.impl.common.LongPrimitiveArrayIterator;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
@@ -55,17 +56,20 @@ public class ItemsFromItemHandler extends RecommendationHandler {
                 indexInfo.getItemIndex(), indexInfo.getPreferenceIndex(),
                 indexInfo.getItemSimilarityIndex());
 
+        final long[] itemIDs = getTargetIDs(indexInfo.getItemIndex(),
+                indexInfo.getItemType(), indexInfo.getItemIdField(), "items");
+
         final ItemBasedRecommenderBuilder recommenderBuilder = new ItemBasedRecommenderBuilder(
                 indexInfo, rootSettings);
 
         final ItemWriter writer = createSimilarItemsWriter(indexInfo,
                 rootSettings);
 
-        compute(dataModel, recommenderBuilder, writer, numOfItems,
+        compute(itemIDs, dataModel, recommenderBuilder, writer, numOfItems,
                 numOfThreads, maxDuration);
     }
 
-    protected void compute(final DataModel dataModel,
+    protected void compute(final long[] itemIDs, final DataModel dataModel,
             final RecommenderBuilder recommenderBuilder,
             final ItemWriter writer, final int numOfMostSimilarItems,
             final int degreeOfParallelism, final int maxDuration) {
@@ -80,11 +84,12 @@ public class ItemsFromItemHandler extends RecommendationHandler {
             logger.info("NumOfMostSimilarItems: {}", numOfMostSimilarItems);
             logger.info("MaxDuration: {}", maxDuration);
 
-            final LongPrimitiveIterator itemIDs = dataModel.getItemIDs();
+            final LongPrimitiveIterator itemIdIter = itemIDs == null ? dataModel
+                    .getItemIDs() : new LongPrimitiveArrayIterator(itemIDs);
 
             for (int n = 0; n < degreeOfParallelism; n++) {
                 final SimilarItemsWorker worker = new SimilarItemsWorker(n,
-                        (ItemBasedRecommender) recommender, itemIDs,
+                        (ItemBasedRecommender) recommender, itemIdIter,
                         numOfMostSimilarItems, writer);
                 executorService.execute(worker);
             }
