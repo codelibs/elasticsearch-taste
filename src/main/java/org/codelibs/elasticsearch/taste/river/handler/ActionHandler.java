@@ -54,7 +54,7 @@ public abstract class ActionHandler {
         final Number keepAlive = SettingsUtils.get(userSettings, "keep_alive",
                 60000); //1min
 
-        final int count = 0;
+        int count = 0;
         long[] targetIDs = null;
         SearchResponse response = client.prepareSearch(index).setTypes(type)
                 .setSearchType(SearchType.SCAN)
@@ -69,6 +69,10 @@ public abstract class ActionHandler {
             final SearchHits hits = response.getHits();
             if (targetIDs == null) {
                 targetIDs = new long[(int) hits.getTotalHits()];
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{} users are found by {}",
+                            hits.getTotalHits(), userQuery);
+                }
             }
 
             if (hits.getHits().length == 0) {
@@ -80,6 +84,7 @@ public abstract class ActionHandler {
                         fieldName);
                 final Number value = searchHitField.getValue();
                 targetIDs[count] = value.longValue();
+                count++;
             }
         }
         return targetIDs;
