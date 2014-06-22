@@ -50,9 +50,11 @@ public class UserRequestHandler extends DefaultRequestHandler {
         final String index = params.param("user_index", params.param("index"));
         final String userType = params.param("user_type",
                 TasteConstants.USER_TYPE);
-        final String userIdField = params.param(FIELD_USER_ID,
+        final String userIdField = params.param(
+                TasteConstants.REQUEST_PARAM_USER_ID_FIELD,
                 TasteConstants.USER_ID_FIELD);
-        final String timestampField = params.param(FIELD_TIMESTAMP,
+        final String timestampField = params.param(
+                TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
                 TasteConstants.TIMESTAMP_FIELD);
 
         @SuppressWarnings("unchecked")
@@ -203,9 +205,11 @@ public class UserRequestHandler extends DefaultRequestHandler {
             final Map<String, Object> paramMap, final RequestHandlerChain chain) {
         final String index = params.param("user_index", params.param("index"));
         final String type = params.param("user_type", TasteConstants.USER_TYPE);
-        final String userIdField = params.param(FIELD_USER_ID,
+        final String userIdField = params.param(
+                TasteConstants.REQUEST_PARAM_USER_ID_FIELD,
                 TasteConstants.USER_ID_FIELD);
-        final String timestampField = params.param(FIELD_TIMESTAMP,
+        final String timestampField = params.param(
+                TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
                 TasteConstants.TIMESTAMP_FIELD);
 
         try {

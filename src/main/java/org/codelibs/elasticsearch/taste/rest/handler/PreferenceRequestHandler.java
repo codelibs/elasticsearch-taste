@@ -43,13 +43,17 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
                 params.param("index"));
         final String type = params.param("preference_type",
                 params.param("type", TasteConstants.PREFERENCE_TYPE));
-        final String userIdField = params.param(FIELD_USER_ID,
+        final String userIdField = params.param(
+                TasteConstants.REQUEST_PARAM_USER_ID_FIELD,
                 TasteConstants.USER_ID_FIELD);
-        final String itemIdField = params.param(FIELD_ITEM_ID,
+        final String itemIdField = params.param(
+                TasteConstants.REQUEST_PARAM_ITEM_ID_FIELD,
                 TasteConstants.ITEM_ID_FIELD);
-        final String valueField = params.param(FIELD_VALUE,
+        final String valueField = params.param(
+                TasteConstants.REQUEST_PARAM_VALUE_FIELD,
                 TasteConstants.VALUE_FIELD);
-        final String timestampField = params.param(FIELD_TIMESTAMP,
+        final String timestampField = params.param(
+                TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
                 TasteConstants.TIMESTAMP_FIELD);
 
         final Number value = (Number) requestMap.get("value");
@@ -168,13 +172,17 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
         final String index = params.param("index");
         final String type = params
                 .param("type", TasteConstants.PREFERENCE_TYPE);
-        final String userIdField = params.param(FIELD_USER_ID,
+        final String userIdField = params.param(
+                TasteConstants.REQUEST_PARAM_USER_ID_FIELD,
                 TasteConstants.USER_ID_FIELD);
-        final String itemIdField = params.param(FIELD_ITEM_ID,
+        final String itemIdField = params.param(
+                TasteConstants.REQUEST_PARAM_ITEM_ID_FIELD,
                 TasteConstants.ITEM_ID_FIELD);
-        final String valueField = params.param(FIELD_VALUE,
+        final String valueField = params.param(
+                TasteConstants.REQUEST_PARAM_VALUE_FIELD,
                 TasteConstants.VALUE_FIELD);
-        final String timestampField = params.param(FIELD_TIMESTAMP,
+        final String timestampField = params.param(
+                TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
                 TasteConstants.TIMESTAMP_FIELD);
 
         try {

@@ -24,14 +24,6 @@ public abstract class DefaultRequestHandler implements RequestHandler {
 
     protected static final String ERROR_LIST = "error.list";
 
-    public static final String FIELD_TIMESTAMP = "field.timestamp";
-
-    public static final String FIELD_VALUE = "field.value";
-
-    public static final String FIELD_ITEM_ID = "field.item_id";
-
-    public static final String FIELD_USER_ID = "field.user_id";
-
     protected static Random random = new Random();
 
     protected Settings settings;

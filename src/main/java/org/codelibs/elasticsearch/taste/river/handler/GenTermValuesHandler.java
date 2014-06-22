@@ -21,7 +21,6 @@ import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.UnicodeUtil;
 import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.exception.InvalidParameterException;
-import org.codelibs.elasticsearch.taste.rest.handler.DefaultRequestHandler;
 import org.codelibs.elasticsearch.taste.rest.handler.ItemRequestHandler;
 import org.codelibs.elasticsearch.taste.rest.handler.PreferenceRequestHandler;
 import org.codelibs.elasticsearch.taste.rest.handler.RequestHandler;
@@ -275,13 +274,14 @@ public class GenTermValuesHandler extends ActionHandler {
                                     final Map<String, Object> itemMap = new HashMap<>();
                                     itemMap.put("id", termValue);
                                     requestMap.put("item", itemMap);
-                                    requestMap.put(eventParams.param(
-                                            DefaultRequestHandler.FIELD_VALUE,
-                                            TasteConstants.VALUE_FIELD),
-                                            termFreq);
                                     requestMap
                                             .put(eventParams
-                                                    .param(DefaultRequestHandler.FIELD_TIMESTAMP,
+                                                    .param(TasteConstants.REQUEST_PARAM_VALUE_FIELD,
+                                                            TasteConstants.VALUE_FIELD),
+                                                    termFreq);
+                                    requestMap
+                                            .put(eventParams
+                                                    .param(TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
                                                             TasteConstants.TIMESTAMP_FIELD),
                                                     now);
 
