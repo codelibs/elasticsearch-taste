@@ -135,11 +135,11 @@ public abstract class RecommendationHandler extends ActionHandler {
         try {
             final char lastChar = value.charAt(value.length() - 1);
             if (lastChar == 'g' || lastChar == 'G') {
-                return Long.parseLong(value.substring(0, value.length() - 2));
+                return Long.parseLong(value.substring(0, value.length() - 1)) * 1000 * 1000 * 1000;
             } else if (lastChar == 'm' || lastChar == 'M') {
-                return Long.parseLong(value.substring(0, value.length() - 2));
+                return Long.parseLong(value.substring(0, value.length() - 1)) * 1000 * 1000;
             } else if (lastChar == 'k' || lastChar == 'K') {
-                return Long.parseLong(value.substring(0, value.length() - 2));
+                return Long.parseLong(value.substring(0, value.length() - 1)) * 1000;
             }
             return Long.parseLong(value);
         } catch (final Exception e) {
