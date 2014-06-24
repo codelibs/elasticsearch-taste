@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.TasteSystemException;
@@ -39,8 +38,6 @@ import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.sort.SortOrder;
 
 public class TasteSearchRestAction extends BaseRestHandler {
-    private static Pattern idPattern = Pattern.compile("[\\._]id",
-            Pattern.CASE_INSENSITIVE);
 
     private Cache<String, Map<String, Object>> cache;
 
@@ -59,9 +56,9 @@ public class TasteSearchRestAction extends BaseRestHandler {
                 .maximumSize(Long.parseLong(size)).build();
 
         restController.registerHandler(RestRequest.Method.GET,
-                "/{index}/_taste/{field}/{id}", this);
+                "/{index}/_taste/{objectType}/{id}", this);
         restController.registerHandler(RestRequest.Method.GET,
-                "/{index}/{type}/_taste/{field}/{id}", this);
+                "/{index}/{type}/_taste/{objectType}/{id}", this);
 
     }
 
@@ -69,14 +66,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
     public void handleRequest(final RestRequest request,
             final RestChannel channel) {
 
-        final String index = request
-                .param(TasteConstants.REQUEST_PARAM_INFO_INDEX,
-                        request.param("index"));
-        final String type = request
-                .param(TasteConstants.REQUEST_PARAM_INFO_TYPE);
-        final String timestampField = request.param(
-                TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
-                TasteConstants.TIMESTAMP_FIELD);
+        Info info = new Info(request);
 
         final String id = request.param("id");
         if (StringUtils.isBlank(id)) {
@@ -84,59 +74,53 @@ public class TasteSearchRestAction extends BaseRestHandler {
             return;
         }
 
-        final String fieldName = request.param("field");
-        if (StringUtils.isBlank(fieldName)) {
-            onError(channel, new NotFoundException("No field."));
+        if (info.getIdIndex() == null) {
+            onError(channel, new NotFoundException("No search type."));
             return;
         }
 
         final OnResponseListener<SearchResponse> responseListener = searchResponse -> {
             final SearchHits hits = searchResponse.getHits();
             if (hits.totalHits() == 0) {
-                onError(channel, new NotFoundException("No " + fieldName
-                        + " data for " + id + " in " + index + "/" + type));
+                onError(channel,
+                        new NotFoundException("No " + info.getIdField()
+                                + " data for " + id + " in "
+                                + info.getIdIndex() + "/" + info.getIdType()));
                 return;
             }
             final SearchHit hit = hits.getHits()[0];
-            final SearchHitField field = hit.field(fieldName);
+            final SearchHitField field = hit.field(info.getIdField());
             final Number targetId = field.getValue();
             if (targetId == null) {
-                onError(channel, new NotFoundException("No " + fieldName
-                        + " for " + id + " in " + index + "/" + type));
+                onError(channel,
+                        new NotFoundException("No " + info.getIdField()
+                                + " for " + id + " in " + info.getIdIndex()
+                                + "/" + info.getIdType()));
                 return;
             }
 
-            doSearchRequest(request, channel, fieldName, targetId.longValue());
+            doSearchRequest(request, channel, info, targetId.longValue());
         };
-        client.prepareSearch(index).setTypes(type)
+        client.prepareSearch(info.getIdIndex()).setTypes(info.getIdType())
                 .setQuery(QueryBuilders.termQuery("id", id))
-                .addField(fieldName).addSort(timestampField, SortOrder.DESC)
+                .addField(info.getIdField())
+                .addSort(info.getTimestampField(), SortOrder.DESC)
                 .execute(on(responseListener, t -> onError(channel, t)));
 
     }
 
     private void doSearchRequest(final RestRequest request,
-            final RestChannel channel, final String fieldName,
-            final long targetId) {
-        final String index = request.param("index");
-        final String type = request.param("type");
-        final String timestampField = request.param(
-                TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
-                TasteConstants.TIMESTAMP_FIELD);
+            final RestChannel channel, final Info info, final long targetId) {
 
         final OnResponseListener<SearchResponse> responseListener = response -> {
             final SearchHits hits = response.getHits();
             if (hits.totalHits() == 0) {
-                onError(channel, new NotFoundException("No ID for " + targetId
-                        + " in " + index + "/" + type));
+                onError(channel,
+                        new NotFoundException("No ID for " + targetId + " in "
+                                + info.getTargetIndex() + "/"
+                                + info.getTargetType()));
                 return;
             }
-
-            final String infoIndex = request.param(
-                    TasteConstants.REQUEST_PARAM_INFO_INDEX,
-                    request.param("index"));
-            final String infoType = request
-                    .param(TasteConstants.REQUEST_PARAM_INFO_TYPE);
 
             try {
                 final XContentBuilder builder = jsonBuilder().startObject()//
@@ -152,11 +136,9 @@ public class TasteSearchRestAction extends BaseRestHandler {
                         .field("max_score", hits.getMaxScore())//
                         .startArray("hits");
 
-                final String fieldObjectName = getFieldObjectName(fieldName);
                 for (final SearchHit hit : hits.getHits()) {
-                    final Map<String, Object> source = expandInfoObject(
-                            hit.getSource(), infoIndex, infoType, fieldName,
-                            fieldObjectName);
+                    final Map<String, Object> source = expandObjects(
+                            hit.getSource(), info);
                     builder.startObject()//
                             .field("_index", hit.getIndex())//
                             .field("_type", hit.getType())//
@@ -177,36 +159,35 @@ public class TasteSearchRestAction extends BaseRestHandler {
                         "Failed to build a response.", e);
             }
         };
-        client.prepareSearch(index).setTypes(type)
-                .setQuery(QueryBuilders.termQuery(fieldName, targetId))
-                .addSort(timestampField, SortOrder.DESC)
+        client.prepareSearch(info.getTargetIndex())
+                .setTypes(info.getTargetType())
+                .setQuery(QueryBuilders.termQuery(info.getIdField(), targetId))
+                .addSort(info.getTimestampField(), SortOrder.DESC)
                 .execute(on(responseListener, t -> onError(channel, t)));
     }
 
-    private String getFieldObjectName(final String fieldName) {
-        return idPattern.matcher(fieldName).replaceFirst(
-                StringUtils.EMPTY_STRING);
-    }
-
-    private Map<String, Object> expandInfoObject(
-            final Map<String, Object> source, final String index,
-            final String type, final String fieldName,
-            final String fieldObjectName) {
+    private Map<String, Object> expandObjects(final Map<String, Object> source,
+            Info info) {
         final Map<String, Object> newSource = new HashMap<>(source.size());
         for (final Map.Entry<String, Object> entry : source.entrySet()) {
             final Object value = entry.getValue();
-            if (fieldName.equals(entry.getKey()) && value != null) {
+            if (info.getUserIdField().equals(entry.getKey()) && value != null) {
                 final Number targetId = (Number) value;
-                final Map<String, Object> objMap = getInfoObjectMap(index,
-                        type, targetId.toString());
-                newSource.put(fieldObjectName, objMap);
+                final Map<String, Object> objMap = getObjectMap("U-",
+                        info.getUserIndex(), info.getUserType(),
+                        targetId.toString());
+                newSource.put("user", objMap);
+            } else if (info.getItemIdField().equals(entry.getKey())
+                    && value != null) {
+                final Number targetId = (Number) value;
+                final Map<String, Object> objMap = getObjectMap("I-",
+                        info.getItemIndex(), info.getItemType(),
+                        targetId.toString());
+                newSource.put("item", objMap);
             } else if (value instanceof Map) {
                 @SuppressWarnings("unchecked")
                 final Map<String, Object> objMap = (Map<String, Object>) value;
-                newSource.put(
-                        entry.getKey(),
-                        expandInfoObject(objMap, index, type, fieldName,
-                                fieldObjectName));
+                newSource.put(entry.getKey(), expandObjects(objMap, info));
             } else if (value instanceof List) {
                 @SuppressWarnings("unchecked")
                 final List<Object> list = (List<Object>) value;
@@ -215,8 +196,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
                     if (obj instanceof Map) {
                         @SuppressWarnings("unchecked")
                         final Map<String, Object> objMap = (Map<String, Object>) obj;
-                        newList.add(expandInfoObject(objMap, index, type,
-                                fieldName, fieldObjectName));
+                        newList.add(expandObjects(objMap, info));
                     } else {
                         newList.add(obj);
                     }
@@ -229,10 +209,10 @@ public class TasteSearchRestAction extends BaseRestHandler {
         return newSource;
     }
 
-    private Map<String, Object> getInfoObjectMap(final String index,
+    private Map<String, Object> getObjectMap(String prefix, final String index,
             final String type, final String id) {
         try {
-            return cache.get(id, () -> {
+            return cache.get(prefix + id, () -> {
                 final GetResponse response = client.prepareGet(index, type, id)
                         .execute().actionGet();
                 if (response.isExists()) {
@@ -254,4 +234,116 @@ public class TasteSearchRestAction extends BaseRestHandler {
         }
     }
 
+    private static class Info {
+        private static final String ITEM = "item";
+
+        private static final String USER = "user";
+
+        private String targetIndex;
+
+        private String targetType;
+
+        private String userIndex;
+
+        private String userType;
+
+        private String userIdField;
+
+        private String itemIndex;
+
+        private String itemType;
+
+        private String itemIdField;
+
+        private String idIndex;
+
+        private String idType;
+
+        private String idField;
+
+        private String timestampField;
+
+        private String objectType;
+
+        Info(RestRequest request) {
+            targetIndex = request.param("index");
+            targetType = request.param("type");
+            userIndex = request.param(TasteConstants.REQUEST_PARAM_USER_INDEX,
+                    targetIndex);
+            userType = request.param(TasteConstants.REQUEST_PARAM_USER_TYPE,
+                    TasteConstants.USER_TYPE);
+            itemIndex = request.param(TasteConstants.REQUEST_PARAM_ITEM_INDEX,
+                    targetIndex);
+            itemType = request.param(TasteConstants.REQUEST_PARAM_ITEM_TYPE,
+                    TasteConstants.ITEM_TYPE);
+            userIdField = request.param(
+                    TasteConstants.REQUEST_PARAM_USER_ID_FIELD,
+                    TasteConstants.USER_ID_FIELD);
+            itemIdField = request.param(
+                    TasteConstants.REQUEST_PARAM_ITEM_ID_FIELD,
+                    TasteConstants.ITEM_ID_FIELD);
+            timestampField = request.param(
+                    TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
+                    TasteConstants.TIMESTAMP_FIELD);
+            objectType = request.param("objectType");
+            if (USER.equals(objectType)) {
+                idIndex = userIndex;
+                idType = userType;
+                idField = userIdField;
+            } else if (ITEM.equals(objectType)) {
+                idIndex = itemIndex;
+                idType = itemType;
+                idField = itemIdField;
+            }
+        }
+
+        public String getTargetIndex() {
+            return targetIndex;
+        }
+
+        public String getTargetType() {
+            return targetType;
+        }
+
+        public String getUserIndex() {
+            return userIndex;
+        }
+
+        public String getUserType() {
+            return userType;
+        }
+
+        public String getItemIndex() {
+            return itemIndex;
+        }
+
+        public String getItemType() {
+            return itemType;
+        }
+
+        public String getUserIdField() {
+            return userIdField;
+        }
+
+        public String getItemIdField() {
+            return itemIdField;
+        }
+
+        public String getTimestampField() {
+            return timestampField;
+        }
+
+        public String getIdIndex() {
+            return idIndex;
+        }
+
+        public String getIdType() {
+            return idType;
+        }
+
+        public String getIdField() {
+            return idField;
+        }
+
+    }
 }

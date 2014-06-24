@@ -42,7 +42,11 @@ public class TasteConstants {
 
     public static final String REQUEST_PARAM_TIMESTAMP_FIELD = "field.timestamp";
 
-    public static final String REQUEST_PARAM_INFO_INDEX = "info.index";
+    public static final String REQUEST_PARAM_USER_INDEX = "index.user";
 
-    public static final String REQUEST_PARAM_INFO_TYPE = "info.type";
+    public static final String REQUEST_PARAM_USER_TYPE = "type.user";
+
+    public static final String REQUEST_PARAM_ITEM_INDEX = "index.item";
+
+    public static final String REQUEST_PARAM_ITEM_TYPE = "type.item";
 }
