@@ -167,16 +167,16 @@ If you check similar users for User ID 1, type the below:
 
     curl -XGET "localhost:9200/movielens/user_similarity/_search?q=user_id:1&pretty"
 
-### Get Data By Your System ID
+### Get by Your System ID
 
 This plugin has own ID, such as user\_id or item\_id.
 If you want to access your system ID, use the following search API:
 
-    curl -XGET "localhost:9200/{index}/{type}/_taste/{field}/{your_user_or_item_id}?pretty"
+    curl -XGET "localhost:9200/{index}/{type}/_taste/{user|item}/{your_user_or_item_id}?pretty"
 
 For example, if you get similar users from ID=115:
 
-    curl -XGET "localhost:9200/movielens/user_similarity/_taste/user_id/115?pretty"
+    curl -XGET localhost:9200/movielens/recommendation/_taste/user/1
 
 
 ## Specification
