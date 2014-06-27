@@ -34,19 +34,23 @@ public class TasteConstants {
 
     public static final String USERS_FILED = "users";
 
-    public static final String REQUEST_PARAM_USER_ID_FIELD = "field.user_id";
+    public static final String REQUEST_PARAM_USER_ID_FIELD = "user_id_field";
 
-    public static final String REQUEST_PARAM_ITEM_ID_FIELD = "field.item_id";
+    public static final String REQUEST_PARAM_ITEM_ID_FIELD = "item_id_field";
 
-    public static final String REQUEST_PARAM_VALUE_FIELD = "field.value";
+    public static final String REQUEST_PARAM_VALUE_FIELD = "value_field";
 
-    public static final String REQUEST_PARAM_TIMESTAMP_FIELD = "field.timestamp";
+    public static final String REQUEST_PARAM_TIMESTAMP_FIELD = "timestamp_field";
 
-    public static final String REQUEST_PARAM_USER_INDEX = "index.user";
+    public static final String REQUEST_PARAM_USER_INDEX = "user_index";
 
-    public static final String REQUEST_PARAM_USER_TYPE = "type.user";
+    public static final String REQUEST_PARAM_USER_TYPE = "user_type";
 
-    public static final String REQUEST_PARAM_ITEM_INDEX = "index.item";
+    public static final String REQUEST_PARAM_ITEM_INDEX = "item_index";
 
-    public static final String REQUEST_PARAM_ITEM_TYPE = "type.item";
+    public static final String REQUEST_PARAM_ITEM_TYPE = "item_type";
+
+    public static final String REQUEST_PARAM_PREFERENCE_INDEX = "preference_index";
+
+    public static final String REQUEST_PARAM_PREFERENCE_TYPE = "preference_type";
 }

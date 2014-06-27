@@ -47,8 +47,10 @@ public class UserRequestHandler extends DefaultRequestHandler {
             final RequestHandler.OnErrorListener listener,
             final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final RequestHandlerChain chain) {
-        final String index = params.param("user_index", params.param("index"));
-        final String userType = params.param("user_type",
+        final String index = params.param(
+                TasteConstants.REQUEST_PARAM_USER_INDEX, params.param("index"));
+        final String userType = params.param(
+                TasteConstants.REQUEST_PARAM_USER_TYPE,
                 TasteConstants.USER_TYPE);
         final String userIdField = params.param(
                 TasteConstants.REQUEST_PARAM_USER_ID_FIELD,
@@ -140,7 +142,8 @@ public class UserRequestHandler extends DefaultRequestHandler {
             final RequestHandler.OnErrorListener listener,
             final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final RequestHandlerChain chain) {
-        final String index = params.param("user_index", params.param("index"));
+        final String index = params.param(
+                TasteConstants.REQUEST_PARAM_USER_INDEX, params.param("index"));
 
         try {
             indexCreationLock.lock();
@@ -203,8 +206,11 @@ public class UserRequestHandler extends DefaultRequestHandler {
             final RequestHandler.OnErrorListener listener,
             final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final RequestHandlerChain chain) {
-        final String index = params.param("user_index", params.param("index"));
-        final String type = params.param("user_type", TasteConstants.USER_TYPE);
+        final String index = params.param(
+                TasteConstants.REQUEST_PARAM_USER_INDEX, params.param("index"));
+        final String type = params.param(
+                TasteConstants.REQUEST_PARAM_USER_TYPE,
+                TasteConstants.USER_TYPE);
         final String userIdField = params.param(
                 TasteConstants.REQUEST_PARAM_USER_ID_FIELD,
                 TasteConstants.USER_ID_FIELD);

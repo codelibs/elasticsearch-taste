@@ -46,8 +46,10 @@ public class ItemRequestHandler extends DefaultRequestHandler {
             final RequestHandler.OnErrorListener listener,
             final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final RequestHandlerChain chain) {
-        final String index = params.param("item_index", params.param("index"));
-        final String itemType = params.param("item_type",
+        final String index = params.param(
+                TasteConstants.REQUEST_PARAM_ITEM_INDEX, params.param("index"));
+        final String itemType = params.param(
+                TasteConstants.REQUEST_PARAM_ITEM_TYPE,
                 TasteConstants.ITEM_TYPE);
         final String itemIdField = params.param(
                 TasteConstants.REQUEST_PARAM_ITEM_ID_FIELD,
@@ -137,7 +139,8 @@ public class ItemRequestHandler extends DefaultRequestHandler {
             final RequestHandler.OnErrorListener listener,
             final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final RequestHandlerChain chain) {
-        final String index = params.param("item_index", params.param("index"));
+        final String index = params.param(
+                TasteConstants.REQUEST_PARAM_ITEM_INDEX, params.param("index"));
 
         try {
             indexCreationLock.lock();
@@ -200,8 +203,11 @@ public class ItemRequestHandler extends DefaultRequestHandler {
             final RequestHandler.OnErrorListener listener,
             final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final RequestHandlerChain chain) {
-        final String index = params.param("item_index", params.param("index"));
-        final String type = params.param("item_type", TasteConstants.ITEM_TYPE);
+        final String index = params.param(
+                TasteConstants.REQUEST_PARAM_ITEM_INDEX, params.param("index"));
+        final String type = params.param(
+                TasteConstants.REQUEST_PARAM_ITEM_TYPE,
+                TasteConstants.ITEM_TYPE);
         final String itemIdField = params.param(
                 TasteConstants.REQUEST_PARAM_ITEM_ID_FIELD,
                 TasteConstants.ITEM_ID_FIELD);

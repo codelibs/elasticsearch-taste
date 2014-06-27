@@ -66,7 +66,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
     public void handleRequest(final RestRequest request,
             final RestChannel channel) {
 
-        Info info = new Info(request);
+        final Info info = new Info(request);
 
         final String id = request.param("id");
         if (StringUtils.isBlank(id)) {
@@ -167,7 +167,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
     }
 
     private Map<String, Object> expandObjects(final Map<String, Object> source,
-            Info info) {
+            final Info info) {
         final Map<String, Object> newSource = new HashMap<>(source.size());
         for (final Map.Entry<String, Object> entry : source.entrySet()) {
             final Object value = entry.getValue();
@@ -209,8 +209,8 @@ public class TasteSearchRestAction extends BaseRestHandler {
         return newSource;
     }
 
-    private Map<String, Object> getObjectMap(String prefix, final String index,
-            final String type, final String id) {
+    private Map<String, Object> getObjectMap(final String prefix,
+            final String index, final String type, final String id) {
         try {
             return cache.get(prefix + id, () -> {
                 final GetResponse response = client.prepareGet(index, type, id)
@@ -265,7 +265,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
 
         private String objectType;
 
-        Info(RestRequest request) {
+        Info(final RestRequest request) {
             targetIndex = request.param("index");
             targetType = request.param("type");
             userIndex = request.param(TasteConstants.REQUEST_PARAM_USER_INDEX,

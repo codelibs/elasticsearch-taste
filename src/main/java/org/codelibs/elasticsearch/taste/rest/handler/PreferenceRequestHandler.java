@@ -39,9 +39,11 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
             final RequestHandler.OnErrorListener listener,
             final Map<String, Object> requestMap,
             final Map<String, Object> paramMap, final RequestHandlerChain chain) {
-        final String index = params.param("preference_index",
+        final String index = params.param(
+                TasteConstants.REQUEST_PARAM_PREFERENCE_INDEX,
                 params.param("index"));
-        final String type = params.param("preference_type",
+        final String type = params.param(
+                TasteConstants.REQUEST_PARAM_PREFERENCE_TYPE,
                 params.param("type", TasteConstants.PREFERENCE_TYPE));
         final String userIdField = params.param(
                 TasteConstants.REQUEST_PARAM_USER_ID_FIELD,
