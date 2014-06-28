@@ -53,4 +53,8 @@ public class TasteConstants {
     public static final String REQUEST_PARAM_PREFERENCE_INDEX = "preference_index";
 
     public static final String REQUEST_PARAM_PREFERENCE_TYPE = "preference_type";
+
+    public static final String REQUEST_PARAM_TARGET_ID_FIELD = "target_id_field";
+
+    public static final String REQUEST_PARAM_ID_FIELD = "id_field";
 }

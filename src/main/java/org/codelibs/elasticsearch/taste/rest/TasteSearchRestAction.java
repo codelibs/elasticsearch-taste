@@ -161,7 +161,9 @@ public class TasteSearchRestAction extends BaseRestHandler {
         };
         client.prepareSearch(info.getTargetIndex())
                 .setTypes(info.getTargetType())
-                .setQuery(QueryBuilders.termQuery(info.getIdField(), targetId))
+                .setQuery(
+                        QueryBuilders.termQuery(info.getTargetIdField(),
+                                targetId))
                 .addSort(info.getTimestampField(), SortOrder.DESC)
                 .execute(on(responseListener, t -> onError(channel, t)));
     }
@@ -243,6 +245,8 @@ public class TasteSearchRestAction extends BaseRestHandler {
 
         private String targetType;
 
+        private String targetIdField;
+
         private String userIndex;
 
         private String userType;
@@ -289,12 +293,16 @@ public class TasteSearchRestAction extends BaseRestHandler {
             if (USER.equals(objectType)) {
                 idIndex = userIndex;
                 idType = userType;
-                idField = userIdField;
+                idField = request.param(
+                        TasteConstants.REQUEST_PARAM_ID_FIELD,userIdField);
             } else if (ITEM.equals(objectType)) {
                 idIndex = itemIndex;
                 idType = itemType;
-                idField = itemIdField;
+                idField = request.param(
+                        TasteConstants.REQUEST_PARAM_ID_FIELD,itemIdField);
             }
+            targetIdField = request.param(
+                    TasteConstants.REQUEST_PARAM_TARGET_ID_FIELD, idField);
         }
 
         public String getTargetIndex() {
@@ -303,6 +311,10 @@ public class TasteSearchRestAction extends BaseRestHandler {
 
         public String getTargetType() {
             return targetType;
+        }
+
+        public String getTargetIdField() {
+            return targetIdField;
         }
 
         public String getUserIndex() {
