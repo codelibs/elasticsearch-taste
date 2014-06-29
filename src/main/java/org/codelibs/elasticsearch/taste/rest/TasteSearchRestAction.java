@@ -105,6 +105,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
                 .setQuery(QueryBuilders.termQuery("id", id))
                 .addField(info.getIdField())
                 .addSort(info.getTimestampField(), SortOrder.DESC)
+                .setSize(info.getSize()).setFrom(info.getFrom())
                 .execute(on(responseListener, t -> onError(channel, t)));
 
     }
@@ -269,7 +270,13 @@ public class TasteSearchRestAction extends BaseRestHandler {
 
         private String objectType;
 
+        private int size;
+
+        private int from;
+
         Info(final RestRequest request) {
+            size = request.paramAsInt("size", 10);
+            from = request.paramAsInt("from", 0);
             targetIndex = request.param("index");
             targetType = request.param("type");
             userIndex = request.param(TasteConstants.REQUEST_PARAM_USER_INDEX,
@@ -293,16 +300,24 @@ public class TasteSearchRestAction extends BaseRestHandler {
             if (USER.equals(objectType)) {
                 idIndex = userIndex;
                 idType = userType;
-                idField = request.param(
-                        TasteConstants.REQUEST_PARAM_ID_FIELD,userIdField);
+                idField = request.param(TasteConstants.REQUEST_PARAM_ID_FIELD,
+                        userIdField);
             } else if (ITEM.equals(objectType)) {
                 idIndex = itemIndex;
                 idType = itemType;
-                idField = request.param(
-                        TasteConstants.REQUEST_PARAM_ID_FIELD,itemIdField);
+                idField = request.param(TasteConstants.REQUEST_PARAM_ID_FIELD,
+                        itemIdField);
             }
             targetIdField = request.param(
                     TasteConstants.REQUEST_PARAM_TARGET_ID_FIELD, idField);
+        }
+
+        public int getFrom() {
+            return from;
+        }
+
+        public int getSize() {
+            return size;
         }
 
         public String getTargetIndex() {
