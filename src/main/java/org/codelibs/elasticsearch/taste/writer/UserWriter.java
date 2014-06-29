@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.codelibs.elasticsearch.taste.TasteConstants;
+import org.codelibs.elasticsearch.taste.recommender.SimilarUser;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.cache.Cache;
@@ -34,7 +35,8 @@ public class UserWriter extends ObjectWriter {
         this.targetIdField = targetIdField;
     }
 
-    public void write(final long userID, final long[] mostSimilarUserIDs) {
+    public void write(final long userID,
+            final List<SimilarUser> mostSimilarUsers) {
         final Map<String, Object> rootObj = new HashMap<>();
         rootObj.put(targetIdField, userID);
         if (verbose) {
@@ -48,11 +50,13 @@ public class UserWriter extends ObjectWriter {
             }
         }
         final List<Map<String, Object>> userList = new ArrayList<>();
-        for (final long similarUserID : mostSimilarUserIDs) {
+        for (final SimilarUser similarUser : mostSimilarUsers) {
             final Map<String, Object> user = new HashMap<>();
-            user.put(userIdField, similarUserID);
+            user.put(userIdField, similarUser.getUserID());
+            user.put(valueField, similarUser.getSimilarity());
             if (verbose) {
-                final Map<String, Object> map = getUserMap(similarUserID);
+                final Map<String, Object> map = getUserMap(similarUser
+                        .getUserID());
                 if (map != null) {
                     user.putAll(map);
                 }

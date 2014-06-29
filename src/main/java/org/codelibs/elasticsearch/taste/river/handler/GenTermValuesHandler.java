@@ -234,7 +234,8 @@ public class GenTermValuesHandler extends ActionHandler {
             final Date now = new Date();
             final List<CountDownLatch> gateList = new ArrayList<>();
             try {
-                final Queue<Map<String, Object>> eventMapQueue = new ConcurrentLinkedQueue<>();
+                final Map<String, Map<String, Object>> termValueMap = new HashMap<>(
+                        1000);
                 for (final MultiTermVectorsItemResponse mTVItemResponse : response) {
                     if (mTVItemResponse.isFailed()) {
                         final Failure failure = mTVItemResponse.getFailure();
@@ -267,25 +268,44 @@ public class GenTermValuesHandler extends ActionHandler {
                                             .docsAndPositions(null, null);
                                     final int termFreq = posEnum.freq();
 
-                                    final Map<String, Object> requestMap = new HashMap<>();
-                                    final Map<String, Object> userMap = new HashMap<>();
-                                    userMap.put("id", id);
-                                    requestMap.put("user", userMap);
-                                    final Map<String, Object> itemMap = new HashMap<>();
-                                    itemMap.put("id", termValue);
-                                    requestMap.put("item", itemMap);
-                                    requestMap
-                                            .put(eventParams
-                                                    .param(TasteConstants.REQUEST_PARAM_VALUE_FIELD,
-                                                            TasteConstants.VALUE_FIELD),
-                                                    termFreq);
-                                    requestMap
-                                            .put(eventParams
-                                                    .param(TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
-                                                            TasteConstants.TIMESTAMP_FIELD),
-                                                    now);
-
-                                    eventMapQueue.add(requestMap);
+                                    final String key = id + '\n' + termValue;
+                                    final String valueField = eventParams
+                                            .param(TasteConstants.REQUEST_PARAM_VALUE_FIELD,
+                                                    TasteConstants.VALUE_FIELD);
+                                    if (termValueMap.containsKey(key)) {
+                                        final Map<String, Object> requestMap = termValueMap
+                                                .get(key);
+                                        final Object value = requestMap
+                                                .get(valueField);
+                                        if (value instanceof Integer) {
+                                            requestMap
+                                                    .put(valueField,
+                                                            termFreq
+                                                                    + ((Number) value)
+                                                                            .intValue());
+                                        } else {
+                                            logger.warn("Missing a value of "
+                                                    + valueField + " field: "
+                                                    + requestMap);
+                                            requestMap
+                                                    .put(valueField, termFreq);
+                                        }
+                                    } else {
+                                        final Map<String, Object> requestMap = new HashMap<>();
+                                        final Map<String, Object> userMap = new HashMap<>();
+                                        userMap.put("id", id);
+                                        requestMap.put("user", userMap);
+                                        final Map<String, Object> itemMap = new HashMap<>();
+                                        itemMap.put("id", termValue);
+                                        requestMap.put("item", itemMap);
+                                        requestMap.put(valueField, termFreq);
+                                        requestMap
+                                                .put(eventParams
+                                                        .param(TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
+                                                                TasteConstants.TIMESTAMP_FIELD),
+                                                        now);
+                                        termValueMap.put(key, requestMap);
+                                    }
                                 }
                             }
                         } catch (final Exception e) {
@@ -297,6 +317,8 @@ public class GenTermValuesHandler extends ActionHandler {
                     }
                 }
 
+                final Queue<Map<String, Object>> eventMapQueue = new ConcurrentLinkedQueue<>(
+                        termValueMap.values());
                 if (logger.isDebugEnabled()) {
                     logger.debug("doc/term event size: {}",
                             eventMapQueue.size());

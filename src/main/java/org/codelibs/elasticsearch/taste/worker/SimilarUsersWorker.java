@@ -1,15 +1,15 @@
 package org.codelibs.elasticsearch.taste.worker;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
-import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
 import org.apache.mahout.common.MemoryUtil;
+import org.codelibs.elasticsearch.taste.recommender.SimilarUser;
+import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommender;
 import org.codelibs.elasticsearch.taste.writer.UserWriter;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-
-import com.google.common.primitives.Longs;
 
 public class SimilarUsersWorker implements Runnable {
     private static final ESLogger logger = Loggers
@@ -48,19 +48,19 @@ public class SimilarUsersWorker implements Runnable {
         while ((userID = nextId(userIDs)) != -1 && running) {
             try {
                 long time = System.nanoTime();
-                final long[] mostSimilarUserIDs = recommender
+                final List<SimilarUser> mostSimilarUsers = recommender
                         .mostSimilarUserIDs(userID, numOfSimilarUsers);
-                writer.write(userID, mostSimilarUserIDs);
+                writer.write(userID, mostSimilarUsers);
                 time = (System.nanoTime() - time) / 1000000;
                 if (logger.isDebugEnabled()) {
                     logger.debug("User {} => Time: {} ms, Result: {}", userID,
-                            time, Longs.join(",", mostSimilarUserIDs));
+                            time, mostSimilarUsers);
                     if (count % 100 == 0) {
                         MemoryUtil.logMemoryStatistics();
                     }
                 } else {
                     logger.info("User {} => Time: {} ms, Result: {} items",
-                            userID, time, mostSimilarUserIDs.length);
+                            userID, time, mostSimilarUsers.size());
                     if (count % 1000 == 0) {
                         MemoryUtil.logMemoryStatistics();
                     }

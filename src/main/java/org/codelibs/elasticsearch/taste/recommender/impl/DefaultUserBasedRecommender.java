@@ -3,10 +3,14 @@ package org.codelibs.elasticsearch.taste.recommender.impl;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Queue;
 
+import org.apache.mahout.cf.taste.common.NoSuchUserException;
 import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
+import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.impl.common.RefreshHelper;
 import org.apache.mahout.cf.taste.impl.recommender.AbstractRecommender;
 import org.apache.mahout.cf.taste.impl.recommender.EstimatedPreferenceCapper;
@@ -16,13 +20,15 @@ import org.apache.mahout.cf.taste.neighborhood.UserNeighborhood;
 import org.apache.mahout.cf.taste.recommender.IDRescorer;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Rescorer;
-import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
 import org.apache.mahout.cf.taste.similarity.UserSimilarity;
 import org.apache.mahout.common.LongPair;
+import org.codelibs.elasticsearch.taste.recommender.SimilarUser;
+import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 
 /**
  * <p>
@@ -108,24 +114,66 @@ public class DefaultUserBasedRecommender extends AbstractRecommender implements
     }
 
     @Override
-    public long[] mostSimilarUserIDs(final long userID, final int howMany)
-            throws TasteException {
+    public List<SimilarUser> mostSimilarUserIDs(final long userID,
+            final int howMany) throws TasteException {
         return mostSimilarUserIDs(userID, howMany, null);
     }
 
     @Override
-    public long[] mostSimilarUserIDs(final long userID, final int howMany,
-            final Rescorer<LongPair> rescorer) throws TasteException {
+    public List<SimilarUser> mostSimilarUserIDs(final long userID,
+            final int howMany, final Rescorer<LongPair> rescorer)
+            throws TasteException {
         final TopItems.Estimator<Long> estimator = new MostSimilarEstimator(
                 userID, similarity, rescorer);
         return doMostSimilarUsers(howMany, estimator);
     }
 
-    private long[] doMostSimilarUsers(final int howMany,
+    private List<SimilarUser> doMostSimilarUsers(final int howMany,
             final TopItems.Estimator<Long> estimator) throws TasteException {
         final DataModel model = getDataModel();
-        return TopItems.getTopUsers(howMany, model.getUserIDs(), null,
-                estimator);
+        return getTopUsers(howMany, model.getUserIDs(), null, estimator);
+    }
+
+    private List<SimilarUser> getTopUsers(final int howMany,
+            final LongPrimitiveIterator allUserIDs, final IDRescorer rescorer,
+            final TopItems.Estimator<Long> estimator) throws TasteException {
+        final Queue<SimilarUser> topUsers = new PriorityQueue<SimilarUser>(
+                howMany + 1, Collections.reverseOrder());
+        boolean full = false;
+        double lowestTopValue = Double.NEGATIVE_INFINITY;
+        while (allUserIDs.hasNext()) {
+            final long userID = allUserIDs.next();
+            if (rescorer != null && rescorer.isFiltered(userID)) {
+                continue;
+            }
+            double similarity;
+            try {
+                similarity = estimator.estimate(userID);
+            } catch (final NoSuchUserException nsue) {
+                continue;
+            }
+            final double rescoredSimilarity = rescorer == null ? similarity
+                    : rescorer.rescore(userID, similarity);
+            if (!Double.isNaN(rescoredSimilarity)
+                    && (!full || rescoredSimilarity > lowestTopValue)) {
+                topUsers.add(new SimilarUser(userID, rescoredSimilarity));
+                if (full) {
+                    topUsers.poll();
+                } else if (topUsers.size() > howMany) {
+                    full = true;
+                    topUsers.poll();
+                }
+                lowestTopValue = topUsers.peek().getSimilarity();
+            }
+        }
+        final int size = topUsers.size();
+        if (size == 0) {
+            return Collections.emptyList();
+        }
+        final List<SimilarUser> sorted = Lists.newArrayListWithCapacity(size);
+        sorted.addAll(topUsers);
+        Collections.sort(sorted);
+        return sorted;
     }
 
     protected float doEstimatePreference(final long theUserID,
