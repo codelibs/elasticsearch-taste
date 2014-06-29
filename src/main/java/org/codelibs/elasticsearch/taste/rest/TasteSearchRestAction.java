@@ -105,7 +105,6 @@ public class TasteSearchRestAction extends BaseRestHandler {
                 .setQuery(QueryBuilders.termQuery("id", id))
                 .addField(info.getIdField())
                 .addSort(info.getTimestampField(), SortOrder.DESC)
-                .setSize(info.getSize()).setFrom(info.getFrom())
                 .execute(on(responseListener, t -> onError(channel, t)));
 
     }
@@ -166,6 +165,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
                         QueryBuilders.termQuery(info.getTargetIdField(),
                                 targetId))
                 .addSort(info.getTimestampField(), SortOrder.DESC)
+                .setSize(info.getSize()).setFrom(info.getFrom())
                 .execute(on(responseListener, t -> onError(channel, t)));
     }
 
