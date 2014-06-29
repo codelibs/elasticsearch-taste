@@ -45,6 +45,9 @@ public class RecommendedItemsWorker implements Runnable {
         long userID;
         running = true;
         while ((userID = nextId(userIDs)) != -1 && running) {
+            if (Thread.currentThread().isInterrupted()) {
+                break;
+            }
             try {
                 long time = System.nanoTime();
                 final List<RecommendedItem> recommendedItems = recommender

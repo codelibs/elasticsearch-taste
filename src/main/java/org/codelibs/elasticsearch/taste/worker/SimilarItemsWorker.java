@@ -46,6 +46,9 @@ public class SimilarItemsWorker implements Runnable {
         long itemID;
         running = true;
         while ((itemID = nextId(itemIDs)) != -1 && running) {
+            if (Thread.currentThread().isInterrupted()) {
+                break;
+            }
             try {
                 long time = System.nanoTime();
                 final List<RecommendedItem> recommendedItems = recommender
