@@ -66,7 +66,7 @@ public abstract class DefaultRequestHandler implements RequestHandler {
         final long waitTime = random.nextInt(2500) + 500;
         if (logger.isDebugEnabled()) {
             logger.debug(
-                    "Waiting for {} and retrying it. The cause is: "
+                    "Waiting for {}ms and retrying... The cause is: "
                             + t.getMessage(), waitTime);
         }
         try {
