@@ -39,9 +39,6 @@ public class DmKey {
 
     @Override
     public boolean equals(final Object obj) {
-        if (this == obj) {
-            return true;
-        }
         if (obj == null) {
             return false;
         }
@@ -49,13 +46,13 @@ public class DmKey {
             return false;
         }
         final DmKey other = (DmKey) obj;
+        if (type != other.type) {
+            return false;
+        }
         if (id1 != other.id1) {
             return false;
         }
         if (id2 != other.id2) {
-            return false;
-        }
-        if (type != other.type) {
             return false;
         }
         return true;
