@@ -9,13 +9,14 @@ This plugin provides the following features on Elasticsearch:
 * Data management for Users/Items/Preferences.
 * Item-based Recommender.
 * User-based Recommender.
-* Similar Users
+* Similar Users/Contents
 
 ## Version
 
 | Taste     | Elasticsearch |
 |:---------:|:-------------:|
 | master    | 1.2.X         |
+| 0.2.0     | 1.2.1         |
 | 0.1.0     | 1.1.1         |
 
 Note that this plugin supports Java 8 or the above.
@@ -28,7 +29,7 @@ Please file an [issue](https://github.com/codelibs/elasticsearch-taste/issues "i
 
 ### Install Taste Plugin
 
-    $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/0.1.0
+    $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/0.2.0
 
 ## Getting Started
 
