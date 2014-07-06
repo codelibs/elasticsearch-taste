@@ -4,7 +4,7 @@ Elasticsearch Taste Plugin
 ## Overview
 
 Elasticsearch Taste Plugin is [Mahout Taste](https://mahout.apache.org/users/recommender/recommender-documentation.html "Mahout Taste")-based Collaborative Filtering implementation.
-This plugin provides the following features on Elasticsearch:
+This plugin provides the following features of a recommendation engine on Elasticsearch:
 
 * Data management for Users/Items/Preferences.
 * Item-based Recommender.
