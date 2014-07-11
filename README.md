@@ -24,6 +24,7 @@ Note that this plugin supports Java 8 or the above.
 ### Issues/Questions
 
 Please file an [issue](https://github.com/codelibs/elasticsearch-taste/issues "issue").
+(Japanese forum is [here](https://github.com/codelibs/codelibs-ja-forum "here").)
 
 ## Installation
 
