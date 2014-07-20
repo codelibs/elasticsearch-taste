@@ -8,19 +8,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.mahout.cf.taste.common.Refreshable;
-import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.impl.common.FastIDSet;
-import org.apache.mahout.cf.taste.impl.common.LongPrimitiveArrayIterator;
-import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
-import org.apache.mahout.cf.taste.impl.model.GenericItemPreferenceArray;
-import org.apache.mahout.cf.taste.impl.model.GenericPreference;
-import org.apache.mahout.cf.taste.impl.model.GenericUserPreferenceArray;
-import org.apache.mahout.cf.taste.model.DataModel;
-import org.apache.mahout.cf.taste.model.Preference;
-import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.codelibs.elasticsearch.taste.TasteConstants;
-import org.codelibs.elasticsearch.taste.TasteSystemException;
+import org.codelibs.elasticsearch.taste.common.FastIDSet;
+import org.codelibs.elasticsearch.taste.common.LongPrimitiveArrayIterator;
+import org.codelibs.elasticsearch.taste.common.LongPrimitiveIterator;
+import org.codelibs.elasticsearch.taste.common.Refreshable;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.codelibs.elasticsearch.taste.model.cache.DmKey;
 import org.codelibs.elasticsearch.taste.model.cache.DmValue;
 import org.elasticsearch.ElasticsearchException;
@@ -113,14 +106,14 @@ public class ElasticsearchDataModel implements DataModel {
     }
 
     @Override
-    public LongPrimitiveIterator getUserIDs() throws TasteException {
+    public LongPrimitiveIterator getUserIDs() {
         if (userIDs == null) {
             loadUserIDs();
         }
         return new LongPrimitiveArrayIterator(userIDs);
     }
 
-    protected boolean existsUserID(final long userID) throws TasteException {
+    protected boolean existsUserID(final long userID) {
         if (cache != null) {
             final DmValue dmValue = cache.getIfPresent(DmKey.key(
                     DmKey.EXISTS_USER_ID, userID));
@@ -150,8 +143,7 @@ public class ElasticsearchDataModel implements DataModel {
     }
 
     @Override
-    public PreferenceArray getPreferencesFromUser(final long userID)
-            throws TasteException {
+    public PreferenceArray getPreferencesFromUser(final long userID) {
         if (cache != null) {
             final DmValue dmValue = cache.getIfPresent(DmKey.key(
                     DmKey.PREFERENCES_FROM_USER, userID));
@@ -193,8 +185,7 @@ public class ElasticsearchDataModel implements DataModel {
     }
 
     @Override
-    public FastIDSet getItemIDsFromUser(final long userID)
-            throws TasteException {
+    public FastIDSet getItemIDsFromUser(final long userID) {
         if (cache != null) {
             final DmValue dmValue = cache.getIfPresent(DmKey.key(
                     DmKey.ITEMIDS_FROM_USER, userID));
@@ -230,14 +221,14 @@ public class ElasticsearchDataModel implements DataModel {
     }
 
     @Override
-    public LongPrimitiveIterator getItemIDs() throws TasteException {
+    public LongPrimitiveIterator getItemIDs() {
         if (itemIDs == null) {
             loadItemIDs();
         }
         return new LongPrimitiveArrayIterator(itemIDs);
     }
 
-    protected boolean existsItemID(final long itemID) throws TasteException {
+    protected boolean existsItemID(final long itemID) {
         if (cache != null) {
             final DmValue dmValue = cache.getIfPresent(DmKey.key(
                     DmKey.EXISTS_ITEM_ID, itemID));
@@ -267,8 +258,7 @@ public class ElasticsearchDataModel implements DataModel {
     }
 
     @Override
-    public PreferenceArray getPreferencesForItem(final long itemID)
-            throws TasteException {
+    public PreferenceArray getPreferencesForItem(final long itemID) {
         if (cache != null) {
             final DmValue dmValue = cache.getIfPresent(DmKey.key(
                     DmKey.PREFERENCES_FROM_ITEM, itemID));
@@ -310,8 +300,7 @@ public class ElasticsearchDataModel implements DataModel {
     }
 
     @Override
-    public Float getPreferenceValue(final long userID, final long itemID)
-            throws TasteException {
+    public Float getPreferenceValue(final long userID, final long itemID) {
         if (cache != null) {
             final DmValue dmValue = cache.getIfPresent(DmKey.key(
                     DmKey.PREFERENCE_VALUE, userID, itemID));
@@ -328,15 +317,15 @@ public class ElasticsearchDataModel implements DataModel {
                     .setQuery(
                             QueryBuilders.filteredQuery(
                                     QueryBuilders
-                                            .boolQuery()
-                                            .must(QueryBuilders.termQuery(
-                                                    itemIdField, itemID))
+                                    .boolQuery()
+                                    .must(QueryBuilders.termQuery(
+                                            itemIdField, itemID))
                                             .must(QueryBuilders.termQuery(
                                                     userIdField, userID)),
-                                    getLastAccessedFilterQuery()))
-                    .addFields(valueField)
-                    .addSort(timestampField, SortOrder.DESC).setSize(1)
-                    .execute().actionGet();
+                                                    getLastAccessedFilterQuery()))
+                                                    .addFields(valueField)
+                                                    .addSort(timestampField, SortOrder.DESC).setSize(1)
+                                                    .execute().actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to get the preference by ("
                     + userID + "," + itemID + ")", e);
@@ -370,8 +359,7 @@ public class ElasticsearchDataModel implements DataModel {
     }
 
     @Override
-    public Long getPreferenceTime(final long userID, final long itemID)
-            throws TasteException {
+    public Long getPreferenceTime(final long userID, final long itemID) {
         if (cache != null) {
             final DmValue dmValue = cache.getIfPresent(DmKey.key(
                     DmKey.PREFERENCE_TIME, userID, itemID));
@@ -388,15 +376,15 @@ public class ElasticsearchDataModel implements DataModel {
                     .setQuery(
                             QueryBuilders.filteredQuery(
                                     QueryBuilders
-                                            .boolQuery()
-                                            .must(QueryBuilders.termQuery(
-                                                    itemIdField, itemID))
+                                    .boolQuery()
+                                    .must(QueryBuilders.termQuery(
+                                            itemIdField, itemID))
                                             .must(QueryBuilders.termQuery(
                                                     userIdField, userID)),
-                                    getLastAccessedFilterQuery()))
-                    .addFields(timestampField)
-                    .addSort(timestampField, SortOrder.DESC).setSize(1)
-                    .execute().actionGet();
+                                                    getLastAccessedFilterQuery()))
+                                                    .addFields(timestampField)
+                                                    .addSort(timestampField, SortOrder.DESC).setSize(1)
+                                                    .execute().actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to get the timestamp by ("
                     + userID + "," + itemID + ")", e);
@@ -431,7 +419,7 @@ public class ElasticsearchDataModel implements DataModel {
     }
 
     @Override
-    public int getNumItems() throws TasteException {
+    public int getNumItems() {
         if (itemIDs == null) {
             loadItemIDs();
         }
@@ -439,7 +427,7 @@ public class ElasticsearchDataModel implements DataModel {
     }
 
     @Override
-    public int getNumUsers() throws TasteException {
+    public int getNumUsers() {
         if (userIDs == null) {
             loadUserIDs();
         }
@@ -447,8 +435,7 @@ public class ElasticsearchDataModel implements DataModel {
     }
 
     @Override
-    public int getNumUsersWithPreferenceFor(final long itemID)
-            throws TasteException {
+    public int getNumUsersWithPreferenceFor(final long itemID) {
         if (cache != null) {
             final DmValue dmValue = cache.getIfPresent(DmKey.key(
                     DmKey.NUM_USERS_FOR_ITEM, itemID));
@@ -468,7 +455,7 @@ public class ElasticsearchDataModel implements DataModel {
 
     @Override
     public int getNumUsersWithPreferenceFor(final long itemID1,
-            final long itemID2) throws TasteException {
+            final long itemID2) {
         if (cache != null) {
             final DmValue dmValue = cache.getIfPresent(DmKey.key(
                     DmKey.NUM_USERS_FOR_ITEMS, itemID1, itemID2));
@@ -508,7 +495,7 @@ public class ElasticsearchDataModel implements DataModel {
 
     @Override
     public void setPreference(final long userID, final long itemID,
-            final float value) throws TasteException {
+            final float value) {
         createUserID(userID);
         createItemID(itemID);
 
@@ -519,7 +506,7 @@ public class ElasticsearchDataModel implements DataModel {
         source.put(timestampField, new Date());
         try {
             client.prepareIndex(preferenceIndex, preferenceType)
-                    .setSource(source).setRefresh(true).execute().actionGet();
+            .setSource(source).setRefresh(true).execute().actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to set (" + userID + "," + itemID
                     + "," + value + ")", e);
@@ -539,7 +526,7 @@ public class ElasticsearchDataModel implements DataModel {
                     .prepareIndex(userIndex, userType, Long.toString(userID))
                     .setSource(source).setRefresh(true).execute().actionGet();
             if (!response.isCreated()) {
-                throw new TasteSystemException("Failed to create " + source);
+                throw new TasteException("Failed to create " + source);
             }
         }
     }
@@ -557,14 +544,13 @@ public class ElasticsearchDataModel implements DataModel {
                     .prepareIndex(itemIndex, itemType, Long.toString(itemID))
                     .setSource(source).setRefresh(true).execute().actionGet();
             if (!response.isCreated()) {
-                throw new TasteSystemException("Failed to create " + source);
+                throw new TasteException("Failed to create " + source);
             }
         }
     }
 
     @Override
-    public void removePreference(final long userID, final long itemID)
-            throws TasteException {
+    public void removePreference(final long userID, final long itemID) {
         DeleteByQueryResponse response;
         try {
             response = client
@@ -573,13 +559,13 @@ public class ElasticsearchDataModel implements DataModel {
                     .setQuery(
                             QueryBuilders.filteredQuery(
                                     QueryBuilders
-                                            .boolQuery()
-                                            .must(QueryBuilders.termQuery(
-                                                    userIdField, userID))
+                                    .boolQuery()
+                                    .must(QueryBuilders.termQuery(
+                                            userIdField, userID))
                                             .must(QueryBuilders.termQuery(
                                                     itemIdField, itemID)),
-                                    getLastAccessedFilterQuery())).execute()
-                    .actionGet();
+                                                    getLastAccessedFilterQuery())).execute()
+                                                    .actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to remove the preference by ("
                     + userID + "," + itemID + ")", e);
@@ -628,7 +614,7 @@ public class ElasticsearchDataModel implements DataModel {
 
     protected SearchResponse getPreferenceSearchResponse(
             final String targetField, final long targetID,
-            final String... resultFields) throws TasteException {
+            final String... resultFields) {
         try {
             return client
                     .prepareSearch(preferenceIndex)
@@ -637,18 +623,17 @@ public class ElasticsearchDataModel implements DataModel {
                             QueryBuilders.filteredQuery(QueryBuilders
                                     .termQuery(targetField, targetID),
                                     getLastAccessedFilterQuery()))
-                    .addFields(resultFields)
-                    .addSort(resultFields[0], SortOrder.ASC)
-                    .addSort(timestampField, SortOrder.DESC)
-                    .setSize(maxPreferenceSize).execute().actionGet();
+                                    .addFields(resultFields)
+                                    .addSort(resultFields[0], SortOrder.ASC)
+                                    .addSort(timestampField, SortOrder.DESC)
+                                    .setSize(maxPreferenceSize).execute().actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to get the preference by "
                     + targetField + ":" + targetID, e);
         }
     }
 
-    protected long getLongValue(final SearchHit hit, final String field)
-            throws TasteException {
+    protected long getLongValue(final SearchHit hit, final String field) {
         final SearchHitField result = hit.field(field);
         if (result == null) {
             throw new TasteException(field + " is not found.");
@@ -660,8 +645,7 @@ public class ElasticsearchDataModel implements DataModel {
         return longValue.longValue();
     }
 
-    protected float getFloatValue(final SearchHit hit, final String field)
-            throws TasteException {
+    protected float getFloatValue(final SearchHit hit, final String field) {
         final SearchHitField result = hit.field(field);
         if (result == null) {
             throw new TasteException(field + " is not found.");
@@ -673,7 +657,7 @@ public class ElasticsearchDataModel implements DataModel {
         return floatValue.floatValue();
     }
 
-    protected synchronized void loadUserIDs() throws TasteException {
+    protected synchronized void loadUserIDs() {
         if (userIDs != null) {
             return;
         }
@@ -688,8 +672,8 @@ public class ElasticsearchDataModel implements DataModel {
                     .setQuery(
                             QueryBuilders.filteredQuery(userQueryBuilder,
                                     getLastAccessedFilterQuery()))
-                    .addFields(userIdField).setSize(scrollSize).execute()
-                    .actionGet();
+                                    .addFields(userIdField).setSize(scrollSize).execute()
+                                    .actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to load userIDs.", e);
         }
@@ -730,7 +714,7 @@ public class ElasticsearchDataModel implements DataModel {
         userIDs = ids;
     }
 
-    protected synchronized void loadItemIDs() throws TasteException {
+    protected synchronized void loadItemIDs() {
         if (itemIDs != null) {
             return;
         }
@@ -745,8 +729,8 @@ public class ElasticsearchDataModel implements DataModel {
                     .setQuery(
                             QueryBuilders.filteredQuery(itemQueryBuilder,
                                     getLastAccessedFilterQuery()))
-                    .addFields(itemIdField).setSize(scrollSize).execute()
-                    .actionGet();
+                                    .addFields(itemIdField).setSize(scrollSize).execute()
+                                    .actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to load itemIDs.", e);
         }
@@ -803,10 +787,10 @@ public class ElasticsearchDataModel implements DataModel {
                         QueryBuilders.filteredQuery(
                                 QueryBuilders.matchAllQuery(),
                                 getLastAccessedFilterQuery()))
-                .setSize(0)
-                .addAggregation(
-                        AggregationBuilders.stats(valueField).field(valueField))
-                .execute().actionGet();
+                                .setSize(0)
+                                .addAggregation(
+                                        AggregationBuilders.stats(valueField).field(valueField))
+                                        .execute().actionGet();
         final Aggregations aggregations = response.getAggregations();
         stats = aggregations.get(valueField);
     }

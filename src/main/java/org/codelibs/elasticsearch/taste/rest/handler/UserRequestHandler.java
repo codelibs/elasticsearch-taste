@@ -61,7 +61,7 @@ public class UserRequestHandler extends DefaultRequestHandler {
 
         @SuppressWarnings("unchecked")
         final Map<String, Object> userMap = (Map<String, Object>) requestMap
-                .get("user");
+        .get("user");
         if (userMap == null) {
             throw new InvalidParameterException("User is null.");
         }
@@ -90,7 +90,7 @@ public class UserRequestHandler extends DefaultRequestHandler {
                             if (TasteConstants.TRUE
                                     .equalsIgnoreCase(updateType)
                                     || TasteConstants.YES
-                                            .equalsIgnoreCase(updateType)) {
+                                    .equalsIgnoreCase(updateType)) {
                                 doUserUpdate(params, listener, requestMap,
                                         paramMap, userMap, index, userType,
                                         userIdField, timestampField,
@@ -120,10 +120,10 @@ public class UserRequestHandler extends DefaultRequestHandler {
                 }
             };
             client.prepareSearch(index).setTypes(userType)
-                    .setQuery(QueryBuilders.termQuery("id", id))
-                    .addField(userIdField)
-                    .addSort(timestampField, SortOrder.DESC).setSize(1)
-                    .execute(on(responseListener, failureListener));
+            .setQuery(QueryBuilders.termQuery("id", id))
+            .addField(userIdField)
+            .addSort(timestampField, SortOrder.DESC).setSize(1)
+            .execute(on(responseListener, failureListener));
 
         } catch (final Exception e) {
             final List<Throwable> errorList = getErrorList(paramMap);
@@ -227,7 +227,7 @@ public class UserRequestHandler extends DefaultRequestHandler {
                     .setTimeout(
                             params.param("timeout",
                                     DEFAULT_HEALTH_REQUEST_TIMEOUT)).execute()
-                    .actionGet();
+                                    .actionGet();
             if (healthResponse.isTimedOut()) {
                 listener.onError(new OperationFailedException(
                         "Failed to create index: " + index + "/" + type));
@@ -314,9 +314,9 @@ public class UserRequestHandler extends DefaultRequestHandler {
             }
         };
         client.prepareSearch(index).setTypes(type)
-                .setQuery(QueryBuilders.matchAllQuery()).addField(userIdField)
-                .addSort(userIdField, SortOrder.DESC).setSize(1)
-                .execute(on(responseListener, failureListener));
+        .setQuery(QueryBuilders.matchAllQuery()).addField(userIdField)
+        .addSort(userIdField, SortOrder.DESC).setSize(1)
+        .execute(on(responseListener, failureListener));
     }
 
     private void doUserUpdate(final Params params,
@@ -344,8 +344,8 @@ public class UserRequestHandler extends DefaultRequestHandler {
             }
         };
         client.prepareIndex(index, type, userId.toString()).setSource(userMap)
-                .setRefresh(true).setOpType(opType)
-                .execute(on(responseListener, failureListener));
+        .setRefresh(true).setOpType(opType)
+        .execute(on(responseListener, failureListener));
     }
 
 }

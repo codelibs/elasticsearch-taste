@@ -1,26 +1,24 @@
 package org.codelibs.elasticsearch.taste.eval;
 
-import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
-import org.apache.mahout.cf.taste.model.DataModel;
+import org.codelibs.elasticsearch.taste.model.DataModel;
 import org.codelibs.elasticsearch.taste.writer.ResultWriter;
 
 public interface Evaluator {
     /**
      * <p>
-     * Evaluates the quality of a {@link org.apache.mahout.cf.taste.recommender.Recommender}'s recommendations.
+     * Evaluates the quality of a {@link org.codelibs.elasticsearch.taste.recommender.Recommender}'s recommendations.
      * The range of values that may be returned depends on the implementation, but <em>lower</em> values must
      * mean better recommendations, with 0 being the lowest / best possible evaluation, meaning a perfect match.
-     * This method does not accept a {@link org.apache.mahout.cf.taste.recommender.Recommender} directly, but
+     * This method does not accept a {@link org.codelibs.elasticsearch.taste.recommender.Recommender} directly, but
      * rather a {@link RecommenderBuilder} which can build the
-     * {@link org.apache.mahout.cf.taste.recommender.Recommender} to test on top of a given {@link DataModel}.
+     * {@link org.codelibs.elasticsearch.taste.recommender.Recommender} to test on top of a given {@link DataModel}.
      * </p>
      *
      * <p>
      * Implementations will take a certain percentage of the preferences supplied by the given {@link DataModel}
      * as "training data". This is typically most of the data, like 90%. This data is used to produce
      * recommendations, and the rest of the data is compared against estimated preference values to see how much
-     * the {@link org.apache.mahout.cf.taste.recommender.Recommender}'s predicted preferences match the user's
+     * the {@link org.codelibs.elasticsearch.taste.recommender.Recommender}'s predicted preferences match the user's
      * real preferences. Specifically, for each user, this percentage of the user's ratings are used to produce
      * recommendations, and for each user, the remaining preferences are compared against the user's real
      * preferences.
@@ -38,17 +36,15 @@ public interface Evaluator {
      * </p>
      *
      * @param recommenderBuilder
-     *          object that can build a {@link org.apache.mahout.cf.taste.recommender.Recommender} to test
+     *          object that can build a {@link org.codelibs.elasticsearch.taste.recommender.Recommender} to test
      * @param dataModel
      *          dataset to test on
      * @param config
      *          configuration for an evaluation
      * @return a evaluation result
-     * @throws TasteException
-     *           if an error occurs while accessing the {@link DataModel}
      */
     Evaluation evaluate(RecommenderBuilder recommenderBuilder,
-            DataModel dataModel, EvaluationConfig config) throws TasteException;
+            DataModel dataModel, EvaluationConfig config);
 
     void setResultWriter(ResultWriter resultWriter);
 

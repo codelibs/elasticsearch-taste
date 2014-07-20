@@ -5,16 +5,16 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
-import org.apache.mahout.cf.taste.impl.common.LongPrimitiveArrayIterator;
-import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
-import org.apache.mahout.cf.taste.model.DataModel;
-import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
-import org.apache.mahout.cf.taste.recommender.Recommender;
+import org.codelibs.elasticsearch.taste.common.LongPrimitiveArrayIterator;
+import org.codelibs.elasticsearch.taste.common.LongPrimitiveIterator;
+import org.codelibs.elasticsearch.taste.eval.RecommenderBuilder;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
+import org.codelibs.elasticsearch.taste.model.DataModel;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
+import org.codelibs.elasticsearch.taste.recommender.ItemBasedRecommender;
 import org.codelibs.elasticsearch.taste.recommender.ItemBasedRecommenderBuilder;
+import org.codelibs.elasticsearch.taste.recommender.Recommender;
 import org.codelibs.elasticsearch.taste.service.TasteService;
 import org.codelibs.elasticsearch.taste.worker.SimilarItemsWorker;
 import org.codelibs.elasticsearch.taste.writer.ItemWriter;
@@ -87,14 +87,14 @@ public class ItemsFromItemHandler extends RecommendationHandler {
             final LongPrimitiveIterator itemIdIter = itemIDs == null ? dataModel
                     .getItemIDs() : new LongPrimitiveArrayIterator(itemIDs);
 
-            for (int n = 0; n < degreeOfParallelism; n++) {
-                final SimilarItemsWorker worker = new SimilarItemsWorker(n,
-                        (ItemBasedRecommender) recommender, itemIdIter,
-                        numOfMostSimilarItems, writer);
-                executorService.execute(worker);
-            }
+                    for (int n = 0; n < degreeOfParallelism; n++) {
+                        final SimilarItemsWorker worker = new SimilarItemsWorker(n,
+                                (ItemBasedRecommender) recommender, itemIdIter,
+                                numOfMostSimilarItems, writer);
+                        executorService.execute(worker);
+                    }
 
-            waitFor(executorService, maxDuration);
+                    waitFor(executorService, maxDuration);
         } catch (final TasteException e) {
             logger.error("Recommender {} is failed.", e, recommender);
         } finally {

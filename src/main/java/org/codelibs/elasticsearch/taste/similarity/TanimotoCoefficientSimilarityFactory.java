@@ -1,9 +1,8 @@
 package org.codelibs.elasticsearch.taste.similarity;
 
-import org.apache.mahout.cf.taste.impl.similarity.TanimotoCoefficientSimilarity;
 
 public class TanimotoCoefficientSimilarityFactory<T> extends
-        AbstractUserSimilarityFactory<T> {
+AbstractUserSimilarityFactory<T> {
 
     @Override
     public T create() {

@@ -12,9 +12,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.codelibs.elasticsearch.taste.TasteConstants;
-import org.codelibs.elasticsearch.taste.TasteSystemException;
 import org.codelibs.elasticsearch.taste.exception.NotFoundException;
 import org.codelibs.elasticsearch.taste.exception.OperationFailedException;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.codelibs.elasticsearch.util.action.ListenerUtils.OnResponseListener;
 import org.codelibs.elasticsearch.util.lang.StringUtils;
 import org.elasticsearch.action.get.GetResponse;
@@ -53,7 +53,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
                 .newBuilder()
                 .expireAfterAccess(Long.parseLong(duration),
                         TimeUnit.MILLISECONDS)
-                .maximumSize(Long.parseLong(size)).build();
+                        .maximumSize(Long.parseLong(size)).build();
 
         restController.registerHandler(RestRequest.Method.GET,
                 "/{index}/_taste/{objectType}/{id}", this);
@@ -102,10 +102,10 @@ public class TasteSearchRestAction extends BaseRestHandler {
             doSearchRequest(request, channel, info, targetId.longValue());
         };
         client.prepareSearch(info.getIdIndex()).setTypes(info.getIdType())
-                .setQuery(QueryBuilders.termQuery("id", id))
-                .addField(info.getIdField())
-                .addSort(info.getTimestampField(), SortOrder.DESC)
-                .execute(on(responseListener, t -> onError(channel, t)));
+        .setQuery(QueryBuilders.termQuery("id", id))
+        .addField(info.getIdField())
+        .addSort(info.getTimestampField(), SortOrder.DESC)
+        .execute(on(responseListener, t -> onError(channel, t)));
 
     }
 
@@ -140,17 +140,17 @@ public class TasteSearchRestAction extends BaseRestHandler {
                     final Map<String, Object> source = expandObjects(
                             hit.getSource(), info);
                     builder.startObject()//
-                            .field("_index", hit.getIndex())//
-                            .field("_type", hit.getType())//
-                            .field("_id", hit.getId())//
-                            .field("_score", hit.getScore())//
-                            .field("_source", source)//
-                            .endObject();//
+                    .field("_index", hit.getIndex())//
+                    .field("_type", hit.getType())//
+                    .field("_id", hit.getId())//
+                    .field("_score", hit.getScore())//
+                    .field("_source", source)//
+                    .endObject();//
                 }
 
                 builder.endArray()//
-                        .endObject()//
-                        .endObject();
+                .endObject()//
+                .endObject();
 
                 channel.sendResponse(new BytesRestResponse(RestStatus.OK,
                         builder));
@@ -160,13 +160,13 @@ public class TasteSearchRestAction extends BaseRestHandler {
             }
         };
         client.prepareSearch(info.getTargetIndex())
-                .setTypes(info.getTargetType())
-                .setQuery(
-                        QueryBuilders.termQuery(info.getTargetIdField(),
-                                targetId))
-                .addSort(info.getTimestampField(), SortOrder.DESC)
-                .setSize(info.getSize()).setFrom(info.getFrom())
-                .execute(on(responseListener, t -> onError(channel, t)));
+        .setTypes(info.getTargetType())
+        .setQuery(
+                QueryBuilders.termQuery(info.getTargetIdField(),
+                        targetId))
+                        .addSort(info.getTimestampField(), SortOrder.DESC)
+                        .setSize(info.getSize()).setFrom(info.getFrom())
+                        .execute(on(responseListener, t -> onError(channel, t)));
     }
 
     private Map<String, Object> expandObjects(final Map<String, Object> source,
@@ -224,8 +224,8 @@ public class TasteSearchRestAction extends BaseRestHandler {
                 return null;
             });
         } catch (final ExecutionException e) {
-            throw new TasteSystemException("Failed to get data for " + index
-                    + "/" + type + "/" + id, e);
+            throw new TasteException("Failed to get data for " + index + "/"
+                    + type + "/" + id, e);
         }
     }
 

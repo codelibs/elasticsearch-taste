@@ -26,10 +26,11 @@
 		<version>7</version>
 	</parent>
 	<properties>
-		<elasticsearch.version>1.2.1</elasticsearch.version>
+		<elasticsearch.version>1.2.2</elasticsearch.version>
 		<lucene.version>4.8.1</lucene.version>
-		<mahout.version>0.9</mahout.version>
 		<slf4j.version>1.7.7</slf4j.version>
+		<mahout.version>0.9</mahout.version>
+		<mallet.version>2.0.7</mallet.version>
 	</properties>
 	<build>
 		<plugins>
@@ -118,23 +119,23 @@
 		</dependency>
 		<dependency>
 			<groupId>org.apache.mahout</groupId>
-			<artifactId>mahout-core</artifactId>
+			<artifactId>mahout-math</artifactId>
 			<version>${mahout.version}</version>
-			<exclusions>
-				<exclusion>
-					<artifactId>hadoop-core</artifactId>
-					<groupId>org.apache.hadoop</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>commons-cli</artifactId>
-					<groupId>org.apache.mahout.commons</groupId>
-				</exclusion>
-			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>cc.mallet</groupId>
+			<artifactId>mallet</artifactId>
+			<version>${mallet.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
 			<version>17.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.3.2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>

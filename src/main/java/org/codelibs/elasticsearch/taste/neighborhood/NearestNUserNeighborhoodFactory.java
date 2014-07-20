@@ -2,14 +2,11 @@ package org.codelibs.elasticsearch.taste.neighborhood;
 
 import java.util.Map;
 
-import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.impl.neighborhood.NearestNUserNeighborhood;
-import org.apache.mahout.cf.taste.neighborhood.UserNeighborhood;
-import org.codelibs.elasticsearch.taste.TasteSystemException;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public class NearestNUserNeighborhoodFactory extends
-        AbstractUserNeighborhoodFactory {
+AbstractUserNeighborhoodFactory {
 
     protected int neighborhoodSize;
 
@@ -28,8 +25,8 @@ public class NearestNUserNeighborhoodFactory extends
         try {
             return new NearestNUserNeighborhood(neighborhoodSize,
                     minSimilarity, userSimilarity, dataModel);
-        } catch (final TasteException e) {
-            throw new TasteSystemException("Failed to create an instance.", e);
+        } catch (final  Exception e) {
+            throw new TasteException("Failed to create an instance.", e);
         }
     }
 }

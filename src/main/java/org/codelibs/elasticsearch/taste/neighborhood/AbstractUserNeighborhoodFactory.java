@@ -2,12 +2,12 @@ package org.codelibs.elasticsearch.taste.neighborhood;
 
 import java.util.Map;
 
-import org.apache.mahout.cf.taste.model.DataModel;
-import org.apache.mahout.cf.taste.similarity.UserSimilarity;
+import org.codelibs.elasticsearch.taste.model.DataModel;
+import org.codelibs.elasticsearch.taste.similarity.UserSimilarity;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public abstract class AbstractUserNeighborhoodFactory implements
-        UserNeighborhoodFactory {
+UserNeighborhoodFactory {
 
     protected DataModel dataModel;
 

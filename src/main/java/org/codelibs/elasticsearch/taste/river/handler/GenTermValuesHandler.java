@@ -112,11 +112,11 @@ public class GenTermValuesHandler extends ActionHandler {
         scrollSearchGate = new CountDownLatch(1);
 
         client.prepareSearch(sourceIndex).setTypes(sourceType)
-                .setSearchType(SearchType.SCAN)
-                .setScroll(new TimeValue(keepAlive.longValue()))
-                .setQuery(QueryBuilders.matchAllQuery())
-                .setSize(size.intValue()).addField("id")
-                .setListenerThreaded(true).execute(new ScrollSearchListener());
+        .setSearchType(SearchType.SCAN)
+        .setScroll(new TimeValue(keepAlive.longValue()))
+        .setQuery(QueryBuilders.matchAllQuery())
+        .setSize(size.intValue()).addField("id")
+        .setListenerThreaded(true).execute(new ScrollSearchListener());
 
         try {
             scrollSearchGate.await();
@@ -129,7 +129,7 @@ public class GenTermValuesHandler extends ActionHandler {
     }
 
     private class ScrollSearchListener implements
-            ActionListener<SearchResponse> {
+    ActionListener<SearchResponse> {
         private volatile boolean initialized = false;
 
         private volatile MultiTermVectorsListener mTVListener;
@@ -139,8 +139,8 @@ public class GenTermValuesHandler extends ActionHandler {
             if (!initialized) {
                 initialized = true;
                 client.prepareSearchScroll(response.getScrollId())
-                        .setScroll(new TimeValue(keepAlive.longValue()))
-                        .setListenerThreaded(true).execute(this);
+                .setScroll(new TimeValue(keepAlive.longValue()))
+                .setListenerThreaded(true).execute(this);
                 return;
             }
 
@@ -182,8 +182,8 @@ public class GenTermValuesHandler extends ActionHandler {
                 requestBuilder.execute(mTVListener);
 
                 client.prepareSearchScroll(response.getScrollId())
-                        .setScroll(new TimeValue(keepAlive.longValue()))
-                        .setListenerThreaded(true).execute(this);
+                .setScroll(new TimeValue(keepAlive.longValue()))
+                .setListenerThreaded(true).execute(this);
             }
         }
 
@@ -195,7 +195,7 @@ public class GenTermValuesHandler extends ActionHandler {
     }
 
     private static class MultiTermVectorsListener implements
-            ActionListener<MultiTermVectorsResponse> {
+    ActionListener<MultiTermVectorsResponse> {
 
         protected final ESLogger logger;
 
@@ -279,16 +279,16 @@ public class GenTermValuesHandler extends ActionHandler {
                                                 .get(valueField);
                                         if (value instanceof Integer) {
                                             requestMap
-                                                    .put(valueField,
-                                                            termFreq
-                                                                    + ((Number) value)
-                                                                            .intValue());
+                                            .put(valueField,
+                                                    termFreq
+                                                    + ((Number) value)
+                                                    .intValue());
                                         } else {
                                             logger.warn("Missing a value of "
                                                     + valueField + " field: "
                                                     + requestMap);
                                             requestMap
-                                                    .put(valueField, termFreq);
+                                            .put(valueField, termFreq);
                                         }
                                     } else {
                                         final Map<String, Object> requestMap = new HashMap<>();
@@ -300,9 +300,9 @@ public class GenTermValuesHandler extends ActionHandler {
                                         requestMap.put("item", itemMap);
                                         requestMap.put(valueField, termFreq);
                                         requestMap
-                                                .put(eventParams
-                                                        .param(TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
-                                                                TasteConstants.TIMESTAMP_FIELD),
+                                        .put(eventParams
+                                                .param(TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
+                                                        TasteConstants.TIMESTAMP_FIELD),
                                                         now);
                                         termValueMap.put(key, requestMap);
                                     }
@@ -349,10 +349,10 @@ public class GenTermValuesHandler extends ActionHandler {
             }
             handlers[requestHandlers.length] = (params, listener, requestMap,
                     paramMap, chain) -> processEvent(eventMapQueue, genTVGate);
-            new RequestHandlerChain(handlers).execute(eventParams, t -> {
-                logger.error("Failed to store: " + eventMap, t);
-                processEvent(eventMapQueue, genTVGate);
-            }, eventMap, new HashMap<>());
+                    new RequestHandlerChain(handlers).execute(eventParams, t -> {
+                        logger.error("Failed to store: " + eventMap, t);
+                        processEvent(eventMapQueue, genTVGate);
+                    }, eventMap, new HashMap<>());
         }
 
         @Override

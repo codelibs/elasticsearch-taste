@@ -3,10 +3,10 @@ package org.codelibs.elasticsearch.taste.worker;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
-import org.apache.mahout.cf.taste.recommender.ItemBasedRecommender;
-import org.apache.mahout.cf.taste.recommender.RecommendedItem;
-import org.apache.mahout.common.MemoryUtil;
+import org.codelibs.elasticsearch.taste.common.LongPrimitiveIterator;
+import org.codelibs.elasticsearch.taste.common.MemoryUtil;
+import org.codelibs.elasticsearch.taste.recommender.ItemBasedRecommender;
+import org.codelibs.elasticsearch.taste.recommender.RecommendedItem;
 import org.codelibs.elasticsearch.taste.writer.ItemWriter;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;

@@ -2,7 +2,6 @@ package org.codelibs.elasticsearch.taste.eval;
 
 import java.util.Map;
 
-import org.codelibs.elasticsearch.taste.eval.impl.RMSEvaluator;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public class RMSEvaluatorFactory implements EvaluatorFactory {

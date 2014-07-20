@@ -5,14 +5,14 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
-import org.apache.mahout.cf.taste.impl.common.LongPrimitiveArrayIterator;
-import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
-import org.apache.mahout.cf.taste.model.DataModel;
-import org.apache.mahout.cf.taste.recommender.Recommender;
+import org.codelibs.elasticsearch.taste.common.LongPrimitiveArrayIterator;
+import org.codelibs.elasticsearch.taste.common.LongPrimitiveIterator;
+import org.codelibs.elasticsearch.taste.eval.RecommenderBuilder;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
+import org.codelibs.elasticsearch.taste.model.DataModel;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
+import org.codelibs.elasticsearch.taste.recommender.Recommender;
 import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.service.TasteService;
 import org.codelibs.elasticsearch.taste.worker.RecommendedItemsWorker;
@@ -86,14 +86,14 @@ public class ItemsFromUserHandler extends RecommendationHandler {
             final LongPrimitiveIterator userIdIter = userIDs == null ? dataModel
                     .getUserIDs() : new LongPrimitiveArrayIterator(userIDs);
 
-            for (int n = 0; n < degreeOfParallelism; n++) {
-                final RecommendedItemsWorker worker = new RecommendedItemsWorker(
-                        n, recommender, userIdIter, numOfRecommendedItems,
-                        writer);
-                executorService.execute(worker);
-            }
+                    for (int n = 0; n < degreeOfParallelism; n++) {
+                        final RecommendedItemsWorker worker = new RecommendedItemsWorker(
+                                n, recommender, userIdIter, numOfRecommendedItems,
+                                writer);
+                        executorService.execute(worker);
+                    }
 
-            waitFor(executorService, maxDuration);
+                    waitFor(executorService, maxDuration);
         } catch (final TasteException e) {
             logger.error("Recommender {} is failed.", e, recommender);
         } finally {

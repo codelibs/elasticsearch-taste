@@ -101,7 +101,7 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
             }
         };
         client.prepareIndex(index, type).setSource(rootObj)
-                .execute(on(responseListener, failureListener));
+        .execute(on(responseListener, failureListener));
     }
 
     private void doPreferenceIndexExists(final Params params,
@@ -196,7 +196,7 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
                     .setTimeout(
                             params.param("timeout",
                                     DEFAULT_HEALTH_REQUEST_TIMEOUT)).execute()
-                    .actionGet();
+                                    .actionGet();
             if (healthResponse.isTimedOut()) {
                 listener.onError(new OperationFailedException(
                         "Failed to create index: " + index + "/" + type));

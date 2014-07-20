@@ -2,11 +2,9 @@ package org.codelibs.elasticsearch.taste.recommender;
 
 import java.util.Map;
 
-import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
-import org.apache.mahout.cf.taste.model.DataModel;
-import org.apache.mahout.cf.taste.recommender.Recommender;
-import org.codelibs.elasticsearch.taste.TasteSystemException;
+import org.codelibs.elasticsearch.taste.eval.RecommenderBuilder;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
+import org.codelibs.elasticsearch.taste.model.DataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.similarity.SimilarityFactory;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
@@ -35,18 +33,17 @@ public abstract class AbstractRecommenderBuilder implements RecommenderBuilder {
             final Class<?> clazz = Class.forName(factoryName);
             @SuppressWarnings("unchecked")
             final SimilarityFactory<T> similarityFactory = (SimilarityFactory<T>) clazz
-                    .newInstance();
+            .newInstance();
             similarityFactory.init(similaritySettings);
             return similarityFactory.create();
         } catch (ClassNotFoundException | InstantiationException
                 | IllegalAccessException e) {
-            throw new TasteSystemException("Could not create an instance of "
+            throw new TasteException("Could not create an instance of "
                     + factoryName, e);
         }
     }
 
     @Override
-    public abstract Recommender buildRecommender(DataModel dataModel)
-            throws TasteException;
+    public abstract Recommender buildRecommender(DataModel dataModel);
 
 }

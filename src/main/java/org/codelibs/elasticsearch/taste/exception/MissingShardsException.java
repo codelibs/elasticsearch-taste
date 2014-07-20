@@ -1,8 +1,6 @@
 package org.codelibs.elasticsearch.taste.exception;
 
-import org.codelibs.elasticsearch.taste.TasteSystemException;
-
-public class MissingShardsException extends TasteSystemException {
+public class MissingShardsException extends TasteException {
 
     private static final long serialVersionUID = 1L;
 

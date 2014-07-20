@@ -10,13 +10,10 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.Date;
 
-import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.impl.common.FastIDSet;
-import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
-import org.apache.mahout.cf.taste.impl.model.file.FileDataModel;
-import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.codelibs.elasticsearch.taste.TasteConstants;
-import org.codelibs.elasticsearch.taste.TasteSystemException;
+import org.codelibs.elasticsearch.taste.common.FastIDSet;
+import org.codelibs.elasticsearch.taste.common.LongPrimitiveIterator;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.client.Client;
@@ -91,7 +88,7 @@ public class ElasticsearchDataModelTest {
         final CreateIndexResponse response = client.admin().indices()
                 .prepareCreate(TEST_INDEX).execute().actionGet();
         if (!response.isAcknowledged()) {
-            throw new TasteSystemException("Failed to create index: "
+            throw new TasteException("Failed to create index: "
                     + TEST_INDEX);
         }
 
@@ -126,7 +123,7 @@ public class ElasticsearchDataModelTest {
                 .setType(TasteConstants.USER_TYPE).setSource(userBuilder)
                 .execute().actionGet();
         if (!userResponse.isAcknowledged()) {
-            throw new TasteSystemException("Failed to create user mapping.");
+            throw new TasteException("Failed to create user mapping.");
         }
 
         final XContentBuilder itemBuilder = XContentFactory.jsonBuilder()//
@@ -160,7 +157,7 @@ public class ElasticsearchDataModelTest {
                 .setType(TasteConstants.ITEM_TYPE).setSource(itemBuilder)
                 .execute().actionGet();
         if (!itemResponse.isAcknowledged()) {
-            throw new TasteSystemException("Failed to create item mapping.");
+            throw new TasteException("Failed to create item mapping.");
         }
     }
 
@@ -194,7 +191,7 @@ public class ElasticsearchDataModelTest {
     }
 
     private void compare(final ElasticsearchDataModel esModel,
-            final FileDataModel fsModel) throws TasteException {
+            final FileDataModel fsModel)  {
         assertLongPrimitiveIterator(fsModel.getUserIDs(), esModel.getUserIDs());
         assertLongPrimitiveIterator(fsModel.getItemIDs(), esModel.getItemIDs());
         assertEquals(fsModel.getNumUsers(), esModel.getNumUsers());
@@ -268,7 +265,7 @@ public class ElasticsearchDataModelTest {
     }
 
     private ElasticsearchDataModel getElasticsearchDataModel(
-            final String[] lines) throws TasteException {
+            final String[] lines)  {
         final ElasticsearchDataModel esModel = new ElasticsearchDataModel();
         esModel.setClient(node.client());
         esModel.setItemIndex(TEST_INDEX);

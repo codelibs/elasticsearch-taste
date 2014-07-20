@@ -5,15 +5,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
-import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.common.RandomUtils;
-import org.codelibs.elasticsearch.taste.TasteSystemException;
 import org.codelibs.elasticsearch.taste.eval.Evaluation;
 import org.codelibs.elasticsearch.taste.eval.EvaluationConfig;
 import org.codelibs.elasticsearch.taste.eval.Evaluator;
 import org.codelibs.elasticsearch.taste.eval.EvaluatorFactory;
+import org.codelibs.elasticsearch.taste.eval.RecommenderBuilder;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
+import org.codelibs.elasticsearch.taste.model.DataModel;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommenderBuilder;
@@ -135,7 +134,7 @@ public class EvalItemsFromUserHandler extends RecommendationHandler {
             rootObj.put("evaluation", evaluationObj);
             final Map<String, Object> configObj = new HashMap<>();
             configObj
-                    .put("training_percentage", config.getTrainingPercentage());
+            .put("training_percentage", config.getTrainingPercentage());
             configObj.put("evaluation_percentage",
                     config.getEvaluationPercentage());
             configObj.put("margin_for_error", config.getMarginForError());
@@ -237,7 +236,7 @@ public class EvalItemsFromUserHandler extends RecommendationHandler {
             return evaluator;
         } catch (ClassNotFoundException | InstantiationException
                 | IllegalAccessException e) {
-            throw new TasteSystemException("Could not create an instance of "
+            throw new TasteException("Could not create an instance of "
                     + factoryName, e);
         }
     }

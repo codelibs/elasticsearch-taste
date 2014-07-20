@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import org.codelibs.elasticsearch.taste.TasteSystemException;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.service.TasteService;
@@ -36,13 +36,13 @@ public abstract class RecommendationHandler extends ActionHandler {
             final IndexInfo indexInfo,
             final Map<String, Object> modelInfoSettings) {
         if (StringUtils.isBlank(indexInfo.getUserIndex())) {
-            throw new TasteSystemException("User Index is blank.");
+            throw new TasteException("User Index is blank.");
         }
         if (StringUtils.isBlank(indexInfo.getPreferenceIndex())) {
-            throw new TasteSystemException("Preference Index is blank.");
+            throw new TasteException("Preference Index is blank.");
         }
         if (StringUtils.isBlank(indexInfo.getItemIndex())) {
-            throw new TasteSystemException("Item Index is blank.");
+            throw new TasteException("Item Index is blank.");
         }
 
         final String className = SettingsUtils
@@ -98,7 +98,7 @@ public abstract class RecommendationHandler extends ActionHandler {
             return model;
         } catch (ClassNotFoundException | InstantiationException
                 | IllegalAccessException e) {
-            throw new TasteSystemException("Could not create an instance of "
+            throw new TasteException("Could not create an instance of "
                     + className);
         }
     }

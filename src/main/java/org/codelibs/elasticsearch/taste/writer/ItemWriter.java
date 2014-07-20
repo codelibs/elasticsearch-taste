@@ -5,8 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.codelibs.elasticsearch.taste.TasteConstants;
+import org.codelibs.elasticsearch.taste.recommender.RecommendedItem;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.cache.Cache;

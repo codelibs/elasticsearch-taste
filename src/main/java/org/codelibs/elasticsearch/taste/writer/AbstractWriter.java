@@ -4,7 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 
 import org.codelibs.elasticsearch.taste.TasteConstants;
-import org.codelibs.elasticsearch.taste.TasteSystemException;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
@@ -38,7 +38,7 @@ public abstract class AbstractWriter implements Closeable {
             final CreateIndexResponse createIndexResponse = client.admin()
                     .indices().prepareCreate(index).execute().actionGet();
             if (!createIndexResponse.isAcknowledged()) {
-                throw new TasteSystemException("Failed to create " + index
+                throw new TasteException("Failed to create " + index
                         + " index.");
             }
         }
@@ -52,9 +52,8 @@ public abstract class AbstractWriter implements Closeable {
                         .indices().preparePutMapping(index).setType(type)
                         .setSource(mappingBuilder).execute().actionGet();
                 if (!putMappingResponse.isAcknowledged()) {
-                    throw new TasteSystemException(
-                            "Failed to create a mapping of" + index + "/"
-                                    + type);
+                    throw new TasteException("Failed to create a mapping of"
+                            + index + "/" + type);
                 }
             }
         }

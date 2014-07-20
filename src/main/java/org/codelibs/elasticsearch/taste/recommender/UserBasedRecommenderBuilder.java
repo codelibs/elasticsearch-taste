@@ -3,15 +3,12 @@ package org.codelibs.elasticsearch.taste.recommender;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.model.DataModel;
-import org.apache.mahout.cf.taste.neighborhood.UserNeighborhood;
-import org.apache.mahout.cf.taste.recommender.Recommender;
-import org.apache.mahout.cf.taste.similarity.UserSimilarity;
-import org.codelibs.elasticsearch.taste.TasteSystemException;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
+import org.codelibs.elasticsearch.taste.model.DataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
+import org.codelibs.elasticsearch.taste.neighborhood.UserNeighborhood;
 import org.codelibs.elasticsearch.taste.neighborhood.UserNeighborhoodFactory;
-import org.codelibs.elasticsearch.taste.recommender.impl.DefaultUserBasedRecommender;
+import org.codelibs.elasticsearch.taste.similarity.UserSimilarity;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public class UserBasedRecommenderBuilder extends AbstractRecommenderBuilder {
@@ -22,8 +19,7 @@ public class UserBasedRecommenderBuilder extends AbstractRecommenderBuilder {
     }
 
     @Override
-    public Recommender buildRecommender(final DataModel dataModel)
-            throws TasteException {
+    public Recommender buildRecommender(final DataModel dataModel) {
         final Map<String, Object> similaritySettings = SettingsUtils.get(
                 rootSettings, "similarity", new HashMap<String, Object>());
         similaritySettings.put(DATA_MODEL_ATTR, dataModel);
@@ -35,7 +31,7 @@ public class UserBasedRecommenderBuilder extends AbstractRecommenderBuilder {
         neighborhoodSettings.put(USER_SIMILARITY_ATTR, similarity);
         final UserNeighborhood neighborhood = createUserNeighborhood(neighborhoodSettings);
 
-        return new DefaultUserBasedRecommender(dataModel, neighborhood,
+        return new GenericUserBasedRecommender(dataModel, neighborhood,
                 similarity);
     }
 
@@ -52,7 +48,7 @@ public class UserBasedRecommenderBuilder extends AbstractRecommenderBuilder {
             return userNeighborhoodFactory.create();
         } catch (ClassNotFoundException | InstantiationException
                 | IllegalAccessException e) {
-            throw new TasteSystemException("Could not create an instance of "
+            throw new TasteException("Could not create an instance of "
                     + factoryName, e);
         }
     }
