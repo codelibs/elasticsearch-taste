@@ -10,6 +10,7 @@ This plugin provides the following features of a recommendation engine on Elasti
 * Item-based Recommender.
 * User-based Recommender.
 * Similar Users/Contents
+* Text Analysis
 
 ## Version
 
@@ -180,6 +181,12 @@ For example, if you get similar users from ID=115:
 
     curl -XGET localhost:9200/movielens/recommendation/_taste/user/1
 
+### Create Vectors from Text
+
+TBD
+
+    curl -o ap.txt http://mallet.cs.umass.edu/ap.txt
+    cat ap.txt | awk '{system("curl -XPOST localhost:9200/associated_press/article/" $1 " -d {\"id\":" $1 ",\"label\":" $2 ",\"description\":" $3 "}")}'
 
 ## Specification
 
