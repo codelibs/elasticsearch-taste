@@ -183,10 +183,54 @@ For example, if you get similar users from ID=115:
 
 ### Create Vectors from Text
 
-TBD
+You can create a term vector from your index which has a field with "term_vector".
+For the following example, text data are stored into "description" field in "ap" index.
 
+    curl -XPOST localhost:9200/ap?pretty
+    curl -XPOST localhost:9200/ap/article/_mapping?pretty -d '{
+      "article" : {
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "label" : {
+            "type" : "string",
+            "index" : "not_analyzed"
+          },
+          "description" : {
+            "type" : "string",
+            "analyzer" : "standard",
+            "term_vector": "with_positions_offsets_payloads",
+            "store" : true
+          }
+        }
+      }
+    }'
     curl -o ap.txt http://mallet.cs.umass.edu/ap.txt
-    cat ap.txt | awk '{system("curl -XPOST localhost:9200/associated_press/article/" $1 " -d {\"id\":" $1 ",\"label\":" $2 ",\"description\":" $3 "}")}'
+    sed -e "s/[\'\`\\]//g" ap.txt | awk -F"\t" '{system("curl -XPOST localhost:9200/ap/article/" $1 " -d \"{\\\"id\\\":\\\"" $1 "\\\",\\\"label\\\":\\\"" $2 "\\\",\\\"description\\\":\\\"" $3 "\\\"}\"")}'
+
+To generate the term vector, run the following river:
+
+    curl -XPOST localhost:9200/_river/ap_term/_meta?pretty -d '{
+      "type": "taste",
+      "action": "generate_term_values",
+      "source": {
+        "index": "ap",
+        "type": "article",
+        "fields": ["description"]
+      },
+      "event": {
+        "user_index": "ap_term",
+        "user_type": "doc",
+        "item_index": "ap_term",
+        "item_type": "term",
+        "preference_index": "ap_term",
+        "preference_type": "preference"
+      }
+    }'
+
+source property specify index, type and fields as source information, and event property is output information which is user/item/preference format.
 
 ## Specification
 
