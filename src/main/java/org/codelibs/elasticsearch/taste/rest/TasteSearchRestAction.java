@@ -63,8 +63,8 @@ public class TasteSearchRestAction extends BaseRestHandler {
     }
 
     @Override
-    public void handleRequest(final RestRequest request,
-            final RestChannel channel) {
+    protected void handleRequest(final RestRequest request,
+            final RestChannel channel, final Client client) {
 
         final Info info = new Info(request);
 
@@ -99,7 +99,8 @@ public class TasteSearchRestAction extends BaseRestHandler {
                 return;
             }
 
-            doSearchRequest(request, channel, info, targetId.longValue());
+            doSearchRequest(request, channel, client, info,
+                    targetId.longValue());
         };
         client.prepareSearch(info.getIdIndex()).setTypes(info.getIdType())
         .setQuery(QueryBuilders.termQuery("id", id))
@@ -110,7 +111,8 @@ public class TasteSearchRestAction extends BaseRestHandler {
     }
 
     private void doSearchRequest(final RestRequest request,
-            final RestChannel channel, final Info info, final long targetId) {
+            final RestChannel channel, final Client client, final Info info,
+            final long targetId) {
 
         final OnResponseListener<SearchResponse> responseListener = response -> {
             final SearchHits hits = response.getHits();
@@ -137,7 +139,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
                         .startArray("hits");
 
                 for (final SearchHit hit : hits.getHits()) {
-                    final Map<String, Object> source = expandObjects(
+                    final Map<String, Object> source = expandObjects(client,
                             hit.getSource(), info);
                     builder.startObject()//
                     .field("_index", hit.getIndex())//
@@ -169,28 +171,29 @@ public class TasteSearchRestAction extends BaseRestHandler {
                         .execute(on(responseListener, t -> onError(channel, t)));
     }
 
-    private Map<String, Object> expandObjects(final Map<String, Object> source,
-            final Info info) {
+    private Map<String, Object> expandObjects(final Client client,
+            final Map<String, Object> source, final Info info) {
         final Map<String, Object> newSource = new HashMap<>(source.size());
         for (final Map.Entry<String, Object> entry : source.entrySet()) {
             final Object value = entry.getValue();
             if (info.getUserIdField().equals(entry.getKey()) && value != null) {
                 final Number targetId = (Number) value;
-                final Map<String, Object> objMap = getObjectMap("U-",
+                final Map<String, Object> objMap = getObjectMap(client, "U-",
                         info.getUserIndex(), info.getUserType(),
                         targetId.toString());
                 newSource.put("user", objMap);
             } else if (info.getItemIdField().equals(entry.getKey())
                     && value != null) {
                 final Number targetId = (Number) value;
-                final Map<String, Object> objMap = getObjectMap("I-",
+                final Map<String, Object> objMap = getObjectMap(client, "I-",
                         info.getItemIndex(), info.getItemType(),
                         targetId.toString());
                 newSource.put("item", objMap);
             } else if (value instanceof Map) {
                 @SuppressWarnings("unchecked")
                 final Map<String, Object> objMap = (Map<String, Object>) value;
-                newSource.put(entry.getKey(), expandObjects(objMap, info));
+                newSource.put(entry.getKey(),
+                        expandObjects(client, objMap, info));
             } else if (value instanceof List) {
                 @SuppressWarnings("unchecked")
                 final List<Object> list = (List<Object>) value;
@@ -199,7 +202,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
                     if (obj instanceof Map) {
                         @SuppressWarnings("unchecked")
                         final Map<String, Object> objMap = (Map<String, Object>) obj;
-                        newList.add(expandObjects(objMap, info));
+                        newList.add(expandObjects(client, objMap, info));
                     } else {
                         newList.add(obj);
                     }
@@ -212,8 +215,9 @@ public class TasteSearchRestAction extends BaseRestHandler {
         return newSource;
     }
 
-    private Map<String, Object> getObjectMap(final String prefix,
-            final String index, final String type, final String id) {
+    private Map<String, Object> getObjectMap(final Client client,
+            final String prefix, final String index, final String type,
+            final String id) {
         try {
             return cache.get(prefix + id, () -> {
                 final GetResponse response = client.prepareGet(index, type, id)

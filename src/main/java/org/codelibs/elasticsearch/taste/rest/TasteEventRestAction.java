@@ -48,8 +48,8 @@ public class TasteEventRestAction extends BaseRestHandler {
     }
 
     @Override
-    public void handleRequest(final RestRequest request,
-            final RestChannel channel) {
+    protected void handleRequest(final RestRequest request,
+            final RestChannel channel, final Client client) {
 
         try {
             final Map<String, Object> requestMap = XContentFactory
