@@ -519,7 +519,7 @@ public class ElasticsearchDataModel implements DataModel {
                 .setRefresh(true).execute().actionGet();
         if (!getResponse.isExists()) {
             final Map<String, Object> source = new HashMap<String, Object>();
-            source.put("id", Long.toString(userID));
+            source.put("system_id", Long.toString(userID));
             source.put(userIdField, userID);
             source.put(timestampField, new Date());
             final IndexResponse response = client
@@ -537,7 +537,7 @@ public class ElasticsearchDataModel implements DataModel {
                 .setRefresh(true).execute().actionGet();
         if (!getResponse.isExists()) {
             final Map<String, Object> source = new HashMap<String, Object>();
-            source.put("id", Long.toString(itemID));
+            source.put("system_id", Long.toString(itemID));
             source.put(itemIdField, itemID);
             source.put(timestampField, new Date());
             final IndexResponse response = client

@@ -55,6 +55,8 @@ public class GenTermValuesHandler extends ActionHandler {
 
     private String[] sourceFields;
 
+    private String idField;
+
     private RequestHandler[] requestHandlers;
 
     private Params eventParams;
@@ -94,6 +96,8 @@ public class GenTermValuesHandler extends ActionHandler {
             throw new InvalidParameterException("source.fields is empty.");
         }
         sourceFields = fieldList.toArray(new String[fieldList.size()]);
+        idField = SettingsUtils.get(sourceIndexSettings,
+                TasteConstants.REQUEST_PARAM_ID_FIELD, "system_id");
 
         final Map<String, Object> scrollSettings = SettingsUtils.get(
                 rootSettings, "scroll");
@@ -115,7 +119,7 @@ public class GenTermValuesHandler extends ActionHandler {
         .setSearchType(SearchType.SCAN)
         .setScroll(new TimeValue(keepAlive.longValue()))
         .setQuery(QueryBuilders.matchAllQuery())
-        .setSize(size.intValue()).addField("id")
+        .setSize(size.intValue()).addField(idField)
         .setListenerThreaded(true).execute(new ScrollSearchListener());
 
         try {
@@ -168,7 +172,7 @@ public class GenTermValuesHandler extends ActionHandler {
                         .prepareMultiTermVectors();
                 for (final SearchHit hit : hits) {
                     final String id = hit.getId();
-                    final SearchHitField searchHitField = hit.field("id");
+                    final SearchHitField searchHitField = hit.field(idField);
                     if (searchHitField != null) {
                         idMap.put(id, (String) searchHitField.getValue());
                     }
@@ -293,10 +297,10 @@ public class GenTermValuesHandler extends ActionHandler {
                                     } else {
                                         final Map<String, Object> requestMap = new HashMap<>();
                                         final Map<String, Object> userMap = new HashMap<>();
-                                        userMap.put("id", id);
+                                        userMap.put("system_id", id);
                                         requestMap.put("user", userMap);
                                         final Map<String, Object> itemMap = new HashMap<>();
-                                        itemMap.put("id", termValue);
+                                        itemMap.put("system_id", termValue);
                                         requestMap.put("item", itemMap);
                                         requestMap.put(valueField, termFreq);
                                         requestMap

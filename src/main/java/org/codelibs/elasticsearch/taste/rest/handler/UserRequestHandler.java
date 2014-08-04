@@ -55,6 +55,9 @@ public class UserRequestHandler extends DefaultRequestHandler {
         final String userIdField = params.param(
                 TasteConstants.REQUEST_PARAM_USER_ID_FIELD,
                 TasteConstants.USER_ID_FIELD);
+        final String idField = params.param(
+                TasteConstants.REQUEST_PARAM_ID_FIELD,
+                "id");
         final String timestampField = params.param(
                 TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
                 TasteConstants.TIMESTAMP_FIELD);
@@ -65,9 +68,13 @@ public class UserRequestHandler extends DefaultRequestHandler {
         if (userMap == null) {
             throw new InvalidParameterException("User is null.");
         }
-        final Object id = userMap.get("id");
-        if (id == null) {
-            throw new InvalidParameterException("User ID is null.");
+        Object systemId = userMap.get("system_id");
+        if (systemId == null) {
+            systemId = userMap.remove(idField);
+            if (systemId == null) {
+                throw new InvalidParameterException("User ID is null.");
+            }
+            userMap.put("system_id", systemId);
         }
 
         try {
@@ -120,7 +127,7 @@ public class UserRequestHandler extends DefaultRequestHandler {
                 }
             };
             client.prepareSearch(index).setTypes(userType)
-            .setQuery(QueryBuilders.termQuery("id", id))
+            .setQuery(QueryBuilders.termQuery("system_id", systemId))
             .addField(userIdField)
             .addSort(timestampField, SortOrder.DESC).setSize(1)
             .execute(on(responseListener, failureListener));
@@ -249,8 +256,8 @@ public class UserRequestHandler extends DefaultRequestHandler {
                     .field("type", "long")//
                     .endObject()//
 
-                    // id
-                    .startObject("id")//
+                    // system_id
+                    .startObject("system_id")//
                     .field("type", "string")//
                     .field("index", "not_analyzed")//
                     .endObject()//

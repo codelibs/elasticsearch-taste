@@ -56,9 +56,9 @@ public class TasteSearchRestAction extends BaseRestHandler {
                         .maximumSize(Long.parseLong(size)).build();
 
         restController.registerHandler(RestRequest.Method.GET,
-                "/{index}/_taste/{objectType}/{id}", this);
+                "/{index}/_taste/{objectType}/{systemId}", this);
         restController.registerHandler(RestRequest.Method.GET,
-                "/{index}/{type}/_taste/{objectType}/{id}", this);
+                "/{index}/{type}/_taste/{objectType}/{systemId}", this);
 
     }
 
@@ -68,9 +68,9 @@ public class TasteSearchRestAction extends BaseRestHandler {
 
         final Info info = new Info(request);
 
-        final String id = request.param("id");
-        if (StringUtils.isBlank(id)) {
-            onError(channel, new NotFoundException("No id."));
+        final String systemId = request.param("systemId");
+        if (StringUtils.isBlank(systemId)) {
+            onError(channel, new NotFoundException("No system_id."));
             return;
         }
 
@@ -84,7 +84,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
             if (hits.totalHits() == 0) {
                 onError(channel,
                         new NotFoundException("No " + info.getIdField()
-                                + " data for " + id + " in "
+                                + " data for " + systemId + " in "
                                 + info.getIdIndex() + "/" + info.getIdType()));
                 return;
             }
@@ -94,7 +94,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
             if (targetId == null) {
                 onError(channel,
                         new NotFoundException("No " + info.getIdField()
-                                + " for " + id + " in " + info.getIdIndex()
+                                + " for " + systemId + " in " + info.getIdIndex()
                                 + "/" + info.getIdType()));
                 return;
             }
@@ -103,7 +103,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
                     targetId.longValue());
         };
         client.prepareSearch(info.getIdIndex()).setTypes(info.getIdType())
-        .setQuery(QueryBuilders.termQuery("id", id))
+        .setQuery(QueryBuilders.termQuery("system_id", systemId))
         .addField(info.getIdField())
         .addSort(info.getTimestampField(), SortOrder.DESC)
         .execute(on(responseListener, t -> onError(channel, t)));
