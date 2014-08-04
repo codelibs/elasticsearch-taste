@@ -43,7 +43,8 @@ The preference data set is u.data, it contains user id, item id, rating and time
 Download it and then insert data by [Event API](https://github.com/codelibs/elasticsearch-taste/blob/master/README.md#insert-preference-value "Event API"):
 
     curl -o u.data http://files.grouplens.org/datasets/movielens/ml-100k/u.data
-    cat u.data | awk '{system("curl -XPOST localhost:9200/movielens/_taste/event?pretty -d {\"user\":{\"id\":" $1 "},\"item\":{\"id\":" $2 "},\"value\":" $3 ",\"timestamp\":" $4 "000}")}'
+    cat u.data | awk '{system("curl -XPOST localhost:9200/movielens/_taste/event?pretty -d \"{\\\"user\\\":{\\\"id\\\":" $1 "},\\\"item\\\":{\\\"id\\\":" $2 "},\\\"value\\\":" $3 ",\\\"timestamp\\\":" $4 "000}\"")}'
+
 
 By the above request, the preference values are stored in "movielens" index.
 After inserting data, check them in the index:
