@@ -6,7 +6,7 @@ import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public class NearestNUserNeighborhoodFactory extends
-AbstractUserNeighborhoodFactory {
+        AbstractUserNeighborhoodFactory {
 
     protected int neighborhoodSize;
 
@@ -25,7 +25,7 @@ AbstractUserNeighborhoodFactory {
         try {
             return new NearestNUserNeighborhood(neighborhoodSize,
                     minSimilarity, userSimilarity, dataModel);
-        } catch (final  Exception e) {
+        } catch (final Exception e) {
             throw new TasteException("Failed to create an instance.", e);
         }
     }

@@ -3,7 +3,7 @@ package org.codelibs.elasticsearch.taste.eval;
 import java.util.Map;
 
 public class AverageAbsoluteDifferenceEvaluatorFactory implements
-EvaluatorFactory {
+        EvaluatorFactory {
 
     @Override
     public void init(final Map<String, Object> settings) {

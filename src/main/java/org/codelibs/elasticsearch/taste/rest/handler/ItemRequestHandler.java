@@ -55,15 +55,14 @@ public class ItemRequestHandler extends DefaultRequestHandler {
                 TasteConstants.REQUEST_PARAM_ITEM_ID_FIELD,
                 TasteConstants.ITEM_ID_FIELD);
         final String idField = params.param(
-                TasteConstants.REQUEST_PARAM_ID_FIELD,
-                "id");
+                TasteConstants.REQUEST_PARAM_ID_FIELD, "id");
         final String timestampField = params.param(
                 TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
                 TasteConstants.TIMESTAMP_FIELD);
 
         @SuppressWarnings("unchecked")
         final Map<String, Object> itemMap = (Map<String, Object>) requestMap
-        .get("item");
+                .get("item");
         if (itemMap == null) {
             throw new InvalidParameterException("Item is null.");
         }
@@ -96,7 +95,7 @@ public class ItemRequestHandler extends DefaultRequestHandler {
                             if (TasteConstants.TRUE
                                     .equalsIgnoreCase(updateType)
                                     || TasteConstants.YES
-                                    .equalsIgnoreCase(updateType)) {
+                                            .equalsIgnoreCase(updateType)) {
                                 doItemUpdate(params, listener, requestMap,
                                         paramMap, itemMap, index, itemType,
                                         itemIdField, timestampField,
@@ -125,10 +124,10 @@ public class ItemRequestHandler extends DefaultRequestHandler {
                 }
             };
             client.prepareSearch(index).setTypes(itemType)
-            .setQuery(QueryBuilders.termQuery("system_id", systemId))
-            .addField(itemIdField)
-            .addSort(timestampField, SortOrder.DESC).setSize(1)
-            .execute(on(responseListener, failureListener));
+                    .setQuery(QueryBuilders.termQuery("system_id", systemId))
+                    .addField(itemIdField)
+                    .addSort(timestampField, SortOrder.DESC).setSize(1)
+                    .execute(on(responseListener, failureListener));
         } catch (final Exception e) {
             final List<Throwable> errorList = getErrorList(paramMap);
             if (errorList.size() >= maxRetryCount) {
@@ -231,7 +230,7 @@ public class ItemRequestHandler extends DefaultRequestHandler {
                     .setTimeout(
                             params.param("timeout",
                                     DEFAULT_HEALTH_REQUEST_TIMEOUT)).execute()
-                                    .actionGet();
+                    .actionGet();
             if (healthResponse.isTimedOut()) {
                 listener.onError(new OperationFailedException(
                         "Failed to create index: " + index + "/" + type));
@@ -319,9 +318,9 @@ public class ItemRequestHandler extends DefaultRequestHandler {
             }
         };
         client.prepareSearch(index).setTypes(type)
-        .setQuery(QueryBuilders.matchAllQuery()).addField(itemIdField)
-        .addSort(itemIdField, SortOrder.DESC).setSize(1)
-        .execute(on(responseListener, failureListener));
+                .setQuery(QueryBuilders.matchAllQuery()).addField(itemIdField)
+                .addSort(itemIdField, SortOrder.DESC).setSize(1)
+                .execute(on(responseListener, failureListener));
     }
 
     private void doItemUpdate(final Params params,
@@ -348,8 +347,8 @@ public class ItemRequestHandler extends DefaultRequestHandler {
             }
         };
         client.prepareIndex(index, type, itemId.toString()).setSource(itemMap)
-        .setRefresh(true).setOpType(opType)
-        .execute(on(responseListener, failureListener));
+                .setRefresh(true).setOpType(opType)
+                .execute(on(responseListener, failureListener));
     }
 
 }

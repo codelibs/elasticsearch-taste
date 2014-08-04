@@ -317,15 +317,15 @@ public class ElasticsearchDataModel implements DataModel {
                     .setQuery(
                             QueryBuilders.filteredQuery(
                                     QueryBuilders
-                                    .boolQuery()
-                                    .must(QueryBuilders.termQuery(
-                                            itemIdField, itemID))
+                                            .boolQuery()
+                                            .must(QueryBuilders.termQuery(
+                                                    itemIdField, itemID))
                                             .must(QueryBuilders.termQuery(
                                                     userIdField, userID)),
-                                                    getLastAccessedFilterQuery()))
-                                                    .addFields(valueField)
-                                                    .addSort(timestampField, SortOrder.DESC).setSize(1)
-                                                    .execute().actionGet();
+                                    getLastAccessedFilterQuery()))
+                    .addFields(valueField)
+                    .addSort(timestampField, SortOrder.DESC).setSize(1)
+                    .execute().actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to get the preference by ("
                     + userID + "," + itemID + ")", e);
@@ -376,15 +376,15 @@ public class ElasticsearchDataModel implements DataModel {
                     .setQuery(
                             QueryBuilders.filteredQuery(
                                     QueryBuilders
-                                    .boolQuery()
-                                    .must(QueryBuilders.termQuery(
-                                            itemIdField, itemID))
+                                            .boolQuery()
+                                            .must(QueryBuilders.termQuery(
+                                                    itemIdField, itemID))
                                             .must(QueryBuilders.termQuery(
                                                     userIdField, userID)),
-                                                    getLastAccessedFilterQuery()))
-                                                    .addFields(timestampField)
-                                                    .addSort(timestampField, SortOrder.DESC).setSize(1)
-                                                    .execute().actionGet();
+                                    getLastAccessedFilterQuery()))
+                    .addFields(timestampField)
+                    .addSort(timestampField, SortOrder.DESC).setSize(1)
+                    .execute().actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to get the timestamp by ("
                     + userID + "," + itemID + ")", e);
@@ -506,7 +506,7 @@ public class ElasticsearchDataModel implements DataModel {
         source.put(timestampField, new Date());
         try {
             client.prepareIndex(preferenceIndex, preferenceType)
-            .setSource(source).setRefresh(true).execute().actionGet();
+                    .setSource(source).setRefresh(true).execute().actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to set (" + userID + "," + itemID
                     + "," + value + ")", e);
@@ -559,13 +559,13 @@ public class ElasticsearchDataModel implements DataModel {
                     .setQuery(
                             QueryBuilders.filteredQuery(
                                     QueryBuilders
-                                    .boolQuery()
-                                    .must(QueryBuilders.termQuery(
-                                            userIdField, userID))
+                                            .boolQuery()
+                                            .must(QueryBuilders.termQuery(
+                                                    userIdField, userID))
                                             .must(QueryBuilders.termQuery(
                                                     itemIdField, itemID)),
-                                                    getLastAccessedFilterQuery())).execute()
-                                                    .actionGet();
+                                    getLastAccessedFilterQuery())).execute()
+                    .actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to remove the preference by ("
                     + userID + "," + itemID + ")", e);
@@ -623,10 +623,10 @@ public class ElasticsearchDataModel implements DataModel {
                             QueryBuilders.filteredQuery(QueryBuilders
                                     .termQuery(targetField, targetID),
                                     getLastAccessedFilterQuery()))
-                                    .addFields(resultFields)
-                                    .addSort(resultFields[0], SortOrder.ASC)
-                                    .addSort(timestampField, SortOrder.DESC)
-                                    .setSize(maxPreferenceSize).execute().actionGet();
+                    .addFields(resultFields)
+                    .addSort(resultFields[0], SortOrder.ASC)
+                    .addSort(timestampField, SortOrder.DESC)
+                    .setSize(maxPreferenceSize).execute().actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to get the preference by "
                     + targetField + ":" + targetID, e);
@@ -672,8 +672,8 @@ public class ElasticsearchDataModel implements DataModel {
                     .setQuery(
                             QueryBuilders.filteredQuery(userQueryBuilder,
                                     getLastAccessedFilterQuery()))
-                                    .addFields(userIdField).setSize(scrollSize).execute()
-                                    .actionGet();
+                    .addFields(userIdField).setSize(scrollSize).execute()
+                    .actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to load userIDs.", e);
         }
@@ -729,8 +729,8 @@ public class ElasticsearchDataModel implements DataModel {
                     .setQuery(
                             QueryBuilders.filteredQuery(itemQueryBuilder,
                                     getLastAccessedFilterQuery()))
-                                    .addFields(itemIdField).setSize(scrollSize).execute()
-                                    .actionGet();
+                    .addFields(itemIdField).setSize(scrollSize).execute()
+                    .actionGet();
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to load itemIDs.", e);
         }
@@ -787,10 +787,10 @@ public class ElasticsearchDataModel implements DataModel {
                         QueryBuilders.filteredQuery(
                                 QueryBuilders.matchAllQuery(),
                                 getLastAccessedFilterQuery()))
-                                .setSize(0)
-                                .addAggregation(
-                                        AggregationBuilders.stats(valueField).field(valueField))
-                                        .execute().actionGet();
+                .setSize(0)
+                .addAggregation(
+                        AggregationBuilders.stats(valueField).field(valueField))
+                .execute().actionGet();
         final Aggregations aggregations = response.getAggregations();
         stats = aggregations.get(valueField);
     }

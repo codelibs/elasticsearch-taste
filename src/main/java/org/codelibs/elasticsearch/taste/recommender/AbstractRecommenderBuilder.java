@@ -33,7 +33,7 @@ public abstract class AbstractRecommenderBuilder implements RecommenderBuilder {
             final Class<?> clazz = Class.forName(factoryName);
             @SuppressWarnings("unchecked")
             final SimilarityFactory<T> similarityFactory = (SimilarityFactory<T>) clazz
-            .newInstance();
+                    .newInstance();
             similarityFactory.init(similaritySettings);
             return similarityFactory.create();
         } catch (ClassNotFoundException | InstantiationException

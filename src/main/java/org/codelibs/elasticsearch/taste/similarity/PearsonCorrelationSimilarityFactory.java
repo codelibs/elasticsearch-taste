@@ -7,7 +7,7 @@ import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public class PearsonCorrelationSimilarityFactory<T> extends
-AbstractUserSimilarityFactory<T> {
+        AbstractUserSimilarityFactory<T> {
 
     protected Weighting weighting;
 
@@ -29,7 +29,7 @@ AbstractUserSimilarityFactory<T> {
             final T t = (T) new PearsonCorrelationSimilarity(dataModel,
                     weighting);
             return t;
-        } catch (final  Exception e) {
+        } catch (final Exception e) {
             throw new TasteException("Failed to create an instance.", e);
         }
     }

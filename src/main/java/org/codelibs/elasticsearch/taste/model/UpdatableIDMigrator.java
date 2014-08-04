@@ -17,7 +17,6 @@
 
 package org.codelibs.elasticsearch.taste.model;
 
-
 public interface UpdatableIDMigrator extends IDMigrator {
 
     /**

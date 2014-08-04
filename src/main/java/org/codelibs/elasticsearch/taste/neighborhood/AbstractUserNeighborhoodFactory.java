@@ -7,7 +7,7 @@ import org.codelibs.elasticsearch.taste.similarity.UserSimilarity;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public abstract class AbstractUserNeighborhoodFactory implements
-UserNeighborhoodFactory {
+        UserNeighborhoodFactory {
 
     protected DataModel dataModel;
 

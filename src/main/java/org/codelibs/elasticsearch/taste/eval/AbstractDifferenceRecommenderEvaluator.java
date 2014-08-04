@@ -61,15 +61,9 @@ public abstract class AbstractDifferenceRecommenderEvaluator implements
 
     private final Random random;
 
- 
-
     protected AbstractDifferenceRecommenderEvaluator() {
-        random = RandomUtils.getRandom(); 
+        random = RandomUtils.getRandom();
     }
-
-  
-
- 
 
     @Override
     public double evaluate(final RecommenderBuilder recommenderBuilder,
@@ -147,8 +141,6 @@ public abstract class AbstractDifferenceRecommenderEvaluator implements
             }
         }
     }
-
-  
 
     private double getEvaluation(final FastByIDMap<PreferenceArray> testPrefs,
             final Recommender recommender) {
@@ -261,7 +253,7 @@ public abstract class AbstractDifferenceRecommenderEvaluator implements
                 if (Float.isNaN(estimatedPreference)) {
                     noEstimateCounter.incrementAndGet();
                 } else {
-                     processOneEstimate(estimatedPreference, realPref);
+                    processOneEstimate(estimatedPreference, realPref);
                 }
             }
             return null;

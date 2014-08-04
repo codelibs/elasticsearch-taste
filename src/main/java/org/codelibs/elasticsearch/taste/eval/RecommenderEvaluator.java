@@ -78,6 +78,5 @@ public interface RecommenderEvaluator {
     double evaluate(RecommenderBuilder recommenderBuilder,
             DataModelBuilder dataModelBuilder, DataModel dataModel,
             double trainingPercentage, double evaluationPercentage);
- 
 
 }

@@ -87,14 +87,14 @@ public class SimilarUsersHandler extends RecommendationHandler {
             final LongPrimitiveIterator userIdIter = userIDs == null ? dataModel
                     .getUserIDs() : new LongPrimitiveArrayIterator(userIDs);
 
-                    for (int n = 0; n < degreeOfParallelism; n++) {
-                        final SimilarUsersWorker worker = new SimilarUsersWorker(n,
-                                (UserBasedRecommender) recommender, userIdIter,
-                                numOfUsers, writer);
-                        executorService.execute(worker);
-                    }
+            for (int n = 0; n < degreeOfParallelism; n++) {
+                final SimilarUsersWorker worker = new SimilarUsersWorker(n,
+                        (UserBasedRecommender) recommender, userIdIter,
+                        numOfUsers, writer);
+                executorService.execute(worker);
+            }
 
-                    waitFor(executorService, maxDuration);
+            waitFor(executorService, maxDuration);
         } catch (final TasteException e) {
             logger.error("Recommender {} is failed.", e, recommender);
         } finally {

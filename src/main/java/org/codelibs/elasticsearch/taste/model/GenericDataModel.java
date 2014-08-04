@@ -145,8 +145,6 @@ public final class GenericDataModel extends AbstractDataModel {
         this.timestamps = timestamps;
     }
 
- 
-
     /**
      * Swaps, in-place, {@link List}s for arrays in {@link Map} values .
      *

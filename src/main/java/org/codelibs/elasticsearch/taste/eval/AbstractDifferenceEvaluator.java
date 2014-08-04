@@ -115,12 +115,12 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
         final double evaluationPercentage = config.getEvaluationPercentage();
         Preconditions.checkArgument(trainingPercentage >= 0.0
                 && trainingPercentage <= 1.0, "Invalid trainingPercentage: "
-                        + trainingPercentage
-                        + ". Must be: 0.0 <= trainingPercentage <= 1.0");
+                + trainingPercentage
+                + ". Must be: 0.0 <= trainingPercentage <= 1.0");
         Preconditions.checkArgument(evaluationPercentage >= 0.0
                 && evaluationPercentage <= 1.0,
                 "Invalid evaluationPercentage: " + evaluationPercentage
-                + ". Must be: 0.0 <= evaluationPercentage <= 1.0");
+                        + ". Must be: 0.0 <= evaluationPercentage <= 1.0");
 
         log.info("Beginning evaluation using {} of {}", trainingPercentage,
                 dataModel);
@@ -354,7 +354,7 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
     }
 
     protected class PreferenceEstimateCallable implements
-    Callable<EstimateStatsResult> {
+            Callable<EstimateStatsResult> {
 
         private final Recommender recommender;
 

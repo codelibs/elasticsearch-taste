@@ -32,7 +32,7 @@ import org.codelibs.elasticsearch.taste.model.Preference;
  * </p>
  */
 public final class AverageAbsoluteDifferenceEvaluator extends
-AbstractDifferenceEvaluator {
+        AbstractDifferenceEvaluator {
 
     private RunningAverage average;
 

@@ -6,7 +6,7 @@ import org.codelibs.elasticsearch.taste.model.DataModel;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public abstract class AbstractUserSimilarityFactory<T> implements
-SimilarityFactory<T> {
+        SimilarityFactory<T> {
 
     protected DataModel dataModel;
 

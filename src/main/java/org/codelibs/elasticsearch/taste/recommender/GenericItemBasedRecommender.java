@@ -176,7 +176,7 @@ public class GenericItemBasedRecommender extends AbstractRecommender implements
         final TopItems.Estimator<Long> estimator = new MostSimilarEstimator(
                 itemID, similarity, rescorer);
         return doMostSimilarItems(new long[] { itemID }, howMany, estimator);
-            }
+    }
 
     @Override
     public List<RecommendedItem> mostSimilarItems(final long[] itemIDs,
@@ -194,7 +194,7 @@ public class GenericItemBasedRecommender extends AbstractRecommender implements
                 itemIDs, similarity, rescorer,
                 EXCLUDE_ITEM_IF_NOT_SIMILAR_TO_ALL_BY_DEFAULT);
         return doMostSimilarItems(itemIDs, howMany, estimator);
-            }
+    }
 
     @Override
     public List<RecommendedItem> mostSimilarItems(final long[] itemIDs,
@@ -202,7 +202,7 @@ public class GenericItemBasedRecommender extends AbstractRecommender implements
         final TopItems.Estimator<Long> estimator = new MultiMostSimilarEstimator(
                 itemIDs, similarity, null, excludeItemIfNotSimilarToAll);
         return doMostSimilarItems(itemIDs, howMany, estimator);
-            }
+    }
 
     @Override
     public List<RecommendedItem> mostSimilarItems(final long[] itemIDs,
@@ -240,7 +240,7 @@ public class GenericItemBasedRecommender extends AbstractRecommender implements
                 .getCandidateItems(itemIDs, getDataModel());
         return TopItems.getTopItems(howMany, possibleItemIDs.iterator(), null,
                 estimator);
-            }
+    }
 
     protected float doEstimatePreference(final long userID,
             final PreferenceArray preferencesFromUser, final long itemID) {

@@ -352,9 +352,10 @@ public final class GenericItemSimilarity implements ItemSimilarity {
                 try {
                     similarity = otherSimilarity.itemSimilarity(itemID1,
                             itemID2);
-                } catch (final  Exception te) {
+                } catch (final Exception te) {
                     // ugly:
-                    throw new TasteException("Invalid state: "+itemID1+", "+itemID2,te);
+                    throw new TasteException("Invalid state: " + itemID1 + ", "
+                            + itemID2, te);
                 }
                 if (!Double.isNaN(similarity)) {
                     result = new ItemItemSimilarity(itemID1, itemID2,

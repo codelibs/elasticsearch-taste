@@ -238,7 +238,8 @@ public final class GenericUserSimilarity implements UserSimilarity {
                             itemID2);
                 } catch (final Exception te) {
                     // ugly:
-                    throw new TasteException("Invalid state: "+itemID1+", "+itemID2,te);
+                    throw new TasteException("Invalid state: " + itemID1 + ", "
+                            + itemID2, te);
                 }
                 if (!Double.isNaN(similarity)) {
                     return new UserUserSimilarity(itemID1, itemID2, similarity);

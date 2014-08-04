@@ -17,7 +17,6 @@
 
 package org.codelibs.elasticsearch.taste.common;
 
-
 /**
  * <p>
  * Implementations can retrieve a value for a given key.

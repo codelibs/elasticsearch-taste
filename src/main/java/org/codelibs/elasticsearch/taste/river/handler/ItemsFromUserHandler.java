@@ -86,14 +86,14 @@ public class ItemsFromUserHandler extends RecommendationHandler {
             final LongPrimitiveIterator userIdIter = userIDs == null ? dataModel
                     .getUserIDs() : new LongPrimitiveArrayIterator(userIDs);
 
-                    for (int n = 0; n < degreeOfParallelism; n++) {
-                        final RecommendedItemsWorker worker = new RecommendedItemsWorker(
-                                n, recommender, userIdIter, numOfRecommendedItems,
-                                writer);
-                        executorService.execute(worker);
-                    }
+            for (int n = 0; n < degreeOfParallelism; n++) {
+                final RecommendedItemsWorker worker = new RecommendedItemsWorker(
+                        n, recommender, userIdIter, numOfRecommendedItems,
+                        writer);
+                executorService.execute(worker);
+            }
 
-                    waitFor(executorService, maxDuration);
+            waitFor(executorService, maxDuration);
         } catch (final TasteException e) {
             logger.error("Recommender {} is failed.", e, recommender);
         } finally {

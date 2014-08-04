@@ -134,7 +134,7 @@ public class EvalItemsFromUserHandler extends RecommendationHandler {
             rootObj.put("evaluation", evaluationObj);
             final Map<String, Object> configObj = new HashMap<>();
             configObj
-            .put("training_percentage", config.getTrainingPercentage());
+                    .put("training_percentage", config.getTrainingPercentage());
             configObj.put("evaluation_percentage",
                     config.getEvaluationPercentage());
             configObj.put("margin_for_error", config.getMarginForError());

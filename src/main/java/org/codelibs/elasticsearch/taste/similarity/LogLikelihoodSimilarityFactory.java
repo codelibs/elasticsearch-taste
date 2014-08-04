@@ -1,8 +1,7 @@
 package org.codelibs.elasticsearch.taste.similarity;
 
-
 public class LogLikelihoodSimilarityFactory<T> extends
-AbstractUserSimilarityFactory<T> {
+        AbstractUserSimilarityFactory<T> {
 
     @Override
     public T create() {

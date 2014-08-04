@@ -90,7 +90,7 @@ public final class TopItems {
         Collections
                 .sort(result, ByValueRecommendedItemComparator.getInstance());
         return result;
-            }
+    }
 
     public static List<SimilarUser> getTopUsers(final int howMany,
             final LongPrimitiveIterator allUserIDs, final IDRescorer rescorer,

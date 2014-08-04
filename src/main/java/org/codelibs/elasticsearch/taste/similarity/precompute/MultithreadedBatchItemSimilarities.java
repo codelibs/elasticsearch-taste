@@ -152,7 +152,7 @@ public class MultithreadedBatchItemSimilarities extends BatchItemSimilarities {
                 itemIDBatches.size());
 
         return itemIDBatches;
-            }
+    }
 
     private static class Output implements Runnable {
 

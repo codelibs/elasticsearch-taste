@@ -17,7 +17,6 @@
 
 package org.codelibs.elasticsearch.taste.model;
 
-
 /**
  * Contains some features common to all implementations.
  */

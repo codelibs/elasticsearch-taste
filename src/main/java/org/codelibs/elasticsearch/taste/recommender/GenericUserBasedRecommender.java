@@ -128,7 +128,7 @@ public class GenericUserBasedRecommender extends AbstractRecommender implements
         final TopItems.Estimator<Long> estimator = new MostSimilarEstimator(
                 userID, similarity, rescorer);
         return doMostSimilarUsers(howMany, estimator);
-            }
+    }
 
     private List<SimilarUser> doMostSimilarUsers(final int howMany,
             final TopItems.Estimator<Long> estimator) {

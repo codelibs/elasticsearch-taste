@@ -53,7 +53,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
                 .newBuilder()
                 .expireAfterAccess(Long.parseLong(duration),
                         TimeUnit.MILLISECONDS)
-                        .maximumSize(Long.parseLong(size)).build();
+                .maximumSize(Long.parseLong(size)).build();
 
         restController.registerHandler(RestRequest.Method.GET,
                 "/{index}/_taste/{objectType}/{systemId}", this);
@@ -94,8 +94,8 @@ public class TasteSearchRestAction extends BaseRestHandler {
             if (targetId == null) {
                 onError(channel,
                         new NotFoundException("No " + info.getIdField()
-                                + " for " + systemId + " in " + info.getIdIndex()
-                                + "/" + info.getIdType()));
+                                + " for " + systemId + " in "
+                                + info.getIdIndex() + "/" + info.getIdType()));
                 return;
             }
 
@@ -103,10 +103,10 @@ public class TasteSearchRestAction extends BaseRestHandler {
                     targetId.longValue());
         };
         client.prepareSearch(info.getIdIndex()).setTypes(info.getIdType())
-        .setQuery(QueryBuilders.termQuery("system_id", systemId))
-        .addField(info.getIdField())
-        .addSort(info.getTimestampField(), SortOrder.DESC)
-        .execute(on(responseListener, t -> onError(channel, t)));
+                .setQuery(QueryBuilders.termQuery("system_id", systemId))
+                .addField(info.getIdField())
+                .addSort(info.getTimestampField(), SortOrder.DESC)
+                .execute(on(responseListener, t -> onError(channel, t)));
 
     }
 
@@ -142,17 +142,17 @@ public class TasteSearchRestAction extends BaseRestHandler {
                     final Map<String, Object> source = expandObjects(client,
                             hit.getSource(), info);
                     builder.startObject()//
-                    .field("_index", hit.getIndex())//
-                    .field("_type", hit.getType())//
-                    .field("_id", hit.getId())//
-                    .field("_score", hit.getScore())//
-                    .field("_source", source)//
-                    .endObject();//
+                            .field("_index", hit.getIndex())//
+                            .field("_type", hit.getType())//
+                            .field("_id", hit.getId())//
+                            .field("_score", hit.getScore())//
+                            .field("_source", source)//
+                            .endObject();//
                 }
 
                 builder.endArray()//
-                .endObject()//
-                .endObject();
+                        .endObject()//
+                        .endObject();
 
                 channel.sendResponse(new BytesRestResponse(RestStatus.OK,
                         builder));
@@ -162,13 +162,13 @@ public class TasteSearchRestAction extends BaseRestHandler {
             }
         };
         client.prepareSearch(info.getTargetIndex())
-        .setTypes(info.getTargetType())
-        .setQuery(
-                QueryBuilders.termQuery(info.getTargetIdField(),
-                        targetId))
-                        .addSort(info.getTimestampField(), SortOrder.DESC)
-                        .setSize(info.getSize()).setFrom(info.getFrom())
-                        .execute(on(responseListener, t -> onError(channel, t)));
+                .setTypes(info.getTargetType())
+                .setQuery(
+                        QueryBuilders.termQuery(info.getTargetIdField(),
+                                targetId))
+                .addSort(info.getTimestampField(), SortOrder.DESC)
+                .setSize(info.getSize()).setFrom(info.getFrom())
+                .execute(on(responseListener, t -> onError(channel, t)));
     }
 
     private Map<String, Object> expandObjects(final Client client,

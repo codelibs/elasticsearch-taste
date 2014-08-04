@@ -115,8 +115,6 @@ public final class GenericBooleanPrefDataModel extends AbstractDataModel {
         this.timestamps = timestamps;
     }
 
- 
-
     /**
      * Exports the simple user IDs and associated item IDs in the data model.
      *

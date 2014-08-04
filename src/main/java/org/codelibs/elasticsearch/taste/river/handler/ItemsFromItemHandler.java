@@ -87,14 +87,14 @@ public class ItemsFromItemHandler extends RecommendationHandler {
             final LongPrimitiveIterator itemIdIter = itemIDs == null ? dataModel
                     .getItemIDs() : new LongPrimitiveArrayIterator(itemIDs);
 
-                    for (int n = 0; n < degreeOfParallelism; n++) {
-                        final SimilarItemsWorker worker = new SimilarItemsWorker(n,
-                                (ItemBasedRecommender) recommender, itemIdIter,
-                                numOfMostSimilarItems, writer);
-                        executorService.execute(worker);
-                    }
+            for (int n = 0; n < degreeOfParallelism; n++) {
+                final SimilarItemsWorker worker = new SimilarItemsWorker(n,
+                        (ItemBasedRecommender) recommender, itemIdIter,
+                        numOfMostSimilarItems, writer);
+                executorService.execute(worker);
+            }
 
-                    waitFor(executorService, maxDuration);
+            waitFor(executorService, maxDuration);
         } catch (final TasteException e) {
             logger.error("Recommender {} is failed.", e, recommender);
         } finally {

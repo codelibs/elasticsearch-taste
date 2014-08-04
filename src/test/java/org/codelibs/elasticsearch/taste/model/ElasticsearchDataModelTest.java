@@ -88,8 +88,7 @@ public class ElasticsearchDataModelTest {
         final CreateIndexResponse response = client.admin().indices()
                 .prepareCreate(TEST_INDEX).execute().actionGet();
         if (!response.isAcknowledged()) {
-            throw new TasteException("Failed to create index: "
-                    + TEST_INDEX);
+            throw new TasteException("Failed to create index: " + TEST_INDEX);
         }
 
         final XContentBuilder userBuilder = XContentFactory.jsonBuilder()//
@@ -191,7 +190,7 @@ public class ElasticsearchDataModelTest {
     }
 
     private void compare(final ElasticsearchDataModel esModel,
-            final FileDataModel fsModel)  {
+            final FileDataModel fsModel) {
         assertLongPrimitiveIterator(fsModel.getUserIDs(), esModel.getUserIDs());
         assertLongPrimitiveIterator(fsModel.getItemIDs(), esModel.getItemIDs());
         assertEquals(fsModel.getNumUsers(), esModel.getNumUsers());
@@ -265,7 +264,7 @@ public class ElasticsearchDataModelTest {
     }
 
     private ElasticsearchDataModel getElasticsearchDataModel(
-            final String[] lines)  {
+            final String[] lines) {
         final ElasticsearchDataModel esModel = new ElasticsearchDataModel();
         esModel.setClient(node.client());
         esModel.setItemIndex(TEST_INDEX);

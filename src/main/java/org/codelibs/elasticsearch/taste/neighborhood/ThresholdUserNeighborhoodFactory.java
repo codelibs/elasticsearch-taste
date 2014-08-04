@@ -5,7 +5,7 @@ import java.util.Map;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 
 public class ThresholdUserNeighborhoodFactory extends
-AbstractUserNeighborhoodFactory {
+        AbstractUserNeighborhoodFactory {
     protected double threshold;
 
     @Override

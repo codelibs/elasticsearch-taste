@@ -119,7 +119,7 @@ public final class FastMap<K, V> implements Map<K, V>, Serializable, Cloneable {
         this.loadFactor = loadFactor;
         final int max = (int) (RandomUtils.MAX_INT_SMALLER_TWIN_PRIME / loadFactor);
         Preconditions
-        .checkArgument(size < max, "size must be less than " + max);
+                .checkArgument(size < max, "size must be less than " + max);
         Preconditions.checkArgument(maxSize >= 1, "maxSize must be at least 1");
         final int hashSize = RandomUtils
                 .nextTwinPrime((int) (loadFactor * size));
@@ -263,7 +263,7 @@ public final class FastMap<K, V> implements Map<K, V>, Serializable, Cloneable {
         }
         // Delete the entry
         // ((Object[])keys)[index] = REMOVED;
-        ((Object[])keys)[index] = REMOVED;
+        ((Object[]) keys)[index] = REMOVED;
         numEntries--;
         values[index] = null;
     }
@@ -285,7 +285,7 @@ public final class FastMap<K, V> implements Map<K, V>, Serializable, Cloneable {
             return null;
         } else {
             // ((Object[])keys)[index] = REMOVED;
-            ((Object[])keys)[index] = REMOVED;
+            ((Object[]) keys)[index] = REMOVED;
             numEntries--;
             final V oldValue = values[index];
             values[index] = null;
@@ -360,7 +360,7 @@ public final class FastMap<K, V> implements Map<K, V>, Serializable, Cloneable {
         }
         values[lastNext] = null;
         // ((Object[])keys)[lastNext] = REMOVED;
-        ((Object[])keys)[lastNext] = REMOVED;
+        ((Object[]) keys)[lastNext] = REMOVED;
         numEntries--;
     }
 
@@ -375,7 +375,7 @@ public final class FastMap<K, V> implements Map<K, V>, Serializable, Cloneable {
         clone.keys = keys.clone();
         clone.values = values.clone();
         clone.recentlyAccessed = countingAccesses ? new BitSet(keys.length)
-        : null;
+                : null;
         return clone;
     }
 

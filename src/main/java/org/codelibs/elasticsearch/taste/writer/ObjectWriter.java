@@ -21,24 +21,24 @@ public class ObjectWriter extends AbstractWriter {
         rootObj.put(timestampField, new Date());
 
         client.prepareIndex(index, type).setSource(rootObj)
-        .execute(new ActionListener<IndexResponse>() {
+                .execute(new ActionListener<IndexResponse>() {
 
-            @Override
-            public void onResponse(final IndexResponse response) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug(
-                            "Response: {}/{}/{}, Created: {}, Version: {}",
-                            response.getIndex(), response.getType(),
-                            response.getId(), response.getVersion(),
-                            response.isCreated());
-                }
-            }
+                    @Override
+                    public void onResponse(final IndexResponse response) {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug(
+                                    "Response: {}/{}/{}, Created: {}, Version: {}",
+                                    response.getIndex(), response.getType(),
+                                    response.getId(), response.getVersion(),
+                                    response.isCreated());
+                        }
+                    }
 
-            @Override
-            public void onFailure(final Throwable e) {
-                logger.error("Failed to write " + rootObj, e);
-            }
-        });
+                    @Override
+                    public void onFailure(final Throwable e) {
+                        logger.error("Failed to write " + rootObj, e);
+                    }
+                });
     }
 
 }
