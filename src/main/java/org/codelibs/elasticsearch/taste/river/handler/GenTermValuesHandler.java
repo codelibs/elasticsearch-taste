@@ -97,7 +97,7 @@ public class GenTermValuesHandler extends ActionHandler {
         }
         sourceFields = fieldList.toArray(new String[fieldList.size()]);
         idField = SettingsUtils.get(sourceIndexSettings,
-                TasteConstants.REQUEST_PARAM_ID_FIELD, "system_id");
+                TasteConstants.REQUEST_PARAM_ID_FIELD, "id");
 
         final Map<String, Object> scrollSettings = SettingsUtils.get(
                 rootSettings, "scroll");
