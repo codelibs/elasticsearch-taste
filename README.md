@@ -184,7 +184,7 @@ For example, if you get similar users from ID=115:
 
 ### Create Vectors from Text
 
-You can create a term vector from your index which has a field with "term_vector".
+You can create a term vector from your index which has a field with "term\_vector".
 For the following example, text data are stored into "description" field in "ap" index.
 
     curl -XPOST localhost:9200/ap?pretty
@@ -209,7 +209,7 @@ For the following example, text data are stored into "description" field in "ap"
       }
     }'
     curl -o ap.txt http://mallet.cs.umass.edu/ap.txt
-    sed -e "s/[\'\`\\]//g" ap.txt | awk -F"\t" '{system("curl -XPOST localhost:9200/ap/article/" $1 " -d \"{\\\"id\\\":\\\"" $1 "\\\",\\\"label\\\":\\\"" $2 "\\\",\\\"description\\\":\\\"" $3 "\\\"}\"")}'
+    sed -e "s/ \tX\t/\tX\t/g" -e "s/[\'\`\\]//g" ap.txt | awk -F"\t" '{system("curl -XPOST localhost:9200/ap/article/" $1 " -d \"{\\\"id\\\":\\\"" $1 "\\\",\\\"label\\\":\\\"" $2 "\\\",\\\"description\\\":\\\"" $3 "\\\"}\"")}'
 
 To generate the term vector, run the following river:
 
