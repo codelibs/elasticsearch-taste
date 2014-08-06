@@ -209,7 +209,7 @@ For the following example, text data are stored into "description" field in "ap"
       }
     }'
     curl -o ap.txt http://mallet.cs.umass.edu/ap.txt
-    sed -e "s/ \tX\t/\tX\t/g" -e "s/[\'\`\\]//g" ap.txt | awk -F"\t" '{system("curl -XPOST localhost:9200/ap/article/" $1 " -d \"{\\\"id\\\":\\\"" $1 "\\\",\\\"label\\\":\\\"" $2 "\\\",\\\"description\\\":\\\"" $3 "\\\"}\"")}'
+    sed -e "s/[\'\`\\]//g" ap.txt | awk -F"\t" '{sub(" ","",$1);system("curl -XPOST localhost:9200/ap/article/" $1 " -d \"{\\\"id\\\":\\\"" $1 "\\\",\\\"label\\\":\\\"" $2 "\\\",\\\"description\\\":\\\"" $3 "\\\"}\"")}'
 
 To generate the term vector, run the following river:
 
