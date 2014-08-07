@@ -29,6 +29,7 @@ import org.codelibs.elasticsearch.taste.rest.handler.UserRequestHandler;
 import org.codelibs.elasticsearch.util.lang.StringUtils;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.action.termvector.MultiTermVectorsItemResponse;
@@ -98,6 +99,8 @@ public class GenTermValuesHandler extends ActionHandler {
         sourceFields = fieldList.toArray(new String[fieldList.size()]);
         idField = SettingsUtils.get(sourceIndexSettings,
                 TasteConstants.REQUEST_PARAM_ID_FIELD, "id");
+        final boolean sourceEnabled = SettingsUtils.get(sourceIndexSettings,
+                "_source", false);
 
         final Map<String, Object> scrollSettings = SettingsUtils.get(
                 rootSettings, "scroll");
@@ -115,12 +118,16 @@ public class GenTermValuesHandler extends ActionHandler {
 
         scrollSearchGate = new CountDownLatch(1);
 
-        client.prepareSearch(sourceIndex).setTypes(sourceType)
-                .setSearchType(SearchType.SCAN)
+        SearchRequestBuilder builder = client.prepareSearch(sourceIndex)
+                .setTypes(sourceType).setSearchType(SearchType.SCAN)
                 .setScroll(new TimeValue(keepAlive.longValue()))
                 .setQuery(QueryBuilders.matchAllQuery())
                 .setSize(size.intValue()).addField(idField)
-                .setListenerThreaded(true).execute(new ScrollSearchListener());
+                .setListenerThreaded(true);
+        if (sourceEnabled) {
+            builder.addField("_source");
+        }
+        builder.execute(new ScrollSearchListener());
 
         try {
             scrollSearchGate.await();
@@ -167,14 +174,16 @@ public class GenTermValuesHandler extends ActionHandler {
             if (hits.length == 0) {
                 scrollSearchGate.countDown();
             } else {
-                final Map<String, String> idMap = new HashMap<>(hits.length);
+                final Map<String, DocInfo> idMap = new HashMap<>(hits.length);
                 final MultiTermVectorsRequestBuilder requestBuilder = client
                         .prepareMultiTermVectors();
                 for (final SearchHit hit : hits) {
                     final String id = hit.getId();
                     final SearchHitField searchHitField = hit.field(idField);
                     if (searchHitField != null) {
-                        idMap.put(id, (String) searchHitField.getValue());
+                        idMap.put(id,
+                                new DocInfo((String) searchHitField.getValue(),
+                                        hit.getSource()));
                     }
                     final TermVectorRequest termVectorRequest = new TermVectorRequest(
                             sourceIndex, sourceType, id);
@@ -198,6 +207,25 @@ public class GenTermValuesHandler extends ActionHandler {
         }
     }
 
+    private static class DocInfo {
+        private final String id;
+
+        private final Map<String, Object> source;
+
+        DocInfo(final String id, final Map<String, Object> source) {
+            this.id = id;
+            this.source = source;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public Map<String, Object> getSource() {
+            return source;
+        }
+    }
+
     private static class MultiTermVectorsListener implements
             ActionListener<MultiTermVectorsResponse> {
 
@@ -207,7 +235,7 @@ public class GenTermValuesHandler extends ActionHandler {
 
         private Params eventParams;
 
-        private Map<String, String> idMap;
+        private Map<String, DocInfo> idMap;
 
         private volatile List<CountDownLatch> genTVGateList;
 
@@ -215,7 +243,7 @@ public class GenTermValuesHandler extends ActionHandler {
 
         public MultiTermVectorsListener(final int numOfThread,
                 final RequestHandler[] requestHandlers,
-                final Params eventParams, final Map<String, String> idMap,
+                final Params eventParams, final Map<String, DocInfo> idMap,
                 final ESLogger logger) {
             this.requestHandlers = requestHandlers;
             this.eventParams = eventParams;
@@ -248,8 +276,8 @@ public class GenTermValuesHandler extends ActionHandler {
                                 failure.getMessage());
                     } else {
                         final String userId = mTVItemResponse.getId();
-                        final String id = idMap.get(userId);
-                        if (StringUtils.isBlank(id)) {
+                        final DocInfo docInfo = idMap.get(userId);
+                        if (docInfo == null) {
                             logger.warn("No id of {}.", userId);
                             continue;
                         }
@@ -272,6 +300,7 @@ public class GenTermValuesHandler extends ActionHandler {
                                             .docsAndPositions(null, null);
                                     final int termFreq = posEnum.freq();
 
+                                    final String id = docInfo.getId();
                                     final String key = id + '\n' + termValue;
                                     final String valueField = eventParams
                                             .param(TasteConstants.REQUEST_PARAM_VALUE_FIELD,
@@ -297,6 +326,11 @@ public class GenTermValuesHandler extends ActionHandler {
                                     } else {
                                         final Map<String, Object> requestMap = new HashMap<>();
                                         final Map<String, Object> userMap = new HashMap<>();
+                                        Map<String, Object> source = docInfo
+                                                .getSource();
+                                        if (source != null) {
+                                            userMap.putAll(source);
+                                        }
                                         userMap.put("system_id", id);
                                         requestMap.put("user", userMap);
                                         final Map<String, Object> itemMap = new HashMap<>();
