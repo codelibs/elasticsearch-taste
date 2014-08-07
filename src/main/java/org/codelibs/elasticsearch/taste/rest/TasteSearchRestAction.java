@@ -125,7 +125,12 @@ public class TasteSearchRestAction extends BaseRestHandler {
             }
 
             try {
-                final XContentBuilder builder = jsonBuilder().startObject()//
+                final XContentBuilder builder = jsonBuilder();
+                final String pretty = request.param("pretty");
+                if (pretty != null && !"false".equalsIgnoreCase(pretty)) {
+                    builder.prettyPrint().lfAtEnd();
+                }
+                builder.startObject()//
                         .field("took", response.getTookInMillis())//
                         .field("timed_out", response.isTimedOut())//
                         .startObject("_shards")//

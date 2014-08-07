@@ -94,6 +94,10 @@ public class TasteEventRestAction extends BaseRestHandler {
         return (request, listener, requestMap, paramMap, chain) -> {
             try {
                 final XContentBuilder builder = JsonXContent.contentBuilder();
+                final String pretty = request.param("pretty");
+                if (pretty != null && !"false".equalsIgnoreCase(pretty)) {
+                    builder.prettyPrint().lfAtEnd();
+                }
                 builder.startObject();
                 builder.field("acknowledged", true);
                 builder.endObject();
