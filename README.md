@@ -17,6 +17,7 @@ This plugin provides the following features of a recommendation engine on Elasti
 | Taste     | Elasticsearch |
 |:---------:|:-------------:|
 | master    | 1.2.X         |
+| 0.3.1     | 1.3.1         |
 | 0.2.0     | 1.2.1         |
 | 0.1.0     | 1.1.1         |
 
@@ -31,7 +32,7 @@ Please file an [issue](https://github.com/codelibs/elasticsearch-taste/issues "i
 
 ### Install Taste Plugin
 
-    $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/0.2.0
+    $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/0.3.1
 
 ## Getting Started
 
@@ -252,7 +253,7 @@ User index contains the following properties:
 
 | Name       | Type   | Description |
 |:----------:|:-------|:------------|
-| id         | string | Unique ID. If your system has User ID, use it. |
+| system\_id | string | Unique ID. If your system has User ID, use it. |
 | user\_id   | long   | Unique User ID for this plugin. |
 | @timestamp | date   | Created/Updated time. |
 | (Any)      | (any)  | You can use other information, such as age, tel,... |
@@ -261,7 +262,7 @@ Item index manages an item information and contains:
 
 | Name       | Type   | Description |
 |:----------:|:-------|:------------|
-| id         | string | Unique ID. If your system has Item ID, use it. |
+| system\_id | string | Unique ID. If your system has Item ID, use it. |
 | item\_id   | long   | Unique Item ID for this plugin. |
 | @timestamp | date   | Created/Updated time. |
 | (Any)      | (any)  | You can use other information, such as price, publish date,... |
