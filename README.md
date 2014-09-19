@@ -18,8 +18,6 @@ This plugin provides the following features of a recommendation engine on Elasti
 |:---------:|:-------------:|
 | master    | 1.2.X         |
 | 0.3.1     | 1.3.1         |
-| 0.2.0     | 1.2.1         |
-| 0.1.0     | 1.1.1         |
 
 Note that this plugin supports Java 8 or the above.
 
