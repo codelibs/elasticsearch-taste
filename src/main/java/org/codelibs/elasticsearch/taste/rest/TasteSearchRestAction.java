@@ -44,7 +44,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
     @Inject
     public TasteSearchRestAction(final Settings settings, final Client client,
             final RestController restController) {
-        super(settings, client);
+        super(settings, restController, client);
 
         final String size = settings.get("taste.cache.search.size", "1000");
         final String duration = settings.get("taste.cache.search.duration",

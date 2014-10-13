@@ -34,7 +34,7 @@ public class TasteEventRestAction extends BaseRestHandler {
     @Inject
     public TasteEventRestAction(final Settings settings, final Client client,
             final RestController restController) {
-        super(settings, client);
+        super(settings, restController, client);
 
         restController.registerHandler(RestRequest.Method.POST,
                 "/{index}/_taste/event", this);
