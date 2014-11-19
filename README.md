@@ -16,7 +16,8 @@ This plugin provides the following features of a recommendation engine on Elasti
 
 | Taste     | Elasticsearch |
 |:---------:|:-------------:|
-| master    | 1.2.X         |
+| master    | 1.4.X         |
+| 0.4.0     | 1.4.0         |
 | 0.3.1     | 1.3.1         |
 
 Note that this plugin supports Java 8 or the above.
@@ -30,7 +31,7 @@ Please file an [issue](https://github.com/codelibs/elasticsearch-taste/issues "i
 
 ### Install Taste Plugin
 
-    $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/0.3.1
+    $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/0.4.0
 
 ## Getting Started
 
