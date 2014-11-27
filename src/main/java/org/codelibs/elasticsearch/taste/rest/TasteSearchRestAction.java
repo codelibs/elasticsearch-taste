@@ -25,6 +25,7 @@ import org.elasticsearch.common.cache.CacheBuilder;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.BytesRestResponse;
@@ -73,6 +74,11 @@ public class TasteSearchRestAction extends BaseRestHandler {
             onError(channel, new NotFoundException("No system_id."));
             return;
         }
+        String[] systemIds = systemId.trim().split(",");
+        if(systemIds.length == 0) {
+            onError(channel, new NotFoundException("No system_id."));
+            return;
+        }
 
         if (info.getIdIndex() == null) {
             onError(channel, new NotFoundException("No search type."));
@@ -88,22 +94,39 @@ public class TasteSearchRestAction extends BaseRestHandler {
                                 + info.getIdIndex() + "/" + info.getIdType()));
                 return;
             }
-            final SearchHit hit = hits.getHits()[0];
-            final SearchHitField field = hit.field(info.getIdField());
-            final Number targetId = field.getValue();
-            if (targetId == null) {
+
+            SearchHit[] searchHits = hits.getHits();
+            long[] targetIds = new long[hits.getHits().length];
+            for(int i=0;i<targetIds.length && i<searchHits.length; i++) {
+                SearchHit hit = searchHits[i];
+                final SearchHitField field = hit.field(info.getIdField());
+                Number targetId = field.getValue();
+                if(targetId != null) {
+                    targetIds[i] = targetId.longValue();
+                }
+            }
+
+            if (targetIds.length == 0) {
                 onError(channel,
-                        new NotFoundException("No " + info.getIdField()
-                                + " for " + systemId + " in "
-                                + info.getIdIndex() + "/" + info.getIdType()));
+                    new NotFoundException("No " + info.getIdField()
+                        + " for " + systemId + " in "
+                        + info.getIdIndex() + "/" + info.getIdType()));
                 return;
             }
 
+
             doSearchRequest(request, channel, client, info,
-                    targetId.longValue());
+                    targetIds);
         };
+
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        for(String id: systemIds) {
+            boolQueryBuilder.should(QueryBuilders.termQuery("system_id", id));
+        }
+        boolQueryBuilder.minimumNumberShouldMatch(1);
+
         client.prepareSearch(info.getIdIndex()).setTypes(info.getIdType())
-                .setQuery(QueryBuilders.termQuery("system_id", systemId))
+                .setQuery(boolQueryBuilder)
                 .addField(info.getIdField())
                 .addSort(info.getTimestampField(), SortOrder.DESC)
                 .execute(on(responseListener, t -> onError(channel, t)));
@@ -112,13 +135,22 @@ public class TasteSearchRestAction extends BaseRestHandler {
 
     private void doSearchRequest(final RestRequest request,
             final RestChannel channel, final Client client, final Info info,
-            final long targetId) {
+            final long[] targetIds) {
 
         final OnResponseListener<SearchResponse> responseListener = response -> {
             final SearchHits hits = response.getHits();
             if (hits.totalHits() == 0) {
+                StringBuilder sb = new StringBuilder();
+                sb.append('[');
+                for(long id: targetIds) {
+                    if(sb.length() > 1) {
+                        sb.append(',');
+                    }
+                    sb.append(id);
+                }
+                sb.append(']');
                 onError(channel,
-                        new NotFoundException("No ID for " + targetId + " in "
+                        new NotFoundException("No ID for " + sb.toString() + " in "
                                 + info.getTargetIndex() + "/"
                                 + info.getTargetType()));
                 return;
@@ -166,11 +198,17 @@ public class TasteSearchRestAction extends BaseRestHandler {
                         "Failed to build a response.", e);
             }
         };
+
+        String targetIdField = info.getTargetIdField();
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        for(long id: targetIds) {
+            boolQueryBuilder.should(QueryBuilders.termQuery(targetIdField, id));
+        }
+        boolQueryBuilder.minimumNumberShouldMatch(1);
+
         client.prepareSearch(info.getTargetIndex())
                 .setTypes(info.getTargetType())
-                .setQuery(
-                        QueryBuilders.termQuery(info.getTargetIdField(),
-                                targetId))
+                .setQuery(boolQueryBuilder)
                 .addSort(info.getTimestampField(), SortOrder.DESC)
                 .setSize(info.getSize()).setFrom(info.getFrom())
                 .execute(on(responseListener, t -> onError(channel, t)));
