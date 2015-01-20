@@ -23,6 +23,7 @@ import org.elasticsearch.common.cache.Cache;
 import org.elasticsearch.common.cache.CacheBuilder;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -40,6 +41,8 @@ import org.elasticsearch.search.sort.SortOrder;
 public class TasteSearchRestAction extends BaseRestHandler {
 
     private Cache<String, Map<String, Object>> cache;
+
+    private static final long timeoutMillis = 10 * 1000;
 
     @Inject
     public TasteSearchRestAction(final Settings settings, final Client client,
@@ -139,13 +142,15 @@ public class TasteSearchRestAction extends BaseRestHandler {
         final Map<Long, SearchResponse> responseMap = new ConcurrentHashMap<>();
         final CountDownLatch latch = new CountDownLatch(targetIds.length);
         final List<Throwable> exceptionList = Collections.synchronizedList(new ArrayList<>());
-        String targetIdField = info.getTargetIdField();
+        final String targetIdField = info.getTargetIdField();
+        final TimeValue timeout = TimeValue.timeValueMillis(timeoutMillis);
         for (final long id : targetIds) {
             client.prepareSearch(info.getTargetIndex())
                 .setTypes(info.getTargetType())
                 .setQuery(QueryBuilders.termQuery(targetIdField, id))
                 .addSort(info.getTimestampField(), SortOrder.DESC)
                 .setSize(info.getSize()).setFrom(info.getFrom())
+                .setTimeout(timeout)
                 .execute(on(
                     response -> {
                         responseMap.put(id, response);
@@ -157,14 +162,16 @@ public class TasteSearchRestAction extends BaseRestHandler {
                     }));
         }
 
+        boolean isTimeOut = false;
         try {
-            latch.await();
+            if ( !latch.await(timeoutMillis, TimeUnit.MILLISECONDS) ) {
+                isTimeOut = true;
+            }
         } catch (InterruptedException e) {
             //ignore
         }
 
         long tookInMillis = -1;
-        boolean isTimeOut = false;
         long totalHits = 0;
         float maxScore = 0F;
         List<SearchHit> searchHitList = new ArrayList<>();
@@ -187,7 +194,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
             }
         }
 
-        if (searchHitList.size() == 0) {
+        if (searchHitList.size() == 0 && !isTimeOut) {
             StringBuilder message = new StringBuilder();
             message.append("No ID for [");
             for (int i = 0; i < targetIds.length; i++) {
