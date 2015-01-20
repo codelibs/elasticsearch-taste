@@ -4,10 +4,9 @@ import static org.codelibs.elasticsearch.util.action.ListenerUtils.on;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -24,7 +23,9 @@ import org.elasticsearch.common.cache.Cache;
 import org.elasticsearch.common.cache.CacheBuilder;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.BytesRestResponse;
@@ -40,6 +41,8 @@ import org.elasticsearch.search.sort.SortOrder;
 public class TasteSearchRestAction extends BaseRestHandler {
 
     private Cache<String, Map<String, Object>> cache;
+
+    private static final long timeoutMillis = 10 * 1000;
 
     @Inject
     public TasteSearchRestAction(final Settings settings, final Client client,
@@ -73,6 +76,11 @@ public class TasteSearchRestAction extends BaseRestHandler {
             onError(channel, new NotFoundException("No system_id."));
             return;
         }
+        String[] systemIds = systemId.trim().split(",");
+        if(systemIds.length == 0) {
+            onError(channel, new NotFoundException("No system_id."));
+            return;
+        }
 
         if (info.getIdIndex() == null) {
             onError(channel, new NotFoundException("No search type."));
@@ -88,92 +96,181 @@ public class TasteSearchRestAction extends BaseRestHandler {
                                 + info.getIdIndex() + "/" + info.getIdType()));
                 return;
             }
-            final SearchHit hit = hits.getHits()[0];
-            final SearchHitField field = hit.field(info.getIdField());
-            final Number targetId = field.getValue();
-            if (targetId == null) {
+
+            SearchHit[] searchHits = hits.getHits();
+            long[] targetIds = new long[hits.getHits().length];
+            for(int i=0;i<targetIds.length && i<searchHits.length; i++) {
+                SearchHit hit = searchHits[i];
+                final SearchHitField field = hit.field(info.getIdField());
+                Number targetId = field.getValue();
+                if(targetId != null) {
+                    targetIds[i] = targetId.longValue();
+                }
+            }
+
+            if (targetIds.length == 0) {
                 onError(channel,
-                        new NotFoundException("No " + info.getIdField()
-                                + " for " + systemId + " in "
-                                + info.getIdIndex() + "/" + info.getIdType()));
+                    new NotFoundException("No " + info.getIdField()
+                        + " for " + systemId + " in "
+                        + info.getIdIndex() + "/" + info.getIdType()));
                 return;
             }
 
+
             doSearchRequest(request, channel, client, info,
-                    targetId.longValue());
+                    targetIds);
         };
+
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        for(String id: systemIds) {
+            boolQueryBuilder.should(QueryBuilders.termQuery("system_id", id));
+        }
+        boolQueryBuilder.minimumNumberShouldMatch(1);
+
         client.prepareSearch(info.getIdIndex()).setTypes(info.getIdType())
-                .setQuery(QueryBuilders.termQuery("system_id", systemId))
+                .setQuery(boolQueryBuilder)
                 .addField(info.getIdField())
                 .addSort(info.getTimestampField(), SortOrder.DESC)
+                .setSize(systemIds.length)
                 .execute(on(responseListener, t -> onError(channel, t)));
 
     }
 
     private void doSearchRequest(final RestRequest request,
             final RestChannel channel, final Client client, final Info info,
-            final long targetId) {
-
-        final OnResponseListener<SearchResponse> responseListener = response -> {
-            final SearchHits hits = response.getHits();
-            if (hits.totalHits() == 0) {
-                onError(channel,
-                        new NotFoundException("No ID for " + targetId + " in "
-                                + info.getTargetIndex() + "/"
-                                + info.getTargetType()));
-                return;
-            }
-
-            try {
-                final XContentBuilder builder = jsonBuilder();
-                final String pretty = request.param("pretty");
-                if (pretty != null && !"false".equalsIgnoreCase(pretty)) {
-                    builder.prettyPrint().lfAtEnd();
-                }
-                builder.startObject()//
-                        .field("took", response.getTookInMillis())//
-                        .field("timed_out", response.isTimedOut())//
-                        .startObject("_shards")//
-                        .field("total", response.getTotalShards())//
-                        .field("successful", response.getSuccessfulShards())//
-                        .field("failed", response.getFailedShards())//
-                        .endObject()//
-                        .startObject("hits")//
-                        .field("total", hits.getTotalHits())//
-                        .field("max_score", hits.getMaxScore())//
-                        .startArray("hits");
-
-                for (final SearchHit hit : hits.getHits()) {
-                    final Map<String, Object> source = expandObjects(client,
-                            hit.getSource(), info);
-                    builder.startObject()//
-                            .field("_index", hit.getIndex())//
-                            .field("_type", hit.getType())//
-                            .field("_id", hit.getId())//
-                            .field("_score", hit.getScore())//
-                            .field("_source", source)//
-                            .endObject();//
-                }
-
-                builder.endArray()//
-                        .endObject()//
-                        .endObject();
-
-                channel.sendResponse(new BytesRestResponse(RestStatus.OK,
-                        builder));
-            } catch (final IOException e) {
-                throw new OperationFailedException(
-                        "Failed to build a response.", e);
-            }
-        };
-        client.prepareSearch(info.getTargetIndex())
+            final long[] targetIds) {
+        final Map<Long, SearchResponse> responseMap = new ConcurrentHashMap<>();
+        final CountDownLatch latch = new CountDownLatch(targetIds.length);
+        final List<Throwable> exceptionList = Collections.synchronizedList(new ArrayList<>());
+        final String targetIdField = info.getTargetIdField();
+        final TimeValue timeout = TimeValue.timeValueMillis(timeoutMillis);
+        for (final long id : targetIds) {
+            client.prepareSearch(info.getTargetIndex())
                 .setTypes(info.getTargetType())
-                .setQuery(
-                        QueryBuilders.termQuery(info.getTargetIdField(),
-                                targetId))
+                .setQuery(QueryBuilders.termQuery(targetIdField, id))
                 .addSort(info.getTimestampField(), SortOrder.DESC)
                 .setSize(info.getSize()).setFrom(info.getFrom())
-                .execute(on(responseListener, t -> onError(channel, t)));
+                .setTimeout(timeout)
+                .execute(on(
+                    response -> {
+                        responseMap.put(id, response);
+                        latch.countDown();
+                    },
+                    t -> {
+                        exceptionList.add(t);
+                        latch.countDown();
+                    }));
+        }
+
+        boolean isTimeOut = false;
+        try {
+            if ( !latch.await(timeoutMillis, TimeUnit.MILLISECONDS) ) {
+                isTimeOut = true;
+            }
+        } catch (InterruptedException e) {
+            //ignore
+        }
+
+        long tookInMillis = -1;
+        long totalHits = 0;
+        float maxScore = 0F;
+        List<SearchHit> searchHitList = new ArrayList<>();
+        for (long targetId : targetIds) {
+            SearchResponse response = responseMap.get(targetId);
+            if (response != null) {
+                if (response.getTookInMillis() > tookInMillis) {
+                    tookInMillis = response.getTookInMillis();
+                }
+                if (response.isTimedOut()) {
+                    isTimeOut = true;
+                }
+
+                final SearchHits hits = response.getHits();
+                totalHits += hits.getTotalHits();
+                if (hits.getMaxScore() > maxScore) {
+                    maxScore = hits.getMaxScore();
+                }
+                searchHitList.addAll(Arrays.asList(hits.getHits()));
+            }
+        }
+
+        if (searchHitList.size() == 0 && !isTimeOut) {
+            StringBuilder message = new StringBuilder();
+            message.append("No ID for [");
+            for (int i = 0; i < targetIds.length; i++) {
+                if (i > 0) {
+                    message.append(',');
+                }
+                message.append(targetIds[i]);
+            }
+            message.append("] in ")
+                .append(info.getTargetIndex())
+                .append("/")
+                .append(info.getTargetType());
+            if (exceptionList.size() > 0) {
+                message.append(" Errors:[");
+                for (int i = 0; i < exceptionList.size(); i++) {
+                    if (i > 0) {
+                        message.append(", ");
+                    }
+                    message.append("{")
+                        .append(exceptionList.get(i))
+                        .append("}");
+                }
+                message.append("]");
+            }
+            onError(channel,
+                new NotFoundException(message.toString()));
+            return;
+        }
+
+        try {
+            final XContentBuilder builder = jsonBuilder();
+            final String pretty = request.param("pretty");
+            if (pretty != null && !"false".equalsIgnoreCase(pretty)) {
+                builder.prettyPrint().lfAtEnd();
+            }
+            builder.startObject()//
+                .field("took", tookInMillis)//
+                .field("timed_out", isTimeOut);
+
+            if (exceptionList.size() > 0) {
+                builder.startObject("errors")
+                    .field("num", exceptionList.size())
+                    .startArray("messages");
+                for (Throwable t : exceptionList) {
+                    builder.value(t.getMessage());
+                }
+                builder.endArray()
+                    .endObject();
+            }
+
+            builder.startObject("hits")//
+                .field("total", totalHits)//
+                .field("max_score", maxScore)//
+                .startArray("hits");
+            for (final SearchHit hit : searchHitList) {
+                final Map<String, Object> source = expandObjects(client,
+                    hit.getSource(), info);
+                builder.startObject()//
+                    .field("_index", hit.getIndex())//
+                    .field("_type", hit.getType())//
+                    .field("_id", hit.getId())//
+                    .field("_score", hit.getScore())//
+                    .field("_source", source)//
+                    .endObject();//
+            }
+
+            builder.endArray()//
+                .endObject()//
+                .endObject();
+
+            channel.sendResponse(new BytesRestResponse(RestStatus.OK,
+                builder));
+        } catch (final IOException e) {
+            throw new OperationFailedException(
+                "Failed to build a response.", e);
+        }
     }
 
     private Map<String, Object> expandObjects(final Client client,
