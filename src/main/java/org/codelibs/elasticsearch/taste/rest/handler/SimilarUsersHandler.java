@@ -1,4 +1,4 @@
-package org.codelibs.elasticsearch.taste.river.handler;
+package org.codelibs.elasticsearch.taste.rest.handler;
 
 import java.io.IOException;
 import java.util.Map;
@@ -9,34 +9,35 @@ import org.codelibs.elasticsearch.taste.common.LongPrimitiveArrayIterator;
 import org.codelibs.elasticsearch.taste.common.LongPrimitiveIterator;
 import org.codelibs.elasticsearch.taste.eval.RecommenderBuilder;
 import org.codelibs.elasticsearch.taste.exception.TasteException;
-import org.codelibs.elasticsearch.taste.model.DataModel;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.recommender.Recommender;
+import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommender;
 import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.service.TasteService;
-import org.codelibs.elasticsearch.taste.worker.RecommendedItemsWorker;
-import org.codelibs.elasticsearch.taste.writer.ItemWriter;
+import org.codelibs.elasticsearch.taste.worker.SimilarUsersWorker;
+import org.codelibs.elasticsearch.taste.writer.UserWriter;
 import org.codelibs.elasticsearch.util.admin.ClusterUtils;
 import org.codelibs.elasticsearch.util.io.IOUtils;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.cache.Cache;
 import org.elasticsearch.common.cache.CacheBuilder;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.river.RiverSettings;
 
-public class ItemsFromUserHandler extends RecommendationHandler {
+public class SimilarUsersHandler extends RecommendationHandler {
 
-    public ItemsFromUserHandler(final RiverSettings settings,
-            final Client client, final TasteService tasteService) {
-        super(settings, client, tasteService);
+    public SimilarUsersHandler(final Settings settings,
+            final Map<String, Object> sourceMap, final Client client,
+            final TasteService tasteService) {
+        super(settings, sourceMap, client, tasteService);
     }
 
     @Override
     public void execute() {
-        final int numOfItems = SettingsUtils.get(rootSettings, "num_of_items",
+        final int numOfUsers = SettingsUtils.get(rootSettings, "num_of_users",
                 10);
         final int maxDuration = SettingsUtils.get(rootSettings, "max_duration",
                 0);
@@ -53,7 +54,7 @@ public class ItemsFromUserHandler extends RecommendationHandler {
 
         ClusterUtils.waitForAvailable(client, indexInfo.getUserIndex(),
                 indexInfo.getItemIndex(), indexInfo.getPreferenceIndex(),
-                indexInfo.getRecommendationIndex());
+                indexInfo.getUserSimilarityIndex());
 
         final long[] userIDs = getTargetIDs(indexInfo.getUserIndex(),
                 indexInfo.getUserType(), indexInfo.getUserIdField(), "users");
@@ -61,16 +62,17 @@ public class ItemsFromUserHandler extends RecommendationHandler {
         final UserBasedRecommenderBuilder recommenderBuilder = new UserBasedRecommenderBuilder(
                 indexInfo, rootSettings);
 
-        final ItemWriter writer = createRecommendedItemsWriter(indexInfo,
+        final UserWriter writer = createSimilarUsersWriter(indexInfo,
                 rootSettings);
 
-        compute(userIDs, dataModel, recommenderBuilder, writer, numOfItems,
+        compute(userIDs, dataModel, recommenderBuilder, writer, numOfUsers,
                 numOfThreads, maxDuration);
     }
 
-    protected void compute(final long[] userIDs, final DataModel dataModel,
+    protected void compute(final long[] userIDs,
+            final ElasticsearchDataModel dataModel,
             final RecommenderBuilder recommenderBuilder,
-            final ItemWriter writer, final int numOfRecommendedItems,
+            final UserWriter writer, final int numOfUsers,
             final int degreeOfParallelism, final int maxDuration) {
         final ExecutorService executorService = Executors
                 .newFixedThreadPool(degreeOfParallelism);
@@ -80,16 +82,16 @@ public class ItemsFromUserHandler extends RecommendationHandler {
             recommender = recommenderBuilder.buildRecommender(dataModel);
 
             logger.info("Recommender: {}", recommender);
-            logger.info("NumOfRecommendedItems: {}", numOfRecommendedItems);
+            logger.info("NumOfSimilarUsers: {}", numOfUsers);
             logger.info("MaxDuration: {}", maxDuration);
 
             final LongPrimitiveIterator userIdIter = userIDs == null ? dataModel
                     .getUserIDs() : new LongPrimitiveArrayIterator(userIDs);
 
             for (int n = 0; n < degreeOfParallelism; n++) {
-                final RecommendedItemsWorker worker = new RecommendedItemsWorker(
-                        n, recommender, userIdIter, numOfRecommendedItems,
-                        writer);
+                final SimilarUsersWorker worker = new SimilarUsersWorker(n,
+                        (UserBasedRecommender) recommender, userIdIter,
+                        numOfUsers, writer);
                 executorService.execute(worker);
             }
 
@@ -102,23 +104,19 @@ public class ItemsFromUserHandler extends RecommendationHandler {
 
     }
 
-    protected ItemWriter createRecommendedItemsWriter(
-            final IndexInfo indexInfo, final Map<String, Object> rootSettings) {
-        final ItemWriter writer = new ItemWriter(client,
-                indexInfo.getRecommendationIndex(),
-                indexInfo.getRecommendationType(), indexInfo.getUserIdField());
-        writer.setTargetIndex(indexInfo.getUserIndex());
-        writer.setTargetType(indexInfo.getUserType());
-        writer.setItemIndex(indexInfo.getItemIndex());
-        writer.setItemType(indexInfo.getItemType());
-        writer.setItemIdField(indexInfo.getItemIdField());
-        writer.setItemsField(indexInfo.getItemsField());
+    protected UserWriter createSimilarUsersWriter(final IndexInfo indexInfo,
+            final Map<String, Object> rootSettings) {
+        final UserWriter writer = new UserWriter(client,
+                indexInfo.getUserSimilarityIndex(),
+                indexInfo.getUserSimilarityType(), indexInfo.getUserIdField());
+        writer.setUserIdField(indexInfo.getUserIdField());
+        writer.setUsersField(indexInfo.getUsersField());
         writer.setValueField(indexInfo.getValueField());
         writer.setTimestampField(indexInfo.getTimestampField());
         try {
             final XContentBuilder builder = XContentFactory.jsonBuilder()//
                     .startObject()//
-                    .startObject(indexInfo.getRecommendationType())//
+                    .startObject(indexInfo.getUserSimilarityType())//
                     .startObject("properties")//
 
                     // @timestamp
@@ -132,12 +130,12 @@ public class ItemsFromUserHandler extends RecommendationHandler {
                     .field("type", "long")//
                     .endObject()//
 
-                    // items
-                    .startObject(indexInfo.getItemsField())//
+                    // users
+                    .startObject(indexInfo.getUsersField())//
                     .startObject("properties")//
 
-                    // item_id
-                    .startObject(indexInfo.getItemIdField())//
+                    // user_id
+                    .startObject(indexInfo.getUserIdField())//
                     .field("type", "long")//
                     .endObject()//
 

@@ -1,4 +1,4 @@
-package org.codelibs.elasticsearch.taste.river.handler;
+package org.codelibs.elasticsearch.taste.rest.handler;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -23,16 +23,17 @@ import org.codelibs.elasticsearch.util.admin.ClusterUtils;
 import org.codelibs.elasticsearch.util.io.IOUtils;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.river.RiverSettings;
 
 public class EvalItemsFromUserHandler extends RecommendationHandler {
     private Evaluator evaluator;
 
-    public EvalItemsFromUserHandler(final RiverSettings settings,
-            final Client client, final TasteService tasteService) {
-        super(settings, client, tasteService);
+    public EvalItemsFromUserHandler(final Settings settings,
+            final Map<String, Object> sourceMap, final Client client,
+            final TasteService tasteService) {
+        super(settings, sourceMap, client, tasteService);
     }
 
     @Override

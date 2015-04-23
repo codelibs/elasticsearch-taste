@@ -1,4 +1,4 @@
-package org.codelibs.elasticsearch.taste.river.handler;
+package org.codelibs.elasticsearch.taste.rest.handler;
 
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -11,18 +11,19 @@ import org.codelibs.elasticsearch.taste.service.TasteService;
 import org.codelibs.elasticsearch.util.lang.StringUtils;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.search.Scroll;
 
 public abstract class RecommendationHandler extends ActionHandler {
 
     protected TasteService tasteService;
 
-    public RecommendationHandler(final RiverSettings settings,
-            final Client client, final TasteService tasteService) {
-        super(settings, client);
+    public RecommendationHandler(final Settings settings,
+            final Map<String, Object> sourceMap, final Client client,
+            final TasteService tasteService) {
+        super(settings, sourceMap, client);
         this.tasteService = tasteService;
     }
 

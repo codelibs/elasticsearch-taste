@@ -4,7 +4,12 @@ import static org.codelibs.elasticsearch.util.action.ListenerUtils.on;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -76,8 +81,8 @@ public class TasteSearchRestAction extends BaseRestHandler {
             onError(channel, new NotFoundException("No system_id."));
             return;
         }
-        String[] systemIds = systemId.trim().split(",");
-        if(systemIds.length == 0) {
+        final String[] systemIds = systemId.trim().split(",");
+        if (systemIds.length == 0) {
             onError(channel, new NotFoundException("No system_id."));
             return;
         }
@@ -97,39 +102,36 @@ public class TasteSearchRestAction extends BaseRestHandler {
                 return;
             }
 
-            SearchHit[] searchHits = hits.getHits();
-            long[] targetIds = new long[hits.getHits().length];
-            for(int i=0;i<targetIds.length && i<searchHits.length; i++) {
-                SearchHit hit = searchHits[i];
+            final SearchHit[] searchHits = hits.getHits();
+            final long[] targetIds = new long[hits.getHits().length];
+            for (int i = 0; i < targetIds.length && i < searchHits.length; i++) {
+                final SearchHit hit = searchHits[i];
                 final SearchHitField field = hit.field(info.getIdField());
-                Number targetId = field.getValue();
-                if(targetId != null) {
+                final Number targetId = field.getValue();
+                if (targetId != null) {
                     targetIds[i] = targetId.longValue();
                 }
             }
 
             if (targetIds.length == 0) {
                 onError(channel,
-                    new NotFoundException("No " + info.getIdField()
-                        + " for " + systemId + " in "
-                        + info.getIdIndex() + "/" + info.getIdType()));
+                        new NotFoundException("No " + info.getIdField()
+                                + " for " + systemId + " in "
+                                + info.getIdIndex() + "/" + info.getIdType()));
                 return;
             }
 
-
-            doSearchRequest(request, channel, client, info,
-                    targetIds);
+            doSearchRequest(request, channel, client, info, targetIds);
         };
 
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-        for(String id: systemIds) {
+        final BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        for (final String id : systemIds) {
             boolQueryBuilder.should(QueryBuilders.termQuery("system_id", id));
         }
         boolQueryBuilder.minimumNumberShouldMatch(1);
 
         client.prepareSearch(info.getIdIndex()).setTypes(info.getIdType())
-                .setQuery(boolQueryBuilder)
-                .addField(info.getIdField())
+                .setQuery(boolQueryBuilder).addField(info.getIdField())
                 .addSort(info.getTimestampField(), SortOrder.DESC)
                 .setSize(systemIds.length)
                 .execute(on(responseListener, t -> onError(channel, t)));
@@ -141,22 +143,20 @@ public class TasteSearchRestAction extends BaseRestHandler {
             final long[] targetIds) {
         final Map<Long, SearchResponse> responseMap = new ConcurrentHashMap<>();
         final CountDownLatch latch = new CountDownLatch(targetIds.length);
-        final List<Throwable> exceptionList = Collections.synchronizedList(new ArrayList<>());
+        final List<Throwable> exceptionList = Collections
+                .synchronizedList(new ArrayList<>());
         final String targetIdField = info.getTargetIdField();
         final TimeValue timeout = TimeValue.timeValueMillis(timeoutMillis);
         for (final long id : targetIds) {
             client.prepareSearch(info.getTargetIndex())
-                .setTypes(info.getTargetType())
-                .setQuery(QueryBuilders.termQuery(targetIdField, id))
-                .addSort(info.getTimestampField(), SortOrder.DESC)
-                .setSize(info.getSize()).setFrom(info.getFrom())
-                .setTimeout(timeout)
-                .execute(on(
-                    response -> {
+                    .setTypes(info.getTargetType())
+                    .setQuery(QueryBuilders.termQuery(targetIdField, id))
+                    .addSort(info.getTimestampField(), SortOrder.DESC)
+                    .setSize(info.getSize()).setFrom(info.getFrom())
+                    .setTimeout(timeout).execute(on(response -> {
                         responseMap.put(id, response);
                         latch.countDown();
-                    },
-                    t -> {
+                    }, t -> {
                         exceptionList.add(t);
                         latch.countDown();
                     }));
@@ -164,19 +164,19 @@ public class TasteSearchRestAction extends BaseRestHandler {
 
         boolean isTimeOut = false;
         try {
-            if ( !latch.await(timeoutMillis, TimeUnit.MILLISECONDS) ) {
+            if (!latch.await(timeoutMillis, TimeUnit.MILLISECONDS)) {
                 isTimeOut = true;
             }
-        } catch (InterruptedException e) {
+        } catch (final InterruptedException e) {
             //ignore
         }
 
         long tookInMillis = -1;
         long totalHits = 0;
         float maxScore = 0F;
-        List<SearchHit> searchHitList = new ArrayList<>();
-        for (long targetId : targetIds) {
-            SearchResponse response = responseMap.get(targetId);
+        final List<SearchHit> searchHitList = new ArrayList<>();
+        for (final long targetId : targetIds) {
+            final SearchResponse response = responseMap.get(targetId);
             if (response != null) {
                 if (response.getTookInMillis() > tookInMillis) {
                     tookInMillis = response.getTookInMillis();
@@ -195,7 +195,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
         }
 
         if (searchHitList.size() == 0 && !isTimeOut) {
-            StringBuilder message = new StringBuilder();
+            final StringBuilder message = new StringBuilder();
             message.append("No ID for [");
             for (int i = 0; i < targetIds.length; i++) {
                 if (i > 0) {
@@ -203,24 +203,20 @@ public class TasteSearchRestAction extends BaseRestHandler {
                 }
                 message.append(targetIds[i]);
             }
-            message.append("] in ")
-                .append(info.getTargetIndex())
-                .append("/")
-                .append(info.getTargetType());
+            message.append("] in ").append(info.getTargetIndex()).append("/")
+                    .append(info.getTargetType());
             if (exceptionList.size() > 0) {
                 message.append(" Errors:[");
                 for (int i = 0; i < exceptionList.size(); i++) {
                     if (i > 0) {
                         message.append(", ");
                     }
-                    message.append("{")
-                        .append(exceptionList.get(i))
-                        .append("}");
+                    message.append("{").append(exceptionList.get(i))
+                            .append("}");
                 }
                 message.append("]");
             }
-            onError(channel,
-                new NotFoundException(message.toString()));
+            onError(channel, new NotFoundException(message.toString()));
             return;
         }
 
@@ -231,45 +227,42 @@ public class TasteSearchRestAction extends BaseRestHandler {
                 builder.prettyPrint().lfAtEnd();
             }
             builder.startObject()//
-                .field("took", tookInMillis)//
-                .field("timed_out", isTimeOut);
+                    .field("took", tookInMillis)//
+                    .field("timed_out", isTimeOut);
 
             if (exceptionList.size() > 0) {
                 builder.startObject("errors")
-                    .field("num", exceptionList.size())
-                    .startArray("messages");
-                for (Throwable t : exceptionList) {
+                        .field("num", exceptionList.size())
+                        .startArray("messages");
+                for (final Throwable t : exceptionList) {
                     builder.value(t.getMessage());
                 }
-                builder.endArray()
-                    .endObject();
+                builder.endArray().endObject();
             }
 
             builder.startObject("hits")//
-                .field("total", totalHits)//
-                .field("max_score", maxScore)//
-                .startArray("hits");
+                    .field("total", totalHits)//
+                    .field("max_score", maxScore)//
+                    .startArray("hits");
             for (final SearchHit hit : searchHitList) {
                 final Map<String, Object> source = expandObjects(client,
-                    hit.getSource(), info);
+                        hit.getSource(), info);
                 builder.startObject()//
-                    .field("_index", hit.getIndex())//
-                    .field("_type", hit.getType())//
-                    .field("_id", hit.getId())//
-                    .field("_score", hit.getScore())//
-                    .field("_source", source)//
-                    .endObject();//
+                        .field("_index", hit.getIndex())//
+                        .field("_type", hit.getType())//
+                        .field("_id", hit.getId())//
+                        .field("_score", hit.getScore())//
+                        .field("_source", source)//
+                        .endObject();//
             }
 
             builder.endArray()//
-                .endObject()//
-                .endObject();
+                    .endObject()//
+                    .endObject();
 
-            channel.sendResponse(new BytesRestResponse(RestStatus.OK,
-                builder));
+            channel.sendResponse(new BytesRestResponse(RestStatus.OK, builder));
         } catch (final IOException e) {
-            throw new OperationFailedException(
-                "Failed to build a response.", e);
+            throw new OperationFailedException("Failed to build a response.", e);
         }
     }
 

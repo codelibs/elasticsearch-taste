@@ -1,4 +1,4 @@
-package org.codelibs.elasticsearch.taste.river.handler;
+package org.codelibs.elasticsearch.taste.rest.handler;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -21,11 +21,6 @@ import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.UnicodeUtil;
 import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.exception.InvalidParameterException;
-import org.codelibs.elasticsearch.taste.rest.handler.ItemRequestHandler;
-import org.codelibs.elasticsearch.taste.rest.handler.PreferenceRequestHandler;
-import org.codelibs.elasticsearch.taste.rest.handler.RequestHandler;
-import org.codelibs.elasticsearch.taste.rest.handler.RequestHandlerChain;
-import org.codelibs.elasticsearch.taste.rest.handler.UserRequestHandler;
 import org.codelibs.elasticsearch.util.lang.StringUtils;
 import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 import org.elasticsearch.action.ActionListener;
@@ -39,10 +34,10 @@ import org.elasticsearch.action.termvector.MultiTermVectorsResponse.Failure;
 import org.elasticsearch.action.termvector.TermVectorRequest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.ToXContent.Params;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
 import org.elasticsearch.search.SearchHits;
@@ -68,9 +63,9 @@ public class GenTermValuesHandler extends ActionHandler {
 
     private int numOfThreads;
 
-    public GenTermValuesHandler(final RiverSettings settings,
-            final Client client) {
-        super(settings, client);
+    public GenTermValuesHandler(final Settings settings,
+            final Map<String, Object> sourceMap, final Client client) {
+        super(settings, sourceMap, client);
     }
 
     @Override
@@ -118,7 +113,7 @@ public class GenTermValuesHandler extends ActionHandler {
 
         scrollSearchGate = new CountDownLatch(1);
 
-        SearchRequestBuilder builder = client.prepareSearch(sourceIndex)
+        final SearchRequestBuilder builder = client.prepareSearch(sourceIndex)
                 .setTypes(sourceType).setSearchType(SearchType.SCAN)
                 .setScroll(new TimeValue(keepAlive.longValue()))
                 .setQuery(QueryBuilders.matchAllQuery())
@@ -326,7 +321,7 @@ public class GenTermValuesHandler extends ActionHandler {
                                     } else {
                                         final Map<String, Object> requestMap = new HashMap<>();
                                         final Map<String, Object> userMap = new HashMap<>();
-                                        Map<String, Object> source = docInfo
+                                        final Map<String, Object> source = docInfo
                                                 .getSource();
                                         if (source != null) {
                                             userMap.putAll(source);

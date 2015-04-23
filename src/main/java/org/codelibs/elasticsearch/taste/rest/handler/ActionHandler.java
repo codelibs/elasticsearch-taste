@@ -1,4 +1,4 @@
-package org.codelibs.elasticsearch.taste.river.handler;
+package org.codelibs.elasticsearch.taste.rest.handler;
 
 import java.util.Map;
 
@@ -12,7 +12,6 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.river.RiverSettings;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
 import org.elasticsearch.search.SearchHits;
@@ -26,11 +25,12 @@ public abstract class ActionHandler {
 
     protected Settings settings;
 
-    public ActionHandler(final RiverSettings riverSettings, final Client client) {
+    public ActionHandler(final Settings settings,
+            final Map<String, Object> sourceMap, final Client client) {
         this.client = client;
-        settings = riverSettings.globalSettings();
+        this.settings = settings;
+        rootSettings = sourceMap;
         logger = Loggers.getLogger(getClass(), settings);
-        rootSettings = riverSettings.settings();
     }
 
     public abstract void execute();
