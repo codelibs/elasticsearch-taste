@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.codelibs</groupId>
 	<artifactId>elasticsearch-taste</artifactId>
-	<version>0.4.1-SNAPSHOT</version>
+	<version>1.5.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>Elasticsearch Mahout Taste Plugin</name>
 	<description>Mahout Taste Implementation for Elasticsearch</description>
@@ -26,12 +26,21 @@
 		<version>7</version>
 	</parent>
 	<properties>
-		<elasticsearch.version>1.4.0</elasticsearch.version>
-		<lucene.version>4.10.2</lucene.version>
+		<elasticsearch.version>1.5.1</elasticsearch.version>
+		<lucene.version>4.10.4</lucene.version>
 		<slf4j.version>1.7.7</slf4j.version>
 		<mahout.version>0.9</mahout.version>
 	</properties>
 	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+				<includes>
+					<include>**/*.properties</include>
+				</includes>
+			</resource>
+		</resources>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
