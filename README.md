@@ -16,11 +16,12 @@ This plugin provides the following features of a recommendation engine on Elasti
 
 | Taste     | Elasticsearch |
 |:---------:|:-------------:|
-| master    | 1.4.X         |
+| master    | 1.5.X         |
 | 0.4.0     | 1.4.0         |
 | 0.3.1     | 1.3.1         |
 
 Note that this plugin supports Java 8 or the above.
+See [README_river.md](https://github.com/codelibs/elasticsearch-taste/blob/master/README_river.md "README_river.md") under Elasticsearch Taste 0.4.0.
 
 ### Issues/Questions
 
@@ -31,7 +32,9 @@ Please file an [issue](https://github.com/codelibs/elasticsearch-taste/issues "i
 
 ### Install Taste Plugin
 
-    $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/0.4.0
+(version 1.5.0 will be released...)
+
+    $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/1.5.0
 
 ## Getting Started
 
@@ -55,9 +58,7 @@ After inserting data, check them in the index:
 
 To compute recommended items from users, execute the following request:
 
-    curl -XPOST localhost:9200/_river/movielens_items_from_user/_meta -d '{
-      "type": "taste",
-      "action": "recommended_items_from_user",
+    curl -XPOST localhost:9200/_taste/action/recommended_items_from_user -d '{
       "num_of_items": 10,
       "data_model": {
         "cache": {
@@ -70,7 +71,14 @@ To compute recommended items from users, execute the following request:
     }'
 
 The result is stored in movielens/recommendation.
-You can check:
+The response of the above request has a action name at the "name" property.
+To check if your request is finished, send a GET request:
+
+    curl -XGET "localhost:9200/_taste/action?pretty"
+
+If the response contains the action name, your request is not completed yet.
+
+For checking the result, send the following query:
 
     curl -XGET "localhost:9200/movielens/recommendation/_search?q=*:*&pretty"
 
@@ -80,15 +88,13 @@ A "value" property is a value of similarity.
 The computation might take a long time...
 If you want to stop it, execute below:
 
-    curl -XDELETE localhost:9200/_river/movielens_items_from_user/
+    curl -XDELETE localhost:9200/_taste/action/{action_name}
 
 ### Evaluate Result
 
 You can evaluate parameters, such as similarity and neighborhood, with the following "evaluate\_items\_from\_user" action.
 
-    curl -XPOST localhost:9200/_river/movielens_evaluate_items/_meta -d '{
-      "type": "taste",
-      "action": "evaluate_items_from_user",
+    curl -XPOST localhost:9200/_taste/action/evaluate_items_from_user -d '{
       "evaluation_percentage": 1.0,
       "training_percentage": 0.9,
       "margin_for_error": 1.0,
@@ -153,9 +159,7 @@ The result is stored in report type:
 
 Calcurating similar users, run the following request:
 
-    curl -XPOST localhost:9200/_river/movielens_similar_users/_meta -d '{
-      "type": "taste",
-      "action": "similar_users",
+    curl -XPOST localhost:9200/_taste/action/similar_users -d '{
       "num_of_users": 10,
       "data_model": {
         "cache": {
@@ -213,9 +217,7 @@ For the following example, text data are stored into "description" field in "ap"
 
 To generate the term vector, run the following river:
 
-    curl -XPOST localhost:9200/_river/ap_term/_meta?pretty -d '{
-      "type": "taste",
-      "action": "generate_term_values",
+    curl -XPOST localhost:9200/_taste/action/generate_term_values?pretty -d '{
       "source": {
         "index": "ap",
         "type": "article",
@@ -306,9 +308,7 @@ Recommended items for an user are computed from similar users.
 The computing process is started by creating a river configuration.
 If 10 recommended items are generated from similar users, the river configuration is:
 
-    curl -XPOST localhost:9200/_river/sample/_meta -d '{
-      "type": "taste",
-      "action": "recommended_items_from_user",
+    curl -XPOST localhost:9200/_taste/action/recommended_items_from_user -d '{
       "num_of_items": 10,
       "max_duration": 120,
       "data_model": {
@@ -360,7 +360,6 @@ The configuration is:
 
 | Name | Type | Description |
 |:-----|:-----|:------------|
-| action | string | The kind of a process. |
 | num\_of\_items | int | The number of recommended items. |
 | max\_duration | int  | Max duration for computing(min). |
 | data\_model.class | string | Class name for DataModel implementation. |
@@ -381,9 +380,7 @@ The value of "items" property is recommended items.
 
 To evaluate parameters for generating recommended items, you can use the following "evaluate\_items\_from\_user" action.
 
-    curl -XPOST localhost:9200/_river/sample/_meta -d '{
-      "type": "taste",
-      "action": "evaluate_items_from_user",
+    curl -XPOST localhost:9200/_taste/action/evaluate_items_from_user -d '{
       "evaluation_percentage": 0.5,
       "training_percentage": 0.9,
       "data_model": {
@@ -443,9 +440,7 @@ Recommended items for an item are computed from similar items.
 The computing process is started by creating a river configuration.
 If 10 recommended items are generated from similar items, the river configuration is:
 
-    curl -XPOST localhost:9200/_river/sample/_meta -d '{
-      "type": "taste",
-      "action": "recommended_items_from_item",
+    curl -XPOST localhost:9200/_taste/action/recommended_items_from_item -d '{
       "num_of_items": 10,
       "max_duration": 120,
       "data_model": {
