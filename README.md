@@ -17,6 +17,7 @@ This plugin provides the following features of a recommendation engine on Elasti
 | Taste     | Elasticsearch |
 |:---------:|:-------------:|
 | master    | 1.5.X         |
+| 1.5.0     | 1.5.1         |
 | 0.4.0     | 1.4.0         |
 | 0.3.1     | 1.3.1         |
 
@@ -31,8 +32,6 @@ Please file an [issue](https://github.com/codelibs/elasticsearch-taste/issues "i
 ## Installation
 
 ### Install Taste Plugin
-
-(version 1.5.0 will be released...)
 
     $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/1.5.0
 
