@@ -3,13 +3,13 @@ Elasticsearch Taste Plugin
 
 ## 概要
 
-Elasticsearchのプラグインは[Mahout Taste](https://mahout.apache.org/users/recommender/recommender-documentation.html "Mahout Taste")（強調フィルタリングの実装）です。
-このプラグインは、Elasticsearchの推薦エンジンの次の機能を提供します。:
+Elasticsearchのプラグインは[Mahout Taste](https://mahout.apache.org/users/recommender/recommender-documentation.html "Mahout Taste")（協調フィルタリングの実装）です。
+このプラグインは、Elasticsearchのレコメンドエンジンの次の機能を提供します。
 
-* Users/Items/Preferences のデータ管理
-* アイテムベースのリコメンダー
-* ユーザベースのリコメンダー
-* 類似ユーザ/コンテンツ
+* 利用者/商品/嗜好のデータ管理
+* 商品ベースのレコメンダ
+* 利用者ベースのレコメンダ
+* 類似利用者/コンテンツ
 * テキスト解析
 
 ## バージョン
@@ -22,11 +22,11 @@ Elasticsearchのプラグインは[Mahout Taste](https://mahout.apache.org/users
 | 0.3.1     | 1.3.1         |
 
 このプラグインはJava8以上でサポートされていることに注意して下さい。
-Elasticsearch Taste 0.4.0.の下の[README_river.md](https://github.com/codelibs/elasticsearch-taste/blob/master/README_river.md "README_river.md")を見て下さい。
+Elasticsearch Taste 0.4.0.の下の[README_river.md](https://github.com/codelibs/elasticsearch-taste/blob/master/README_river.md "README_river.md")を参照してください。
 
-### 問題/質問
+### 課題/質問
 
-[問題](https://github.com/codelibs/elasticsearch-taste/issues "issue")を提出して下さい。
+何かあれば、[課題](https://github.com/codelibs/elasticsearch-taste/issues "issue")を報告してください。
 (日本語は[ここ](https://github.com/codelibs/codelibs-ja-forum "here")です。)
 
 ## インストール
@@ -41,21 +41,21 @@ Elasticsearch Taste 0.4.0.の下の[README_river.md](https://github.com/codelibs
 
 このセクションでは、[MovieLens](http://grouplens.org/datasets/movielens/ "MovieLens")データセットを使用して、Tasteプラグインについて学ぶことができます。
 MovieLensの詳細については[MovieLens](http://grouplens.org/datasets/movielens/ "MovieLens")を見てください。
-データセットu.dataを利用します。これにはユーザID、アイテムID、評価、タイムスタンプが含まれています。
-それをダウンロードし、[Event API](https://github.com/codelibs/elasticsearch-taste/blob/master/README.md#insert-preference-value "Event API")によってデータを挿入して下さい。:
+データセットu.dataを利用します。これには利用者ID、商品ID、評価、タイムスタンプが含まれています。
+それをダウンロードし、[Event API](https://github.com/codelibs/elasticsearch-taste/blob/master/README.md#insert-preference-value "Event API")によってデータを挿入して下さい。
 
     curl -o u.data http://files.grouplens.org/datasets/movielens/ml-100k/u.data
     cat u.data | awk '{system("curl -XPOST localhost:9200/movielens/_taste/event?pretty -d \"{\\\"user\\\":{\\\"id\\\":" $1 "},\\\"item\\\":{\\\"id\\\":" $2 "},\\\"value\\\":" $3 ",\\\"timestamp\\\":" $4 "000}\"")}'
 
 
 上記の要求により、優先度の値は"movielens"インデックスに格納されます。
-データを挿入した後、インデックスにあるのを確認してください。:
+データを挿入した後、インデックスにあるのを確認してください。
 
     curl -XGET "localhost:9200/movielens/_search?q=*:*&pretty"
 
-### ユーザからアイテムをリコメンド
+### 利用者から商品をレコメンド
 
-ユーザからのリコメンドされたアイテムを計算するには、次のリクエストを実行します。:
+利用者からのレコメンドされた商品を計算するには、次のリクエストを実行します。
 
     curl -XPOST localhost:9200/_taste/action/recommended_items_from_user -d '{
       "num_of_items": 10,
@@ -71,21 +71,21 @@ MovieLensの詳細については[MovieLens](http://grouplens.org/datasets/movie
 
 計算結果は movielens/recommendation に格納されます。
 上記リクエストのレスポンスの"name"プロパティにaction名が含まれます。
-計算が終わったかどうかを確認するには、GETリクエストを送信します。:
+計算が終わったかどうかを確認するには、GETリクエストを送信します。
 
     curl -XGET "localhost:9200/_taste/action?pretty"
 
 応答にアクション名が含まれている場合は、リクエストがまだ完了していません。
 
-結果を確認するため、次のクエリを送信します。:
+結果を確認するため、次のクエリを送信します。
 
     curl -XGET "localhost:9200/movielens/recommendation/_search?q=*:*&pretty"
 
-"user_id"プロパティの値は、ターゲットユーザです。"items"プロパティは、"item_id"と"values"プロパティを含むリコメンドされたアイテムです。.
+"user_id"プロパティの値は、対象の利用者です。"items"プロパティは、"item_id"と"values"プロパティを含むレコメンドされた商品です。.
 "value"プロパティは、類似の値です。
 
 計算は長い時間がかかるかもしれません…
-もし停止したいなら、以下を実行してください。:
+もし停止したいなら、以下を実行してください。
 
     curl -XDELETE localhost:9200/_taste/action/{action_name}
 
@@ -115,7 +115,7 @@ MovieLensの詳細については[MovieLens](http://grouplens.org/datasets/movie
       }
     }'
 
-結果はreportタイプに格納されます。:
+結果はreportタイプに格納されます。
 
     curl -XGET "localhost:9200/movielens/report/_search?q=evaluator_id:movielens_result&pretty"
     {
@@ -154,9 +154,9 @@ MovieLensの詳細については[MovieLens](http://grouplens.org/datasets/movie
       }
     }
 
-### 類似ユーザ
+### 類似利用者
 
-類似ユーザをを割り当てるには、下のリクエストを実行します。
+類似利用者をを割り当てるには、下のリクエストを実行します。
 
     curl -XPOST localhost:9200/_taste/action/similar_users -d '{
       "num_of_users": 10,
@@ -170,18 +170,18 @@ MovieLensの詳細については[MovieLens](http://grouplens.org/datasets/movie
       }
     }'
 
-ユーザID１の類似ユーザを確認する場合は、以下を入力して下さい。:
+利用者ID1の類似利用者を確認する場合は、以下を入力して下さい。
 
     curl -XGET "localhost:9200/movielens/user_similarity/_search?q=user_id:1&pretty"
 
 ### システムIDによって取得
 
 このプラグインは、user_idやitem_idのようなIDを所有しています。
-自分のシステムIDにアクセスする場合は、次の検索APIを使用します。:
+自分のシステムIDにアクセスする場合は、次の検索APIを使用します。
 
     curl -XGET "localhost:9200/{index}/{type}/_taste/{user|item}/{your_user_or_item_id}?pretty"
 
-For example, if you get similar users from ID=115:
+たとえば、IDが115の類似利用者を取得したい場合は以下のようにします。
 
     curl -XGET localhost:9200/movielens/recommendation/_taste/user/1
 
@@ -214,7 +214,7 @@ For example, if you get similar users from ID=115:
     curl -o ap.txt http://mallet.cs.umass.edu/ap.txt
     sed -e "s/[\'\`\\]//g" ap.txt | awk -F"\t" '{sub(" ","",$1);system("curl -XPOST localhost:9200/ap/article/" $1 " -d \"{\\\"id\\\":\\\"" $1 "\\\",\\\"label\\\":\\\"" $2 "\\\",\\\"description\\\":\\\"" $3 "\\\"}\"")}'
 
-用語ベクターを作成するには、下記を実行します。:
+用語ベクターを作成するには、下記を実行します。
 
     curl -XPOST localhost:9200/_taste/action/generate_term_values?pretty -d '{
       "source": {
@@ -240,7 +240,7 @@ sourceプロパティは、インデックス、タイプ、source情報など�
 
 このプラグインは、Elasticsearch上でUsers、Items、Preferencesのデータを管理しています。
 これらのデータは、それぞれのindexやtypeに格納されています。
-デフォルトでは、以下のようになっています。:
+デフォルトでは、以下のようになっています。
 
 | Data       | Index | Type       |
 |:----------:|:------|:-----------|
@@ -249,30 +249,30 @@ sourceプロパティは、インデックス、タイプ、source情報など�
 | Preference | (Any) | preference |
 
 Userインデックスは、自身のidと情報を管理しています。
-Userインデックスは、以下の属性を含んでいます。:
+Userインデックスは、以下の属性を含んでいます。
 
 | Name       | Type   | Description |
 |:----------:|:-------|:------------|
-| system\_id | string | 固有のID。 システムがユーザIDを持つ場合には、これを使います。 |
-| user\_id   | long   | このプラグインのための固有のユーザID。 |
+| system\_id | string | 固有のID。 システムが利用者IDを持つ場合には、これを使います。 |
+| user\_id   | long   | このプラグインのための固有の利用者ID。 |
 | @timestamp | date   | 作成/更新 された時間。 |
 | (Any)      | (any)  | age,tel,…などの他の情報を使用できる。 |
 
-Itemインデックスはitem情報を管理し、以下を含んでいます。:
+Itemインデックスはitem情報を管理し、以下を含んでいます。
 
 | Name       | Type   | Description |
 |:----------:|:-------|:------------|
-| system\_id | string | 固有のID。 システムがアイテムIDを持つ場合には、これを使います。 |
-| item\_id   | long   | このプラグインのための固有のアイテムID。 |
+| system\_id | string | 固有のID。 システムが商品IDを持つ場合には、これを使います。 |
+| item\_id   | long   | このプラグインのための固有の商品ID。 |
 | @timestamp | date   | 作成/更新 された時間。 |
 | (Any)      | (any)  | price, publish date,...などの他の情報を使用できる。 |
 
-Preferenceインデックスは、アイテムのユーザによる評価値を管理します。
+Preferenceインデックスは、商品の利用者による評価値を管理します。
 
 | Name       | Type   | Description |
 |:----------:|:-------|:------------|
-| user\_id   | long   | このプラグインのための固有のユーザID。 |
-| item\_id   | long   | このプラグインのための固有のアイテムID。 |
+| user\_id   | long   | このプラグインのための固有の利用者ID。 |
+| item\_id   | long   | このプラグインのための固有の商品ID。 |
 | value      | float  | item_idのuser_idによる評価値。 |
 | @timestamp | date   | 作成/更新 された時間。 |
 
@@ -283,7 +283,7 @@ Elasticsearchの作法を使用し、上記のインデックスおよびドキ�
 Tasteプラグインは、preference値を登録するための有用なAPIを提供します。
 それを http://.../{index}/\_taste/event　に送信する場合、user\_idとitem\_idは生成され、preference値は挿入されます。
 
-例えば、ユーザIDが"U0001"、アイテムIDが"I1000"、preference値が10.0の場合、要求は以下の通りです。:
+例えば、利用者IDが"U0001"、商品IDが"I1000"、preference値が10.0の場合、要求は以下の通りです。
 
     curl -XPOST localhost:9200/sample/_taste/event -d '{
       user: {
@@ -299,13 +299,13 @@ user\_id、item\_id、@timestampは自動的に生成されます。
 これらは"sample"インデックスに保存されます。
 そのインデックス名は任意の名前に変更することが出来ます。
 
-### ユーザリコメンダー
+### 利用者レコメンダ
 
-#### ユーザが事前算出したリコメンドされたアイテム
+#### 利用者が事前算出したレコメンドされた商品
 
-ユーザのリコメンドされたアイテムは、類似ユーザから算出されます。
+利用者のレコメンドされた商品は、類似利用者から算出されます。
 演算処理は、riverの設定することにより開始されます。
-10個のリコメンドされたアイテムが類似ユーザから生成される場合は、riverの構成は次のとおりです。:
+10個のレコメンドされた商品が類似利用者から生成される場合は、riverの構成は次のとおりです。
 
     curl -XPOST localhost:9200/_taste/action/recommended_items_from_user -d '{
       "num_of_items": 10,
@@ -355,11 +355,11 @@ user\_id、item\_id、@timestampは自動的に生成されます。
       }
     }'
 
-設定:
+設定
 
 | Name | Type | Description |
 |:-----|:-----|:------------|
-| num\_of\_items | int | リコメンドされたアイテムの数。 |
+| num\_of\_items | int | レコメンドされた商品の数。 |
 | max\_duration | int  | コンピューティングのための最大時間(分)。 |
 | data\_model.class | string | DataModel実装のためのクラス名。 |
 | data\_model.scroll | object | Elasticsearchスクロールパラメータ。 |
@@ -368,16 +368,16 @@ user\_id、item\_id、@timestampは自動的に生成されます。
 | similarity.factory | string | 類似実装のためのFactroy名。 |
 | neighborhood.factory | string | Neighborhood実装のためのFactroy名。 |
 
-リコメンドされたアイテムは、sample/recommendationに格納される。
-結果を以下のようにして見ることができる。:
+レコメンドされた商品は、sample/recommendationに格納される。
+結果を以下のようにして見ることができる。
 
     curl -XGET "localhost:9200/sample/recommendation/_search?q=*:*&pretty"
 
-"items"プロパティの値は、リコメンドされたアイテムです。
+"items"プロパティの値は、レコメンドされた商品です。
 
 #### 結果の評価
 
-リコメンドされたアイテムを生成するためのパラメータを評価するには、以下の "evaluate\_items\_from\_user" を使用することができます。.
+レコメンドされた商品を生成するためのパラメータを評価するには、以下の "evaluate\_items\_from\_user" を使用することができます。.
 
     curl -XPOST localhost:9200/_taste/action/evaluate_items_from_user -d '{
       "evaluation_percentage": 0.5,
@@ -431,13 +431,13 @@ user\_id、item\_id、@timestampは自動的に生成されます。
 
 その結果はreportインデックスに保存されます。(この例はsample/reportです。)
 
-### アイテムのリコメンダー
+### 商品のレコメンダ
 
-#### アイテムから事前算出されたリコメンドされたアイテム
+#### 商品から事前算出されたレコメンドされた商品
 
-アイテムのリコメンドされたアイテムは、類似アイテムから算出されます。
+商品のレコメンドされた商品は、類似商品から算出されます。
 その演算処理は、riverの設定をすることにより開始されます。
-10個のリコメンドされたアイテムが類似アイテムから生成される場合は、riverの構成は以下のとおりです。:
+10個のレコメンドされた商品が類似商品から生成される場合は、riverの構成は以下のとおりです。
 
     curl -XPOST localhost:9200/_taste/action/recommended_items_from_item -d '{
       "num_of_items": 10,
@@ -482,10 +482,10 @@ user\_id、item\_id、@timestampは自動的に生成されます。
       }
     }'
 
-そのリコメンドされたアイテムはsample/item\_similarityに保存されます。
-以下のようにして結果を見ることができます。:
+そのレコメンドされた商品はsample/item\_similarityに保存されます。
+以下のようにして結果を見ることができます。
 
     curl -XGET "localhost:9200/sample/item_similarity/_search?q=*:*&pretty"
 
-"items"プロパティの値は、リコメンドされたアイテムです。
+"items"プロパティの値は、レコメンドされた商品です。
 
