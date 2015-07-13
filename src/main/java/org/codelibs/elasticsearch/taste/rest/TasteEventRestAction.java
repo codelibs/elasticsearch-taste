@@ -2,15 +2,10 @@ package org.codelibs.elasticsearch.taste.rest;
 
 import static org.elasticsearch.rest.RestStatus.OK;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import org.codelibs.elasticsearch.taste.exception.InvalidParameterException;
-import org.codelibs.elasticsearch.taste.rest.handler.ItemRequestHandler;
-import org.codelibs.elasticsearch.taste.rest.handler.PreferenceRequestHandler;
-import org.codelibs.elasticsearch.taste.rest.handler.RequestHandler;
-import org.codelibs.elasticsearch.taste.rest.handler.RequestHandlerChain;
-import org.codelibs.elasticsearch.taste.rest.handler.UserRequestHandler;
+import org.codelibs.elasticsearch.taste.rest.handler.*;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
@@ -24,7 +19,6 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 
 public class TasteEventRestAction extends BaseRestHandler {
-
     private UserRequestHandler userRequestHandler;
 
     private ItemRequestHandler itemRequestHandler;
@@ -33,7 +27,7 @@ public class TasteEventRestAction extends BaseRestHandler {
 
     @Inject
     public TasteEventRestAction(final Settings settings, final Client client,
-            final RestController restController) {
+                                final RestController restController) {
         super(settings, restController, client);
 
         restController.registerHandler(RestRequest.Method.POST,
@@ -49,50 +43,50 @@ public class TasteEventRestAction extends BaseRestHandler {
 
     @Override
     protected void handleRequest(final RestRequest request,
-            final RestChannel channel, final Client client) {
+                                 final RestChannel channel, final Client client) {
+        final String[] data = request.content().toUtf8()
+                .split("\r\n|[\n\r\u2028\u2029\u0085]");
+        final Iterator<String> itr = Arrays.asList(data).iterator();
 
-        try {
-            final Map<String, Object> requestMap = XContentFactory
-                    .xContent(request.content())
-                    .createParser(request.content()).mapAndClose();
-
-            final Map<String, Object> paramMap = new HashMap<>();
-            final boolean hasUser = userRequestHandler.hasUser(requestMap);
-            final boolean hasItem = itemRequestHandler.hasItem(requestMap);
-            final boolean hasPreference = preferenceRequestHandler
-                    .hasPreference(requestMap);
-
-            if (hasPreference) {
-                final RequestHandlerChain chain = new RequestHandlerChain(
-                        new RequestHandler[] { userRequestHandler,
-                                itemRequestHandler, preferenceRequestHandler,
-                                createAcknowledgedHandler(channel) });
-                chain.execute(request, createOnErrorListener(channel),
-                        requestMap, paramMap);
-            } else if (hasUser) {
-                final RequestHandlerChain chain = new RequestHandlerChain(
-                        new RequestHandler[] { userRequestHandler,
-                                createAcknowledgedHandler(channel) });
-                chain.execute(request, createOnErrorListener(channel),
-                        requestMap, paramMap);
-            } else if (hasItem) {
-                final RequestHandlerChain chain = new RequestHandlerChain(
-                        new RequestHandler[] { itemRequestHandler,
-                                createAcknowledgedHandler(channel) });
-                chain.execute(request, createOnErrorListener(channel),
-                        requestMap, paramMap);
-            } else {
-                throw new InvalidParameterException("No preference data.");
-            }
-        } catch (final Exception e) {
-            createOnErrorListener(channel).onError(e);
-        }
-
+        execute(request, channel, itr);
     }
 
-    private RequestHandler createAcknowledgedHandler(final RestChannel channel) {
-        return (request, listener, requestMap, paramMap, chain) -> {
-            try {
+    private void execute(final RestRequest request, final RestChannel channel, final Iterator<String> itr) {
+        try {
+            if (itr.hasNext()) {
+                final String aData = itr.next();
+                final Map<String, Object> requestMap = XContentFactory
+                        .xContent(aData)
+                        .createParser(aData).mapAndClose();
+
+                final Map<String, Object> paramMap = new HashMap<>();
+                final boolean hasUser = userRequestHandler.hasUser(requestMap);
+                final boolean hasItem = itemRequestHandler.hasItem(requestMap);
+                final boolean hasPreference = preferenceRequestHandler
+                        .hasPreference(requestMap);
+                final RequestHandler continueExecuteHandler = (req, listener, reqMap, parMap, c) ->
+                    execute(request, channel, itr);
+
+                if (hasPreference) {
+                    final RequestHandlerChain chain = new RequestHandlerChain(
+                                    new RequestHandler[]{userRequestHandler, itemRequestHandler,
+                                            preferenceRequestHandler, continueExecuteHandler});
+                    chain.execute(request, createOnErrorListener(channel),
+                            requestMap, paramMap);
+                } else if (hasUser) {
+                    final RequestHandlerChain chain = new RequestHandlerChain(
+                                    new RequestHandler[]{userRequestHandler, continueExecuteHandler});
+                    chain.execute(request, createOnErrorListener(channel),
+                            requestMap, paramMap);
+                } else if (hasItem) {
+                    final RequestHandlerChain chain = new RequestHandlerChain(
+                            new RequestHandler[]{itemRequestHandler, continueExecuteHandler});
+                    chain.execute(request, createOnErrorListener(channel),
+                            requestMap, paramMap);
+                } else {
+                    throw new InvalidParameterException("No preference data.");
+                }
+            } else {
                 final XContentBuilder builder = JsonXContent.contentBuilder();
                 final String pretty = request.param("pretty");
                 if (pretty != null && !"false".equalsIgnoreCase(pretty)) {
@@ -102,14 +96,14 @@ public class TasteEventRestAction extends BaseRestHandler {
                 builder.field("acknowledged", true);
                 builder.endObject();
                 channel.sendResponse(new BytesRestResponse(OK, builder));
-            } catch (final Exception e) {
-                try {
-                    channel.sendResponse(new BytesRestResponse(channel, e));
-                } catch (final Exception ex) {
-                    logger.error("Failed to send a failure response.", ex);
-                }
             }
-        };
+        } catch (final Exception e) {
+            try {
+                channel.sendResponse(new BytesRestResponse(channel, e));
+            } catch (final Exception ex) {
+                logger.error("Failed to send a failure response.", ex);
+            }
+        }
     }
 
     private RequestHandler.OnErrorListener createOnErrorListener(
@@ -122,5 +116,4 @@ public class TasteEventRestAction extends BaseRestHandler {
             }
         };
     }
-
 }
