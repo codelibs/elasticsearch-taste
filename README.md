@@ -276,24 +276,23 @@ Preference index manages values rated by an user for an item.
 | value      | float  | Value rated by user\_id for item\_id. |
 | @timestamp | date   | Created/Updated time. |
 
-You can create/update/delete the above index and document with Elasticsearch manner. 
+You can create/update/delete the above index and document with Elasticsearch manner.
 
 #### Insert Preference Value
 
 Taste plugin provides an useful API to register a preference value.
 If you send it to http://.../{index}/\_taste/event, user\_id and item\_id are generated and then the preference value is inserted.
+You can send multiple data with one request by using carriage return.
 
 For example, if User ID is "U0001", Item ID is "I1000" and the preference(rating) value is 10.0, the request is below:
 
-    curl -XPOST localhost:9200/sample/_taste/event -d '{
-      user: {
-        id: "U0001"
-      },
-      item: {
-        id: "I1000"
-      },
-      value: 10.0
-    }'
+    curl -XPOST localhost:9200/sample/_taste/event -d '{ user: { id: "U0001" }, item: { id: "I1000" }, value: 10.0 }'
+
+If you send multiple data, the request is below:
+
+    curl -XPOST localhost:9200/sample/_taste/event -d \
+      '{ user: { id: "U0001" }, item: { id: "I1000" }, value: 10.0 }
+      { user: { id: "U0002" }, item: { id: "I1001" }, value: 15.0 }'
 
 Values of user\_id, item\_id and @timestamp are generated automatically.
 They are stored in "sample" index.
