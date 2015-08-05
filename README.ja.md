@@ -276,24 +276,23 @@ Preferenceインデックスは、商品の利用者による評価値を管理�
 | value      | float  | item_idのuser_idによる評価値。 |
 | @timestamp | date   | 作成/更新 された時間。 |
 
-Elasticsearchの作法を使用し、上記のインデックスおよびドキュメントを作成/更新/削除することが出来ます。 
+Elasticsearchの作法を使用し、上記のインデックスおよびドキュメントを作成/更新/削除することが出来ます。
 
 #### Preference値の挿入
 
 Tasteプラグインは、preference値を登録するための有用なAPIを提供します。
-それを http://.../{index}/\_taste/event　に送信する場合、user\_idとitem\_idは生成され、preference値は挿入されます。
+それを http://.../{index}/\_taste/event に送信する場合、user\_idとitem\_idは生成され、preference値は挿入されます。
+途中に改行を挟むことで、一度のリクエストで複数個の値を登録することができます。
 
-例えば、利用者IDが"U0001"、商品IDが"I1000"、preference値が10.0の場合、要求は以下の通りです。
+例えば、利用者IDが"U0001"、商品IDが"I1000"、preference値が10.0のデータを登録する場合、要求は以下の通りです。
 
-    curl -XPOST localhost:9200/sample/_taste/event -d '{
-      user: {
-        id: "U0001"
-      },
-      item: {
-        id: "I1000"
-      },
-      value: 10.0
-    }'
+    curl -XPOST localhost:9200/sample/_taste/event -d '{ user: { id: "U0001" }, item: { id: "I1000" }, value: 10.0 }'
+
+複数個の値を登録する場合、次のように要求します。
+
+    curl -XPOST localhost:9200/sample/_taste/event -d \
+      '{ user: { id: "U0001" }, item: { id: "I1000" }, value: 10.0 }
+      { user: { id: "U0002" }, item: { id: "I1001" }, value: 15.0 }'
 
 user\_id、item\_id、@timestampは自動的に生成されます。
 これらは"sample"インデックスに保存されます。
