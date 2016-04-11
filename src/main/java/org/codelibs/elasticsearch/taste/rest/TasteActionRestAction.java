@@ -151,7 +151,7 @@ public class TasteActionRestAction extends BaseRestHandler {
             try {
                 handler.execute();
             } catch (final Exception e) {
-                logger.error("TasteThread {} is failed.", name, e);
+                logger.error("TasteThread {} is failed.", e, name);
             } finally {
                 handlerMap.remove(name);
                 handler.close();
