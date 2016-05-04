@@ -7,21 +7,22 @@ import org.codelibs.elasticsearch.taste.rest.TasteActionRestAction;
 import org.codelibs.elasticsearch.taste.rest.TasteEventRestAction;
 import org.codelibs.elasticsearch.taste.rest.TasteSearchRestAction;
 import org.codelibs.elasticsearch.taste.service.TasteService;
-import org.elasticsearch.common.collect.Lists;
 import org.elasticsearch.common.component.LifecycleComponent;
 import org.elasticsearch.common.inject.Module;
-import org.elasticsearch.plugins.AbstractPlugin;
+import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.rest.RestModule;
 
-public class TastePlugin extends AbstractPlugin {
+import com.google.common.collect.Lists;
+
+public class TastePlugin extends Plugin {
     @Override
     public String name() {
-        return "TastePlugin";
+        return "taste";
     }
 
     @Override
     public String description() {
-        return "This is a elasticsearch-taste plugin.";
+        return "Taste plugin recommends items from data in indices.";
     }
 
     // for Rest API
@@ -33,17 +34,16 @@ public class TastePlugin extends AbstractPlugin {
 
     // for Service
     @Override
-    public Collection<Class<? extends Module>> modules() {
-        final Collection<Class<? extends Module>> modules = Lists
-                .newArrayList();
-        modules.add(TasteModule.class);
+    public Collection<Module> nodeModules() {
+        final Collection<Module> modules = Lists.newArrayList();
+        modules.add(new TasteModule());
         return modules;
     }
 
     // for Service
     @SuppressWarnings("rawtypes")
     @Override
-    public Collection<Class<? extends LifecycleComponent>> services() {
+    public Collection<Class<? extends LifecycleComponent>> nodeServices() {
         final Collection<Class<? extends LifecycleComponent>> services = Lists
                 .newArrayList();
         services.add(TasteService.class);

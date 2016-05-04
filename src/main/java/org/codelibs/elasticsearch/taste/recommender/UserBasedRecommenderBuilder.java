@@ -9,7 +9,7 @@ import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.neighborhood.UserNeighborhood;
 import org.codelibs.elasticsearch.taste.neighborhood.UserNeighborhoodFactory;
 import org.codelibs.elasticsearch.taste.similarity.UserSimilarity;
-import org.codelibs.elasticsearch.util.settings.SettingsUtils;
+import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 
 public class UserBasedRecommenderBuilder extends AbstractRecommenderBuilder {
 

@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ForkJoinPool;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.index.DocsAndPositionsEnum;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.Terms;
@@ -21,17 +22,16 @@ import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.UnicodeUtil;
 import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.exception.InvalidParameterException;
-import org.codelibs.elasticsearch.util.lang.StringUtils;
-import org.codelibs.elasticsearch.util.settings.SettingsUtils;
+import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
-import org.elasticsearch.action.termvector.MultiTermVectorsItemResponse;
-import org.elasticsearch.action.termvector.MultiTermVectorsRequestBuilder;
-import org.elasticsearch.action.termvector.MultiTermVectorsResponse;
-import org.elasticsearch.action.termvector.MultiTermVectorsResponse.Failure;
-import org.elasticsearch.action.termvector.TermVectorRequest;
+import org.elasticsearch.action.termvectors.MultiTermVectorsItemResponse;
+import org.elasticsearch.action.termvectors.MultiTermVectorsRequestBuilder;
+import org.elasticsearch.action.termvectors.MultiTermVectorsResponse;
+import org.elasticsearch.action.termvectors.MultiTermVectorsResponse.Failure;
+import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.settings.Settings;
@@ -75,13 +75,13 @@ public class GenTermValuesHandler extends ActionHandler {
         final Map<String, Object> sourceIndexSettings = SettingsUtils.get(
                 rootSettings, "source");
         sourceIndex = SettingsUtils.get(sourceIndexSettings, "index",
-                StringUtils.EMPTY_STRING);
+                TasteConstants.EMPTY_STRING);
         if (StringUtils.isBlank(sourceIndex)) {
             throw new InvalidParameterException("source.index is invalid: "
                     + sourceIndex);
         }
         sourceType = SettingsUtils.get(sourceIndexSettings, "type",
-                StringUtils.EMPTY_STRING);
+                TasteConstants.EMPTY_STRING);
         if (StringUtils.isBlank(sourceType)) {
             throw new InvalidParameterException("source.type is invalid: "
                     + sourceType);
@@ -117,8 +117,7 @@ public class GenTermValuesHandler extends ActionHandler {
                 .setTypes(sourceType).setSearchType(SearchType.SCAN)
                 .setScroll(new TimeValue(keepAlive.longValue()))
                 .setQuery(QueryBuilders.matchAllQuery())
-                .setSize(size.intValue()).addField(idField)
-                .setListenerThreaded(true);
+                .setSize(size.intValue()).addField(idField);
         if (sourceEnabled) {
             builder.addField("_source");
         }
@@ -146,7 +145,7 @@ public class GenTermValuesHandler extends ActionHandler {
                 initialized = true;
                 client.prepareSearchScroll(response.getScrollId())
                         .setScroll(new TimeValue(keepAlive.longValue()))
-                        .setListenerThreaded(true).execute(this);
+                        .execute(this);
                 return;
             }
 
@@ -180,7 +179,7 @@ public class GenTermValuesHandler extends ActionHandler {
                                 new DocInfo((String) searchHitField.getValue(),
                                         hit.getSource()));
                     }
-                    final TermVectorRequest termVectorRequest = new TermVectorRequest(
+                    final TermVectorsRequest termVectorRequest = new TermVectorsRequest(
                             sourceIndex, sourceType, id);
                     termVectorRequest.selectedFields(sourceFields);
                     requestBuilder.add(termVectorRequest);
@@ -191,7 +190,7 @@ public class GenTermValuesHandler extends ActionHandler {
 
                 client.prepareSearchScroll(response.getScrollId())
                         .setScroll(new TimeValue(keepAlive.longValue()))
-                        .setListenerThreaded(true).execute(this);
+                        .execute(this);
             }
         }
 
@@ -268,7 +267,7 @@ public class GenTermValuesHandler extends ActionHandler {
                         final Failure failure = mTVItemResponse.getFailure();
                         logger.error("[{}/{}/{}] {}", failure.getIndex(),
                                 failure.getType(), failure.getId(),
-                                failure.getMessage());
+                                failure.getCause().getMessage());
                     } else {
                         final String userId = mTVItemResponse.getId();
                         final DocInfo docInfo = idMap.get(userId);
@@ -286,11 +285,12 @@ public class GenTermValuesHandler extends ActionHandler {
                                 final String fieldName = fieldIter.next();
                                 final Terms curTerms = fields.terms(fieldName);
                                 final TermsEnum termIter = curTerms
-                                        .iterator(null);
+                                        .iterator();
                                 for (int i = 0; i < curTerms.size(); i++) {
                                     final BytesRef term = termIter.next();
-                                    UnicodeUtil.UTF8toUTF16(term, spare);
-                                    final String termValue = spare.toString();
+                                    final char[] values=new char[term.length];
+                                    final int length=UnicodeUtil.UTF8toUTF16(term, values);
+                                    final String termValue = new String(values,0,length);
                                     final DocsAndPositionsEnum posEnum = termIter
                                             .docsAndPositions(null, null);
                                     final int termFreq = posEnum.freq();
@@ -424,12 +424,6 @@ public class GenTermValuesHandler extends ActionHandler {
         EventSettingParams(final Map<String, Object> requestSettings) {
             this.requestSettings = new ConcurrentHashMap<String, Object>(
                     requestSettings);
-        }
-
-        @Override
-        public Boolean paramAsBooleanOptional(final String key,
-                final Boolean defaultValue) {
-            return paramAsBoolean(key, defaultValue);
         }
 
         @Override

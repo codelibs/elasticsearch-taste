@@ -4,12 +4,12 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang3.StringUtils;
 import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.service.TasteService;
-import org.codelibs.elasticsearch.util.lang.StringUtils;
-import org.codelibs.elasticsearch.util.settings.SettingsUtils;
+import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
@@ -78,11 +78,11 @@ public abstract class RecommendationHandler extends ActionHandler {
                     modelInfoSettings, "query");
             final String userQuery = SettingsUtils.get(querySettings, "user");
             if (StringUtils.isNotBlank(userQuery)) {
-                model.setUserQueryBuilder(QueryBuilders.queryString(userQuery));
+                model.setUserQueryBuilder(QueryBuilders.queryStringQuery(userQuery));
             }
             final String itemQuery = SettingsUtils.get(querySettings, "item");
             if (StringUtils.isNotBlank(itemQuery)) {
-                model.setUserQueryBuilder(QueryBuilders.queryString(itemQuery));
+                model.setUserQueryBuilder(QueryBuilders.queryStringQuery(itemQuery));
             }
 
             final Map<String, Object> cacheSettings = SettingsUtils.get(

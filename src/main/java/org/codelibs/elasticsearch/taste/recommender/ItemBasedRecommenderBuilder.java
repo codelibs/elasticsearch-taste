@@ -6,7 +6,7 @@ import java.util.Map;
 import org.codelibs.elasticsearch.taste.model.DataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.similarity.ItemSimilarity;
-import org.codelibs.elasticsearch.util.settings.SettingsUtils;
+import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 
 public class ItemBasedRecommenderBuilder extends AbstractRecommenderBuilder {
 

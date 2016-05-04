@@ -1,6 +1,6 @@
 package org.codelibs.elasticsearch.taste.rest;
 
-import static org.codelibs.elasticsearch.util.action.ListenerUtils.on;
+import static org.codelibs.elasticsearch.taste.util.ListenerUtils.on;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
@@ -15,17 +15,15 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang3.StringUtils;
 import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.exception.NotFoundException;
 import org.codelibs.elasticsearch.taste.exception.OperationFailedException;
 import org.codelibs.elasticsearch.taste.exception.TasteException;
-import org.codelibs.elasticsearch.util.action.ListenerUtils.OnResponseListener;
-import org.codelibs.elasticsearch.util.lang.StringUtils;
+import org.codelibs.elasticsearch.taste.util.ListenerUtils.OnResponseListener;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.cache.Cache;
-import org.elasticsearch.common.cache.CacheBuilder;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
@@ -42,6 +40,9 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.sort.SortOrder;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 public class TasteSearchRestAction extends BaseRestHandler {
 

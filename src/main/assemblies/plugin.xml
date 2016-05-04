@@ -5,6 +5,18 @@
 		<format>zip</format>
 	</formats>
 	<includeBaseDirectory>false</includeBaseDirectory>
+	<files>
+		<file>
+			<source>${basedir}/src/main/plugin-metadata/plugin-descriptor.properties</source>
+			<outputDirectory></outputDirectory>
+			<filtered>true</filtered>
+		</file>
+		<file>
+			<source>${basedir}/src/main/plugin-metadata/plugin-security.policy</source>
+			<outputDirectory></outputDirectory>
+			<filtered>true</filtered>
+		</file>
+	</files>
 	<dependencySets>
 		<dependencySet>
 			<outputDirectory>/</outputDirectory>
@@ -12,6 +24,8 @@
 			<useTransitiveFiltering>true</useTransitiveFiltering>
 			<excludes>
 				<exclude>org.elasticsearch:elasticsearch</exclude>
+				<exclude>org.apache.lucene:lucene-core</exclude>
+				<exclude>org.apache.lucene:lucene-analyzers-common</exclude>
 			</excludes>
 		</dependencySet>
 	</dependencySets>

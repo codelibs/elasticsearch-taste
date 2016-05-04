@@ -16,17 +16,17 @@ import org.codelibs.elasticsearch.taste.recommender.ItemBasedRecommender;
 import org.codelibs.elasticsearch.taste.recommender.ItemBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.recommender.Recommender;
 import org.codelibs.elasticsearch.taste.service.TasteService;
+import org.codelibs.elasticsearch.taste.util.ClusterUtils;
+import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 import org.codelibs.elasticsearch.taste.worker.SimilarItemsWorker;
 import org.codelibs.elasticsearch.taste.writer.ItemWriter;
-import org.codelibs.elasticsearch.util.admin.ClusterUtils;
-import org.codelibs.elasticsearch.util.io.IOUtils;
-import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.cache.Cache;
-import org.elasticsearch.common.cache.CacheBuilder;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 public class ItemsFromItemHandler extends RecommendationHandler {
 
@@ -99,7 +99,13 @@ public class ItemsFromItemHandler extends RecommendationHandler {
         } catch (final TasteException e) {
             logger.error("Recommender {} is failed.", e, recommender);
         } finally {
-            IOUtils.closeQuietly(writer);
+            if (writer != null) {
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
         }
 
     }

@@ -17,6 +17,7 @@
 
 package org.codelibs.elasticsearch.taste.eval;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +43,6 @@ import org.codelibs.elasticsearch.taste.model.Preference;
 import org.codelibs.elasticsearch.taste.model.PreferenceArray;
 import org.codelibs.elasticsearch.taste.recommender.Recommender;
 import org.codelibs.elasticsearch.taste.writer.ResultWriter;
-import org.codelibs.elasticsearch.util.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -152,7 +152,11 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
         log.info("Evaluation result: {}", result);
 
         if (resultWriter != null) {
-            IOUtils.closeQuietly(resultWriter);
+            try {
+                resultWriter.close();
+            } catch (final IOException e) {
+                // ignore
+            }
         }
 
         return result;

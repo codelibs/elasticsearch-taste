@@ -1,5 +1,6 @@
 package org.codelibs.elasticsearch.taste.model;
 
+import static org.codelibs.elasticsearch.runner.ElasticsearchClusterRunner.newConfigs;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -10,6 +11,7 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.Date;
 
+import org.codelibs.elasticsearch.runner.ElasticsearchClusterRunner;
 import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.common.FastIDSet;
 import org.codelibs.elasticsearch.taste.common.LongPrimitiveIterator;
@@ -17,14 +19,10 @@ import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.io.FileSystemUtils;
-import org.elasticsearch.common.network.NetworkUtils;
-import org.elasticsearch.common.settings.ImmutableSettings;
+import org.elasticsearch.common.settings.Settings.Builder;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.node.Node;
-import org.elasticsearch.node.NodeBuilder;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -56,29 +54,32 @@ public class ElasticsearchDataModelTest {
 
     private static final long[] ITEM_IDS = { 123, 234, 456, 654, 789, 999 };
 
-    private Node node;
+    private ElasticsearchClusterRunner runner;
+
+    private int numOfNode = 2;
+
+    private String clusterName;
 
     @Before
     public void setup() throws Exception {
-        final ImmutableSettings.Builder builder = ImmutableSettings
-                .settingsBuilder()
-                .put("node.name", "node-test-" + System.currentTimeMillis())
-                .put("node.data", true)
-                .put("cluster.name",
-                        "cluster-test-"
-                                + NetworkUtils.getLocalAddress().getHostName())
-                .put("index.store.type", "memory")
-                .put("index.store.fs.memory.enabled", "true")
-                .put("gateway.type", "none")
-                .put("path.data", "./target/elasticsearch-test/data")
-                .put("path.work", "./target/elasticsearch-test/work")
-                .put("path.logs", "./target/elasticsearch-test/logs")
-                .put("index.number_of_shards", "1")
-                .put("index.number_of_replicas", "0")
-                .put("cluster.routing.schedule", "50ms")
-                .put("node.local", true);
-        node = NodeBuilder.nodeBuilder().settings(builder).node();
-        final Client client = node.client();
+        clusterName = "es-taste-" + System.currentTimeMillis();
+        runner = new ElasticsearchClusterRunner();
+        runner.onBuild(new ElasticsearchClusterRunner.Builder() {
+            @Override
+            public void build(final int number, final Builder settingsBuilder) {
+                settingsBuilder.put("http.cors.enabled", true);
+                settingsBuilder.put("http.cors.allow-origin", "*");
+                settingsBuilder.put("index.number_of_shards", 3);
+                settingsBuilder.put("index.number_of_replicas", 0);
+                settingsBuilder.putArray("discovery.zen.ping.unicast.hosts", "localhost:9301-9310");
+                settingsBuilder.put("plugin.types",
+                        "org.codelibs.elasticsearch.taste.TastePlugin");
+                settingsBuilder.put("index.unassigned.node_left.delayed_timeout", "0");
+            }
+        }).build(newConfigs().clusterName(clusterName).numOfNode(numOfNode));
+
+        runner.ensureYellow();
+        Client client = runner.client();
 
         // Wait for Yellow status
         client.admin().cluster().prepareHealth().setWaitForYellowStatus()
@@ -162,10 +163,8 @@ public class ElasticsearchDataModelTest {
 
     @After
     public void tearDown() {
-        node.close();
-
-        FileSystemUtils.deleteRecursively(new File(
-                "./target/elasticsearch-test/"), true);
+        runner.close();
+        runner.clean();
     }
 
     @Test
@@ -266,7 +265,7 @@ public class ElasticsearchDataModelTest {
     private ElasticsearchDataModel getElasticsearchDataModel(
             final String[] lines) {
         final ElasticsearchDataModel esModel = new ElasticsearchDataModel();
-        esModel.setClient(node.client());
+        esModel.setClient(runner.client());
         esModel.setItemIndex(TEST_INDEX);
         esModel.setUserIndex(TEST_INDEX);
         esModel.setPreferenceIndex(TEST_INDEX);

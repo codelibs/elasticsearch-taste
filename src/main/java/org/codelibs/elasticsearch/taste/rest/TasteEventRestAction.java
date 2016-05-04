@@ -2,10 +2,17 @@ package org.codelibs.elasticsearch.taste.rest;
 
 import static org.elasticsearch.rest.RestStatus.OK;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 import org.codelibs.elasticsearch.taste.exception.InvalidParameterException;
-import org.codelibs.elasticsearch.taste.rest.handler.*;
+import org.codelibs.elasticsearch.taste.rest.handler.ItemRequestHandler;
+import org.codelibs.elasticsearch.taste.rest.handler.PreferenceRequestHandler;
+import org.codelibs.elasticsearch.taste.rest.handler.RequestHandler;
+import org.codelibs.elasticsearch.taste.rest.handler.RequestHandlerChain;
+import org.codelibs.elasticsearch.taste.rest.handler.UserRequestHandler;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
@@ -57,7 +64,7 @@ public class TasteEventRestAction extends BaseRestHandler {
                 final String aData = itr.next();
                 final Map<String, Object> requestMap = XContentFactory
                         .xContent(aData)
-                        .createParser(aData).mapAndClose();
+                        .createParser(aData).map();
 
                 final Map<String, Object> paramMap = new HashMap<>();
                 final boolean hasUser = userRequestHandler.hasUser(requestMap);

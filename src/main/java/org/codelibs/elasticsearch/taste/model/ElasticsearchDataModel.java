@@ -17,24 +17,17 @@ import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.codelibs.elasticsearch.taste.model.cache.DmKey;
 import org.codelibs.elasticsearch.taste.model.cache.DmValue;
 import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.action.ShardOperationFailedException;
-import org.elasticsearch.action.deletebyquery.DeleteByQueryResponse;
-import org.elasticsearch.action.deletebyquery.IndexDeleteByQueryResponse;
+import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.cache.Cache;
-import org.elasticsearch.common.cache.CacheBuilder;
-import org.elasticsearch.common.cache.Weigher;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.RangeFilterBuilder;
+import org.elasticsearch.index.query.RangeQueryBuilder;
 import org.elasticsearch.search.Scroll;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
@@ -43,6 +36,10 @@ import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.metrics.stats.Stats;
 import org.elasticsearch.search.sort.SortOrder;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.Weigher;
 
 public class ElasticsearchDataModel implements DataModel {
 
@@ -311,18 +308,12 @@ public class ElasticsearchDataModel implements DataModel {
 
         SearchResponse response;
         try {
-            response = client
-                    .prepareSearch(preferenceIndex)
+            response = client.prepareSearch(preferenceIndex)
                     .setTypes(preferenceType)
-                    .setQuery(
-                            QueryBuilders.filteredQuery(
-                                    QueryBuilders
-                                            .boolQuery()
-                                            .must(QueryBuilders.termQuery(
-                                                    itemIdField, itemID))
-                                            .must(QueryBuilders.termQuery(
-                                                    userIdField, userID)),
-                                    getLastAccessedFilterQuery()))
+                    .setQuery(QueryBuilders.boolQuery()
+                            .must(QueryBuilders.termQuery(itemIdField, itemID))
+                            .must(QueryBuilders.termQuery(userIdField, userID))
+                            .filter(getLastAccessedFilterQuery()))
                     .addFields(valueField)
                     .addSort(timestampField, SortOrder.DESC).setSize(1)
                     .execute().actionGet();
@@ -373,15 +364,10 @@ public class ElasticsearchDataModel implements DataModel {
             response = client
                     .prepareSearch(preferenceIndex)
                     .setTypes(preferenceType)
-                    .setQuery(
-                            QueryBuilders.filteredQuery(
-                                    QueryBuilders
-                                            .boolQuery()
-                                            .must(QueryBuilders.termQuery(
-                                                    itemIdField, itemID))
-                                            .must(QueryBuilders.termQuery(
-                                                    userIdField, userID)),
-                                    getLastAccessedFilterQuery()))
+                    .setQuery(QueryBuilders.boolQuery()
+                            .must(QueryBuilders.termQuery(itemIdField, itemID))
+                            .must(QueryBuilders.termQuery(userIdField, userID))
+                            .filter(getLastAccessedFilterQuery()))
                     .addFields(timestampField)
                     .addSort(timestampField, SortOrder.DESC).setSize(1)
                     .execute().actionGet();
@@ -551,41 +537,40 @@ public class ElasticsearchDataModel implements DataModel {
 
     @Override
     public void removePreference(final long userID, final long itemID) {
-        DeleteByQueryResponse response;
+        SearchResponse response = null;
         try {
-            response = client
-                    .prepareDeleteByQuery(preferenceIndex)
-                    .setTypes(preferenceType)
-                    .setQuery(
-                            QueryBuilders.filteredQuery(
-                                    QueryBuilders
-                                            .boolQuery()
-                                            .must(QueryBuilders.termQuery(
-                                                    userIdField, userID))
-                                            .must(QueryBuilders.termQuery(
-                                                    itemIdField, itemID)),
-                                    getLastAccessedFilterQuery())).execute()
-                    .actionGet();
+            while (true) {
+                if (response == null) {
+                    response = client.prepareSearch(preferenceIndex)
+                            .setTypes(preferenceType).setScroll(scrollKeepAlive)
+                            .setQuery(QueryBuilders.boolQuery()
+                                    .must(QueryBuilders.termQuery(userIdField,
+                                            userID))
+                                    .must(QueryBuilders.termQuery(itemIdField,
+                                            itemID))
+                                    .filter(getLastAccessedFilterQuery()))
+                            .addFields("_id").setSize(scrollSize).execute()
+                            .actionGet();
+                } else {
+                    response = client
+                            .prepareSearchScroll(response.getScrollId())
+                            .setScroll(scrollKeepAlive).execute().actionGet();
+                }
+                int size = response.getHits().getHits().length;
+                if (size == 0) {
+                    break;
+                }
+
+                final BulkRequestBuilder bulkRequest = client.prepareBulk();
+                for (final SearchHit hit : response.getHits()) {
+                    bulkRequest.add(client.prepareDelete(hit.getIndex(),
+                            hit.getType(), hit.getId()));
+                }
+                bulkRequest.execute().actionGet();
+            }
         } catch (final ElasticsearchException e) {
             throw new TasteException("Failed to remove the preference by ("
                     + userID + "," + itemID + ")", e);
-        }
-        for (final IndexDeleteByQueryResponse res : response) {
-            final int totalShards = res.getTotalShards();
-            final int successfulShards = res.getSuccessfulShards();
-            if (totalShards != successfulShards) {
-                throw new TasteException(totalShards - successfulShards
-                        + " shards are failed.");
-            }
-            final ShardOperationFailedException[] failures = res.getFailures();
-            if (failures.length > 0) {
-                final StringBuilder buf = new StringBuilder();
-                for (final ShardOperationFailedException failure : failures) {
-                    buf.append('\n').append(failure.toString());
-                }
-                throw new TasteException("Search Operation Failed: "
-                        + buf.toString());
-            }
         }
     }
 
@@ -619,10 +604,10 @@ public class ElasticsearchDataModel implements DataModel {
             return client
                     .prepareSearch(preferenceIndex)
                     .setTypes(preferenceType)
-                    .setQuery(
-                            QueryBuilders.filteredQuery(QueryBuilders
-                                    .termQuery(targetField, targetID),
-                                    getLastAccessedFilterQuery()))
+                    .setQuery(QueryBuilders.boolQuery()
+                            .must(QueryBuilders.termQuery(targetField,
+                                    targetID))
+                            .filter(getLastAccessedFilterQuery()))
                     .addFields(resultFields)
                     .addSort(resultFields[0], SortOrder.ASC)
                     .addSort(timestampField, SortOrder.DESC)
@@ -662,43 +647,40 @@ public class ElasticsearchDataModel implements DataModel {
             return;
         }
 
-        SearchResponse response;
-        try {
-            response = client
-                    .prepareSearch(userIndex)
-                    .setTypes(userType)
-                    .setSearchType(SearchType.SCAN)
-                    .setScroll(scrollKeepAlive)
-                    .setQuery(
-                            QueryBuilders.filteredQuery(userQueryBuilder,
-                                    getLastAccessedFilterQuery()))
-                    .addFields(userIdField).setSize(scrollSize).execute()
-                    .actionGet();
-        } catch (final ElasticsearchException e) {
-            throw new TasteException("Failed to load userIDs.", e);
-        }
-
-        long totalHits = response.getHits().getTotalHits();
-        if (totalHits > Integer.MAX_VALUE) {
-            logger.warn("The number of users is {} > {}.", totalHits,
-                    Integer.MAX_VALUE);
-            totalHits = Integer.MAX_VALUE;
-        }
-
-        final int size = (int) totalHits;
-        final long[] ids = new long[size];
+        SearchResponse response = null;
+        int size = 0;
+        long[] ids = new long[size];
         int index = 0;
         try {
             while (true) {
-                response = client.prepareSearchScroll(response.getScrollId())
-                        .setScroll(scrollKeepAlive).execute().actionGet();
+                if (response == null) {
+                    response = client.prepareSearch(userIndex)
+                            .setTypes(userType)
+                            .setScroll(scrollKeepAlive)
+                            .setQuery(QueryBuilders.boolQuery()
+                                    .must(userQueryBuilder)
+                                    .filter(getLastAccessedFilterQuery()))
+                            .addFields(userIdField).setSize(scrollSize)
+                            .execute().actionGet();
+                    long totalHits = response.getHits().getTotalHits();
+                    if (totalHits > Integer.MAX_VALUE) {
+                        logger.warn("The number of users is {} > {}.", totalHits,
+                                Integer.MAX_VALUE);
+                        totalHits = Integer.MAX_VALUE;
+                    }
+                    size = (int)totalHits;
+                    ids = new long[size];
+                } else {
+                    response = client
+                            .prepareSearchScroll(response.getScrollId())
+                            .setScroll(scrollKeepAlive).execute().actionGet();
+                }
+                if (response.getHits().getHits().length == 0) {
+                    break;
+                }
                 for (final SearchHit hit : response.getHits()) {
                     ids[index] = getLongValue(hit, userIdField);
                     index++;
-                }
-
-                if (response.getHits().getHits().length == 0) {
-                    break;
                 }
             }
         } catch (final ElasticsearchException e) {
@@ -719,43 +701,40 @@ public class ElasticsearchDataModel implements DataModel {
             return;
         }
 
-        SearchResponse response;
-        try {
-            response = client
-                    .prepareSearch(itemIndex)
-                    .setTypes(itemType)
-                    .setSearchType(SearchType.SCAN)
-                    .setScroll(scrollKeepAlive)
-                    .setQuery(
-                            QueryBuilders.filteredQuery(itemQueryBuilder,
-                                    getLastAccessedFilterQuery()))
-                    .addFields(itemIdField).setSize(scrollSize).execute()
-                    .actionGet();
-        } catch (final ElasticsearchException e) {
-            throw new TasteException("Failed to load itemIDs.", e);
-        }
-
-        long totalHits = response.getHits().getTotalHits();
-        if (totalHits > Integer.MAX_VALUE) {
-            logger.warn("The number of items is {} > {}.", totalHits,
-                    Integer.MAX_VALUE);
-            totalHits = Integer.MAX_VALUE;
-        }
-
-        final int size = (int) totalHits;
-        final long[] ids = new long[size];
+        SearchResponse response = null;
+        int size = 0;
+        long[] ids = new long[size];
         int index = 0;
         try {
             while (true) {
-                response = client.prepareSearchScroll(response.getScrollId())
-                        .setScroll(scrollKeepAlive).execute().actionGet();
+                if (response == null) {
+                    response = client.prepareSearch(itemIndex)
+                            .setTypes(itemType)
+                            .setScroll(scrollKeepAlive)
+                            .setQuery(QueryBuilders.boolQuery()
+                                    .must(itemQueryBuilder)
+                                    .filter(getLastAccessedFilterQuery()))
+                            .addFields(itemIdField).setSize(scrollSize)
+                            .execute().actionGet();
+                    long totalHits = response.getHits().getTotalHits();
+                    if (totalHits > Integer.MAX_VALUE) {
+                        logger.warn("The number of items is {} > {}.",
+                                totalHits, Integer.MAX_VALUE);
+                        totalHits = Integer.MAX_VALUE;
+                    }
+                    size = (int) totalHits;
+                    ids = new long[size];
+                } else {
+                    response = client
+                            .prepareSearchScroll(response.getScrollId())
+                            .setScroll(scrollKeepAlive).execute().actionGet();
+                }
+                if (response.getHits().getHits().length == 0) {
+                    break;
+                }
                 for (final SearchHit hit : response.getHits()) {
                     ids[index] = getLongValue(hit, itemIdField);
                     index++;
-                }
-
-                if (response.getHits().getHits().length == 0) {
-                    break;
                 }
             }
         } catch (final ElasticsearchException e) {
@@ -771,8 +750,8 @@ public class ElasticsearchDataModel implements DataModel {
         itemIDs = ids;
     }
 
-    private RangeFilterBuilder getLastAccessedFilterQuery() {
-        return FilterBuilders.rangeFilter(timestampField).to(lastAccessed);
+    private RangeQueryBuilder getLastAccessedFilterQuery() {
+        return QueryBuilders.rangeQuery(timestampField).to(lastAccessed);
     }
 
     protected synchronized void loadValueStats() {
@@ -783,10 +762,7 @@ public class ElasticsearchDataModel implements DataModel {
         final SearchResponse response = client
                 .prepareSearch(preferenceIndex)
                 .setTypes(preferenceType)
-                .setQuery(
-                        QueryBuilders.filteredQuery(
-                                QueryBuilders.matchAllQuery(),
-                                getLastAccessedFilterQuery()))
+                .setQuery(getLastAccessedFilterQuery())
                 .setSize(0)
                 .addAggregation(
                         AggregationBuilders.stats(valueField).field(valueField))

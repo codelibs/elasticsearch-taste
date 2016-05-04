@@ -3,7 +3,7 @@ package org.codelibs.elasticsearch.taste.neighborhood;
 import java.util.Map;
 
 import org.codelibs.elasticsearch.taste.exception.TasteException;
-import org.codelibs.elasticsearch.util.settings.SettingsUtils;
+import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 
 public class NearestNUserNeighborhoodFactory extends
         AbstractUserNeighborhoodFactory {

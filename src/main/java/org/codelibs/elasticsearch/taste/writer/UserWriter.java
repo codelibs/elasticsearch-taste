@@ -9,7 +9,8 @@ import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.recommender.SimilarUser;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.cache.Cache;
+
+import com.google.common.cache.Cache;
 
 public class UserWriter extends ObjectWriter {
 

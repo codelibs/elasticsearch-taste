@@ -7,7 +7,7 @@ import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.codelibs.elasticsearch.taste.model.DataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.similarity.SimilarityFactory;
-import org.codelibs.elasticsearch.util.settings.SettingsUtils;
+import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 
 public abstract class AbstractRecommenderBuilder implements RecommenderBuilder {
     protected static final String DATA_MODEL_ATTR = "dataModel";

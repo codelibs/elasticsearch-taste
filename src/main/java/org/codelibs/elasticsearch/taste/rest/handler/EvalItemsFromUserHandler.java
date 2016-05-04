@@ -17,11 +17,10 @@ import org.codelibs.elasticsearch.taste.model.ElasticsearchDataModel;
 import org.codelibs.elasticsearch.taste.model.IndexInfo;
 import org.codelibs.elasticsearch.taste.recommender.UserBasedRecommenderBuilder;
 import org.codelibs.elasticsearch.taste.service.TasteService;
+import org.codelibs.elasticsearch.taste.util.ClusterUtils;
+import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 import org.codelibs.elasticsearch.taste.writer.ObjectWriter;
 import org.codelibs.elasticsearch.taste.writer.ResultWriter;
-import org.codelibs.elasticsearch.util.admin.ClusterUtils;
-import org.codelibs.elasticsearch.util.io.IOUtils;
-import org.codelibs.elasticsearch.util.settings.SettingsUtils;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -145,7 +144,13 @@ public class EvalItemsFromUserHandler extends RecommendationHandler {
         } catch (final TasteException e) {
             logger.error("Evaluator {}({}) is failed.", e, evaluator, config);
         } finally {
-            IOUtils.closeQuietly(writer);
+            if(writer!=null){
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
         }
     }
 

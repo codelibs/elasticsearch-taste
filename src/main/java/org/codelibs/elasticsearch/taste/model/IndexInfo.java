@@ -3,7 +3,7 @@ package org.codelibs.elasticsearch.taste.model;
 import java.util.Map;
 
 import org.codelibs.elasticsearch.taste.TasteConstants;
-import org.codelibs.elasticsearch.util.settings.SettingsUtils;
+import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 
 public class IndexInfo {
     private String preferenceIndex;

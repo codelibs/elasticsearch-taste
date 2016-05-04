@@ -4,7 +4,8 @@ import java.util.Map;
 
 import org.codelibs.elasticsearch.taste.model.DataModel;
 import org.codelibs.elasticsearch.taste.similarity.UserSimilarity;
-import org.codelibs.elasticsearch.util.settings.SettingsUtils;
+import org.codelibs.elasticsearch.taste.util.SettingsUtils;
+
 
 public abstract class AbstractUserNeighborhoodFactory implements
         UserNeighborhoodFactory {

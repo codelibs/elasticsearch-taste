@@ -2,8 +2,8 @@ package org.codelibs.elasticsearch.taste.rest.handler;
 
 import java.util.Map;
 
-import org.codelibs.elasticsearch.util.lang.StringUtils;
-import org.codelibs.elasticsearch.util.settings.SettingsUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
@@ -59,7 +59,7 @@ public abstract class ActionHandler {
         SearchResponse response = client.prepareSearch(index).setTypes(type)
                 .setSearchType(SearchType.SCAN)
                 .setScroll(new TimeValue(keepAlive.longValue()))
-                .setQuery(QueryBuilders.queryString(userQuery))
+                .setQuery(QueryBuilders.queryStringQuery(userQuery))
                 .addField(fieldName).setSize(size.intValue()).execute()
                 .actionGet();
         while (true) {
