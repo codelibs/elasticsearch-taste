@@ -28,10 +28,8 @@ public class TastePluginTest extends TestCase {
             public void build(final int number, final Builder settingsBuilder) {
                 settingsBuilder.put("http.cors.enabled", true);
                 settingsBuilder.put("http.cors.allow-origin", "*");
-                settingsBuilder.putArray("discovery.zen.ping.unicast.hosts",
-                        "localhost:9301-9305");
-                settingsBuilder.put("plugin.types",
-                        "org.codelibs.elasticsearch.taste.TastePlugin");
+                settingsBuilder.putArray("discovery.zen.ping.unicast.hosts", "localhost:9301-9305");
+                settingsBuilder.put("plugin.types", "org.codelibs.elasticsearch.taste.TastePlugin");
             }
         }).build(newConfigs().clusterName(clusterName).numOfNode(1));
 
@@ -56,21 +54,19 @@ public class TastePluginTest extends TestCase {
         int numOfItems = 100;
         for (int i = 1; i < numOfUsers + 1; i++) {
             int inc = numOfUsers % 10 + (9 - numOfUsers % 9) + 1;
-            for (int j = inc; j < numOfItems; i += inc + 10) {
-                int value = (numOfUsers % 5 + numOfItems % 5) % 5 + 1;
-                try (CurlResponse curlResponse = Curl
-                        .post(node, "/" + index + "/_taste/event")
-                        .body("{\"user\":{\"id\":" + i + "},\"item\":{\"id\":"
-                                + j + "},\"value\":" + value + ",\"timestamp\":"
-                                + System.currentTimeMillis() + "}")
-                        .execute()) {
+            for (int j = inc; j < numOfItems; j += inc + 10) {
+                int value = (i % 5 + j % 5) % 5 + 1;
+                final String source = "{\"user\":{\"id\":" + i + "},\"item\":{\"id\":" + j + "},\"value\":" + value + ",\"timestamp\":"
+                        + System.currentTimeMillis() + "}";
+                System.out.println(source);
+                try (CurlResponse curlResponse = Curl.post(node, "/" + index + "/_taste/event").body(source).execute()) {
                     final String content = curlResponse.getContentAsString();
                     assertEquals("{\"acknowledged\":true}", content);
                 }
             }
         }
 
-//        assertEquals(10, client.prepareSearch(index).setSize(0).execute()
-//                .actionGet().getHits().getTotalHits());
+        runner.refresh();
+        assertEquals(605, client.prepareSearch(index).setSize(0).execute().actionGet().getHits().getTotalHits());
     }
 }
