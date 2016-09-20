@@ -5,6 +5,7 @@ import static org.codelibs.elasticsearch.runner.ElasticsearchClusterRunner.newCo
 import org.codelibs.elasticsearch.runner.ElasticsearchClusterRunner;
 import org.codelibs.elasticsearch.runner.net.Curl;
 import org.codelibs.elasticsearch.runner.net.CurlResponse;
+import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings.Builder;
 import org.elasticsearch.node.Node;
 
@@ -48,14 +49,28 @@ public class TastePluginTest extends TestCase {
 
     public void test_event() throws Exception {
         final Node node = runner.node();
+        final Client client = runner.client();
+        final String index = "test";
 
-        try (CurlResponse curlResponse = Curl
-                .post(node, "/movielens/_taste/event")
-                .body("{\"user\":{\"id\":263},\"item\":{\"id\":1451},\"value\":4,\"timestamp\":891299949000}")
-                .execute()) {
-            final String content = curlResponse.getContentAsString();
-            assertEquals("{\"acknowledged\":true}", content);
+        int numOfUsers = 100;
+        int numOfItems = 100;
+        for (int i = 1; i < numOfUsers + 1; i++) {
+            int inc = numOfUsers % 10 + (9 - numOfUsers % 9) + 1;
+            for (int j = inc; j < numOfItems; i += inc + 10) {
+                int value = (numOfUsers % 5 + numOfItems % 5) % 5 + 1;
+                try (CurlResponse curlResponse = Curl
+                        .post(node, "/" + index + "/_taste/event")
+                        .body("{\"user\":{\"id\":" + i + "},\"item\":{\"id\":"
+                                + j + "},\"value\":" + value + ",\"timestamp\":"
+                                + System.currentTimeMillis() + "}")
+                        .execute()) {
+                    final String content = curlResponse.getContentAsString();
+                    assertEquals("{\"acknowledged\":true}", content);
+                }
+            }
         }
 
+//        assertEquals(10, client.prepareSearch(index).setSize(0).execute()
+//                .actionGet().getHits().getTotalHits());
     }
 }
