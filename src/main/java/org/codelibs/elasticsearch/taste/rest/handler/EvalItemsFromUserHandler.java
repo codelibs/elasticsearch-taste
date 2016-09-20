@@ -25,14 +25,15 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.threadpool.ThreadPool;
 
 public class EvalItemsFromUserHandler extends RecommendationHandler {
     private Evaluator evaluator;
 
     public EvalItemsFromUserHandler(final Settings settings,
-            final Map<String, Object> sourceMap, final Client client,
+            final Map<String, Object> sourceMap, final Client client, final ThreadPool pool,
             final TasteService tasteService) {
-        super(settings, sourceMap, client, tasteService);
+        super(settings, sourceMap, client, pool, tasteService);
     }
 
     @Override

@@ -41,6 +41,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
 import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.threadpool.ThreadPool;
 
 public class GenTermValuesHandler extends ActionHandler {
     private Number keepAlive;
@@ -64,8 +65,8 @@ public class GenTermValuesHandler extends ActionHandler {
     private int numOfThreads;
 
     public GenTermValuesHandler(final Settings settings,
-            final Map<String, Object> sourceMap, final Client client) {
-        super(settings, sourceMap, client);
+            final Map<String, Object> sourceMap, final Client client, final ThreadPool pool) {
+        super(settings, sourceMap, client, pool);
     }
 
     @Override
@@ -103,9 +104,9 @@ public class GenTermValuesHandler extends ActionHandler {
         final Number size = SettingsUtils.get(scrollSettings, "size", 100);
 
         requestHandlers = new RequestHandler[] {
-                new UserRequestHandler(settings, client),
-                new ItemRequestHandler(settings, client),
-                new PreferenceRequestHandler(settings, client), };
+                new UserRequestHandler(settings, client, pool),
+                new ItemRequestHandler(settings, client, pool),
+                new PreferenceRequestHandler(settings, client, pool), };
 
         final Map<String, Object> eventSettings = SettingsUtils.get(
                 rootSettings, "event", new HashMap<String, Object>());

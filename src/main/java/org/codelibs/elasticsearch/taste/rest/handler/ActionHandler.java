@@ -15,6 +15,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
 import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.threadpool.ThreadPool;
 
 public abstract class ActionHandler {
     protected Client client;
@@ -25,11 +26,14 @@ public abstract class ActionHandler {
 
     protected Settings settings;
 
+    protected ThreadPool pool;
+
     public ActionHandler(final Settings settings,
-            final Map<String, Object> sourceMap, final Client client) {
+            final Map<String, Object> sourceMap, final Client client, final ThreadPool pool) {
         this.client = client;
         this.settings = settings;
         rootSettings = sourceMap;
+        this.pool = pool;
         logger = Loggers.getLogger(getClass(), settings);
     }
 

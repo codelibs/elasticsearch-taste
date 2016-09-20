@@ -23,11 +23,12 @@ import org.elasticsearch.common.xcontent.ToXContent.Params;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
+import org.elasticsearch.threadpool.ThreadPool;
 import org.joda.time.format.ISODateTimeFormat;
 
 public class PreferenceRequestHandler extends DefaultRequestHandler {
-    public PreferenceRequestHandler(final Settings settings, final Client client) {
-        super(settings, client);
+    public PreferenceRequestHandler(final Settings settings, final Client client, final ThreadPool pool) {
+        super(settings, client, pool);
     }
 
     public boolean hasPreference(final Map<String, Object> requestMap) {

@@ -27,6 +27,7 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.lookup.SourceLookup;
+import org.elasticsearch.threadpool.ThreadPool;
 
 public class TasteActionRestAction extends BaseRestHandler {
     private static final String THREAD_NAME_PREFIX = "Taste-";
@@ -43,11 +44,14 @@ public class TasteActionRestAction extends BaseRestHandler {
 
     private TasteService tasteService;
 
+    private ThreadPool pool;
+
     @Inject
     public TasteActionRestAction(final Settings settings,
-            final RestController restController, final Client client,
+            final RestController restController, final Client client, final ThreadPool pool,
             final TasteService tasteService) {
         super(settings, restController, client);
+        this.pool = pool;
         this.tasteService = tasteService;
 
         restController.registerHandler(RestRequest.Method.GET,
@@ -108,23 +112,23 @@ public class TasteActionRestAction extends BaseRestHandler {
                         .sourceAsMap(content);
                 if (RECOMMENDED_ITEMS_FROM_USER.equals(action)) {
                     final ItemsFromUserHandler handler = new ItemsFromUserHandler(
-                            settings, sourceMap, client, tasteService);
+                            settings, sourceMap, client, pool, tasteService);
                     name = startThread(handler);
                 } else if (RECOMMENDED_ITEMS_FROM_ITEM.equals(action)) {
                     final ItemsFromItemHandler handler = new ItemsFromItemHandler(
-                            settings, sourceMap, client, tasteService);
+                            settings, sourceMap, client, pool, tasteService);
                     name = startThread(handler);
                 } else if (SIMILAR_USERS.equals(action)) {
                     final SimilarUsersHandler handler = new SimilarUsersHandler(
-                            settings, sourceMap, client, tasteService);
+                            settings, sourceMap, client, pool, tasteService);
                     name = startThread(handler);
                 } else if (EVALUATE_ITEMS_FROM_USER.equals(action)) {
                     final EvalItemsFromUserHandler handler = new EvalItemsFromUserHandler(
-                            settings, sourceMap, client, tasteService);
+                            settings, sourceMap, client, pool, tasteService);
                     name = startThread(handler);
                 } else if (GENERATE_TERM_VALUES.equals(action)) {
                     final GenTermValuesHandler handler = new GenTermValuesHandler(
-                            settings, sourceMap, client);
+                            settings, sourceMap, client, pool);
                     name = startThread(handler);
                 } else {
                     throw new TasteException("Unknown action: " + action);

@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -18,6 +17,7 @@ import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent.Params;
+import org.elasticsearch.threadpool.ThreadPool;
 
 public abstract class DefaultRequestHandler implements RequestHandler {
     protected static final String DEFAULT_HEALTH_REQUEST_TIMEOUT = "30s";
@@ -36,9 +36,12 @@ public abstract class DefaultRequestHandler implements RequestHandler {
 
     protected Lock indexCreationLock;
 
-    public DefaultRequestHandler(final Settings settings, final Client client) {
+    private ThreadPool pool;
+
+    public DefaultRequestHandler(final Settings settings, final Client client, final ThreadPool pool) {
         this.settings = settings;
         this.client = client;
+        this.pool = pool;
         maxRetryCount = settings.getAsInt("taste.rest.retry", 20);
         logger = Loggers.getLogger(getClass(), settings);
         indexCreationLock = new ReentrantLock();
@@ -87,7 +90,7 @@ public abstract class DefaultRequestHandler implements RequestHandler {
     }
 
     protected void fork(final Runnable task) {
-        ForkJoinPool.commonPool().execute(task);
+        pool.generic().execute(task);
     }
 
     /* (non-Javadoc)

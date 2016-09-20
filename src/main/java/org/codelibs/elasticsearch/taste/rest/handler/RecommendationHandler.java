@@ -15,15 +15,16 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.Scroll;
+import org.elasticsearch.threadpool.ThreadPool;
 
 public abstract class RecommendationHandler extends ActionHandler {
 
     protected TasteService tasteService;
 
     public RecommendationHandler(final Settings settings,
-            final Map<String, Object> sourceMap, final Client client,
+            final Map<String, Object> sourceMap, final Client client, final ThreadPool pool,
             final TasteService tasteService) {
-        super(settings, sourceMap, client);
+        super(settings, sourceMap, client, pool);
         this.tasteService = tasteService;
     }
 

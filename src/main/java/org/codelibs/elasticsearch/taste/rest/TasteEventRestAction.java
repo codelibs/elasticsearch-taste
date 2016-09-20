@@ -24,6 +24,7 @@ import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.threadpool.ThreadPool;
 
 public class TasteEventRestAction extends BaseRestHandler {
     private UserRequestHandler userRequestHandler;
@@ -32,20 +33,23 @@ public class TasteEventRestAction extends BaseRestHandler {
 
     private PreferenceRequestHandler preferenceRequestHandler;
 
+    private ThreadPool pool;
+
     @Inject
     public TasteEventRestAction(final Settings settings, final Client client,
-                                final RestController restController) {
+                                final RestController restController, final ThreadPool pool) {
         super(settings, restController, client);
+        this.pool = pool;
 
         restController.registerHandler(RestRequest.Method.POST,
                 "/{index}/_taste/event", this);
         restController.registerHandler(RestRequest.Method.POST,
                 "/{index}/{type}/_taste/event", this);
 
-        userRequestHandler = new UserRequestHandler(settings, client);
-        itemRequestHandler = new ItemRequestHandler(settings, client);
+        userRequestHandler = new UserRequestHandler(settings, client, pool);
+        itemRequestHandler = new ItemRequestHandler(settings, client, pool);
         preferenceRequestHandler = new PreferenceRequestHandler(settings,
-                client);
+                client, pool);
     }
 
     @Override
@@ -55,7 +59,7 @@ public class TasteEventRestAction extends BaseRestHandler {
                 .split("\r\n|[\n\r\u2028\u2029\u0085]");
         final Iterator<String> itr = Arrays.asList(data).iterator();
 
-        execute(request, channel, itr);
+        pool.generic().execute(()->execute(request, channel, itr));
     }
 
     private void execute(final RestRequest request, final RestChannel channel, final Iterator<String> itr) {

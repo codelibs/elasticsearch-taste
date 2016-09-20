@@ -24,6 +24,7 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.threadpool.ThreadPool;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -31,9 +32,9 @@ import com.google.common.cache.CacheBuilder;
 public class ItemsFromItemHandler extends RecommendationHandler {
 
     public ItemsFromItemHandler(final Settings settings,
-            final Map<String, Object> sourceMap, final Client client,
+            final Map<String, Object> sourceMap, final Client client, final ThreadPool pool,
             final TasteService tasteService) {
-        super(settings, sourceMap, client, tasteService);
+        super(settings, sourceMap, client, pool, tasteService);
     }
 
     @Override

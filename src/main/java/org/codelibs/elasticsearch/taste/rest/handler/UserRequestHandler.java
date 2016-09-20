@@ -31,11 +31,12 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.sort.SortOrder;
+import org.elasticsearch.threadpool.ThreadPool;
 
 public class UserRequestHandler extends DefaultRequestHandler {
 
-    public UserRequestHandler(final Settings settings, final Client client) {
-        super(settings, client);
+    public UserRequestHandler(final Settings settings, final Client client, ThreadPool pool) {
+        super(settings, client, pool);
     }
 
     public boolean hasUser(final Map<String, Object> requestMap) {
@@ -247,7 +248,7 @@ public class UserRequestHandler extends DefaultRequestHandler {
                     // @timestamp
                     .startObject(timestampField)//
                     .field("type", "date")//
-                    .field("format", "dateOptionalTime")//
+                    .field("format", "date_optional_time")//
                     .endObject()//
 
                     // user_id
@@ -316,6 +317,8 @@ public class UserRequestHandler extends DefaultRequestHandler {
                 listener.onError(t);
             } else {
                 sleep(t);
+                errorList.add(t);
+                // TODO
                 execute(params, listener, requestMap, paramMap, chain);
             }
         };
