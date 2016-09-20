@@ -318,8 +318,8 @@ public class UserRequestHandler extends DefaultRequestHandler {
             } else {
                 sleep(t);
                 errorList.add(t);
-                // TODO
-                execute(params, listener, requestMap, paramMap, chain);
+                doUserIndexExists(params, listener, requestMap, paramMap,
+                        chain);
             }
         };
         client.prepareSearch(index).setTypes(type)

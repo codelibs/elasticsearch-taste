@@ -315,8 +315,8 @@ public class ItemRequestHandler extends DefaultRequestHandler {
             } else {
                 sleep(t);
                 errorList.add(t);
-                // TODO
-                execute(params, listener, requestMap, paramMap, chain);
+                doItemIndexExists(params, listener, requestMap, paramMap,
+                        chain);
             }
         };
         client.prepareSearch(index).setTypes(type)

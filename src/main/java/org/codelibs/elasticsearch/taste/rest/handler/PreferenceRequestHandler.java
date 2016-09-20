@@ -96,6 +96,7 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
             if (errorList.size() >= maxRetryCount) {
                 listener.onError(t);
             } else {
+                sleep(t);
                 errorList.add(t);
                 doPreferenceIndexExists(params, listener, requestMap, paramMap,
                         chain);

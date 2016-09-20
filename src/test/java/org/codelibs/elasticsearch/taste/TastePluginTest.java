@@ -2,8 +2,6 @@ package org.codelibs.elasticsearch.taste;
 
 import static org.codelibs.elasticsearch.runner.ElasticsearchClusterRunner.newConfigs;
 
-import java.util.Map;
-
 import org.codelibs.elasticsearch.runner.ElasticsearchClusterRunner;
 import org.codelibs.elasticsearch.runner.net.Curl;
 import org.codelibs.elasticsearch.runner.net.CurlResponse;
@@ -29,8 +27,10 @@ public class TastePluginTest extends TestCase {
             public void build(final int number, final Builder settingsBuilder) {
                 settingsBuilder.put("http.cors.enabled", true);
                 settingsBuilder.put("http.cors.allow-origin", "*");
-                settingsBuilder.putArray("discovery.zen.ping.unicast.hosts", "localhost:9301-9305");
-                settingsBuilder.put("plugin.types", "org.codelibs.elasticsearch.taste.TastePlugin");
+                settingsBuilder.putArray("discovery.zen.ping.unicast.hosts",
+                        "localhost:9301-9305");
+                settingsBuilder.put("plugin.types",
+                        "org.codelibs.elasticsearch.taste.TastePlugin");
             }
         }).build(newConfigs().clusterName(clusterName).numOfNode(1));
 
@@ -49,14 +49,12 @@ public class TastePluginTest extends TestCase {
     public void test_event() throws Exception {
         final Node node = runner.node();
 
-        try (CurlResponse curlResponse = Curl.post(node, "/movielens/_taste/event")
-                .body("{\"user\":{\"id\":263},\"item\":{\"id\":1451},\"value\":4,\"timestamp\":891299949000}").execute()) {
+        try (CurlResponse curlResponse = Curl
+                .post(node, "/movielens/_taste/event")
+                .body("{\"user\":{\"id\":263},\"item\":{\"id\":1451},\"value\":4,\"timestamp\":891299949000}")
+                .execute()) {
             final String content = curlResponse.getContentAsString();
-            assertNotNull(content);
-            assertTrue(content.contains("total"));
-            final Map<String, Object> map = curlResponse.getContentAsMap();
-            assertNotNull(map);
-            assertEquals("false", map.get("timed_out").toString());
+            assertEquals("{\"acknowledged\":true}", content);
         }
 
     }
