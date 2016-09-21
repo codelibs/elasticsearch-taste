@@ -257,7 +257,7 @@ public class ParallelSGDFactorizer extends AbstractFactorizer {
     }
 
     //TODO: needs optimization
-    private double getMu(final int i) {
+    private double getMu(final double i) {
         return mu0 * Math.pow(decayFactor, i - 1)
                 * Math.pow(i + stepOffset, forgettingExponent);
     }
@@ -297,17 +297,18 @@ public class ParallelSGDFactorizer extends AbstractFactorizer {
             } finally {
                 executor.shutdown();
                 shuffler.shuffle();
+            }
 
-                try {
-                    final boolean terminated = executor.awaitTermination(
-                            numEpochs * shuffler.size(), TimeUnit.MICROSECONDS);
-                    if (!terminated) {
-                        logger.error("subtasks takes forever, return anyway");
-                    }
-                } catch (final InterruptedException e) {
-                    throw new TasteException(
-                            "waiting fof termination interrupted", e);
+            try {
+                final boolean terminated = executor.awaitTermination(
+                        (long) (numEpochs * shuffler.size()),
+                        TimeUnit.MICROSECONDS);
+                if (!terminated) {
+                    logger.error("subtasks takes forever, return anyway");
                 }
+            } catch (final InterruptedException e) {
+                throw new TasteException("waiting fof termination interrupted",
+                        e);
             }
 
         }

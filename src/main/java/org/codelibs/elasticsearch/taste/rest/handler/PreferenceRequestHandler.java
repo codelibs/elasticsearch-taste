@@ -189,7 +189,7 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
                 TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
                 TasteConstants.TIMESTAMP_FIELD);
 
-        try {
+        try (XContentBuilder jsonBuilder = XContentFactory.jsonBuilder()) {
             final ClusterHealthResponse healthResponse = client
                     .admin()
                     .cluster()
@@ -204,7 +204,7 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
                         "Failed to create index: " + index + "/" + type));
             }
 
-            final XContentBuilder builder = XContentFactory.jsonBuilder()//
+            final XContentBuilder builder = jsonBuilder//
                     .startObject()//
                     .startObject(type)//
                     .startObject("properties")//

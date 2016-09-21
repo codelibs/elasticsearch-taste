@@ -309,7 +309,7 @@ public final class GenericItemSimilarity implements ItemSimilarity {
             final ItemItemSimilarity otherSimilarity = (ItemItemSimilarity) other;
             return otherSimilarity.getItemID1() == itemID1
                     && otherSimilarity.getItemID2() == itemID2
-                    && otherSimilarity.getValue() == value;
+                    && !(otherSimilarity.getValue() != value);
         }
 
         @Override

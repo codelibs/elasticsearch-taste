@@ -382,7 +382,7 @@ public class GenericItemBasedRecommender extends AbstractRecommender implements
                 }
             }
             final double averageEstimate = average.getAverage();
-            return averageEstimate == 0 ? Double.NaN : averageEstimate;
+            return averageEstimate != 0 ? averageEstimate : Double.NaN;
         }
     }
 

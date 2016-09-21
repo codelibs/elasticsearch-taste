@@ -88,7 +88,9 @@ public class ItemWriter extends ObjectWriter {
             final Map<String, Object> map = response.getSourceAsMap();
             map.remove(itemIdField);
             map.remove(valueField);
-            cache.put(itemID, map);
+            if (cache != null) {
+                cache.put(itemID, map);
+            }
             return map;
         }
         return null;

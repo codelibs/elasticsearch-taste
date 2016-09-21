@@ -84,7 +84,9 @@ public class UserWriter extends ObjectWriter {
             final Map<String, Object> map = response.getSourceAsMap();
             map.remove(userIdField);
             map.remove(valueField);
-            cache.put(userID, map);
+            if (cache != null) {
+                cache.put(userID, map);
+            }
             return map;
         }
         return null;

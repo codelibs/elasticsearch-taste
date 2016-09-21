@@ -48,7 +48,7 @@ public class TasteSearchRestAction extends BaseRestHandler {
 
     private Cache<String, Map<String, Object>> cache;
 
-    private static final long timeoutMillis = 10 * 1000;
+    private static final long timeoutMillis = 10 * 1000L;
 
     @Inject
     public TasteSearchRestAction(final Settings settings, final Client client,

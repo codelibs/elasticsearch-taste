@@ -163,8 +163,8 @@ public class EvalItemsFromUserHandler extends RecommendationHandler {
         writer.setItemIdField(indexInfo.getItemIdField());
         writer.setMaxQueueSize(maxQueueSize);
         writer.setTimestampField(indexInfo.getTimestampField());
-        try {
-            final XContentBuilder builder = XContentFactory.jsonBuilder()//
+        try (XContentBuilder jsonBuilder = XContentFactory.jsonBuilder()) {
+            final XContentBuilder builder = jsonBuilder//
                     .startObject()//
                     .startObject(indexInfo.getResultType())//
                     .startObject("properties")//
@@ -216,12 +216,12 @@ public class EvalItemsFromUserHandler extends RecommendationHandler {
                     .endObject()//
                     .endObject();
             writer.setMapping(builder);
+
+            writer.open();
         } catch (final IOException e) {
             logger.info("Failed to create a mapping {}/{}.", e,
                     indexInfo.getReportIndex(), indexInfo.getReportType());
         }
-
-        writer.open();
 
         return writer;
     }
@@ -252,8 +252,8 @@ public class EvalItemsFromUserHandler extends RecommendationHandler {
         final ObjectWriter writer = new ObjectWriter(client,
                 indexInfo.getReportIndex(), indexInfo.getReportType());
         writer.setTimestampField(indexInfo.getTimestampField());
-        try {
-            final XContentBuilder builder = XContentFactory.jsonBuilder()//
+        try (XContentBuilder jsonBuilder = XContentFactory.jsonBuilder()) {
+            final XContentBuilder builder = jsonBuilder//
                     .startObject()//
                     .startObject(indexInfo.getReportType())//
                     .startObject("properties")//
@@ -280,12 +280,12 @@ public class EvalItemsFromUserHandler extends RecommendationHandler {
                     .endObject()//
                     .endObject();
             writer.setMapping(builder);
+
+            writer.open();
         } catch (final IOException e) {
             logger.info("Failed to create a mapping {}/{}.", e,
                     indexInfo.getReportIndex(), indexInfo.getReportType());
         }
-
-        writer.open();
 
         return writer;
     }

@@ -97,6 +97,16 @@ public abstract class RecommendationHandler extends ActionHandler {
                     model.setMaxCacheWeight(weightSize);
                 }
             }
+
+            final Object maxPreferenceSize = SettingsUtils
+                    .get(modelInfoSettings, "max_preference_size");
+            if (maxPreferenceSize instanceof Number) {
+                int size = ((Number) maxPreferenceSize).intValue();
+                if (size > 0) {
+                    model.setMaxPreferenceSize(size);
+                }
+            }
+
             return model;
         } catch (ClassNotFoundException | InstantiationException
                 | IllegalAccessException e) {

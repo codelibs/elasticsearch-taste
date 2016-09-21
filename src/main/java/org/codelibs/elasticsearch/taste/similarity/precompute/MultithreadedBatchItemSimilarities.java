@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.codelibs.elasticsearch.taste.common.LongPrimitiveIterator;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.codelibs.elasticsearch.taste.model.DataModel;
 import org.codelibs.elasticsearch.taste.recommender.ItemBasedRecommender;
 import org.codelibs.elasticsearch.taste.recommender.RecommendedItem;
@@ -105,18 +106,19 @@ public class MultithreadedBatchItemSimilarities extends BatchItemSimilarities {
             throw new IOException(e);
         } finally {
             executorService.shutdown();
-            try {
-                final boolean succeeded = executorService.awaitTermination(
-                        maxDurationInHours, TimeUnit.HOURS);
-                if (!succeeded) {
-                    throw new RuntimeException(
-                            "Unable to complete the computation in "
-                                    + maxDurationInHours + " hours!");
-                }
-            } catch (final InterruptedException e) {
-                throw new RuntimeException(e);
-            }
             Closeables.close(writer, false);
+        }
+
+        try {
+            final boolean succeeded = executorService
+                    .awaitTermination(maxDurationInHours, TimeUnit.HOURS);
+            if (!succeeded) {
+                throw new TasteException(
+                        "Unable to complete the computation in "
+                                + maxDurationInHours + " hours!");
+            }
+        } catch (final InterruptedException e) {
+            throw new TasteException(e);
         }
 
         return output.getNumSimilaritiesProcessed();
@@ -190,7 +192,7 @@ public class MultithreadedBatchItemSimilarities extends BatchItemSimilarities {
                         }
                     }
                 } catch (final Exception e) {
-                    throw new RuntimeException(e);
+                    throw new TasteException(e);
                 }
             }
         }
@@ -243,7 +245,7 @@ public class MultithreadedBatchItemSimilarities extends BatchItemSimilarities {
                     }
 
                 } catch (final Exception e) {
-                    throw new RuntimeException(e);
+                    throw new TasteException(e);
                 }
             }
             log.info("worker {} processed {} batches. done.", number,

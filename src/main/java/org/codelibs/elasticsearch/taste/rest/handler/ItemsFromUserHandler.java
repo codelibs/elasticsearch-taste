@@ -123,8 +123,8 @@ public class ItemsFromUserHandler extends RecommendationHandler {
         writer.setItemsField(indexInfo.getItemsField());
         writer.setValueField(indexInfo.getValueField());
         writer.setTimestampField(indexInfo.getTimestampField());
-        try {
-            final XContentBuilder builder = XContentFactory.jsonBuilder()//
+        try (XContentBuilder jsonBuilder = XContentFactory.jsonBuilder()) {
+            final XContentBuilder builder = jsonBuilder//
                     .startObject()//
                     .startObject(indexInfo.getRecommendationType())//
                     .startObject("properties")//
@@ -161,25 +161,25 @@ public class ItemsFromUserHandler extends RecommendationHandler {
                     .endObject()//
                     .endObject();
             writer.setMapping(builder);
+
+            final Map<String, Object> writerSettings = SettingsUtils.get(
+                    rootSettings, "writer");
+            final boolean verbose = SettingsUtils.get(writerSettings, "verbose",
+                    false);
+            if (verbose) {
+                writer.setVerbose(verbose);
+                final int maxCacheSize = SettingsUtils.get(writerSettings,
+                        "cache_size", 1000);
+                final Cache<Long, Map<String, Object>> cache = CacheBuilder
+                        .newBuilder().maximumSize(maxCacheSize).build();
+                writer.setCache(cache);
+            }
+
+            writer.open();
         } catch (final IOException e) {
             logger.info("Failed to create a mapping {}/{}.", e,
                     indexInfo.getReportIndex(), indexInfo.getReportType());
         }
-
-        final Map<String, Object> writerSettings = SettingsUtils.get(
-                rootSettings, "writer");
-        final boolean verbose = SettingsUtils.get(writerSettings, "verbose",
-                false);
-        if (verbose) {
-            writer.setVerbose(verbose);
-            final int maxCacheSize = SettingsUtils.get(writerSettings,
-                    "cache_size", 1000);
-            final Cache<Long, Map<String, Object>> cache = CacheBuilder
-                    .newBuilder().maximumSize(maxCacheSize).build();
-            writer.setCache(cache);
-        }
-
-        writer.open();
 
         return writer;
     }

@@ -45,6 +45,10 @@ public class ElasticsearchDataModel implements DataModel {
 
     private static final long serialVersionUID = 1L;
 
+    private static final int DEFAULT_SCROLL_SIZE = 1000;
+
+    private static final int DEFAULT_MAX_PREFERENCE_SIZE = 10000;
+
     private static final ESLogger logger = Loggers
             .getLogger(ElasticsearchDataModel.class);
 
@@ -72,9 +76,9 @@ public class ElasticsearchDataModel implements DataModel {
 
     protected Scroll scrollKeepAlive = new Scroll(TimeValue.timeValueMinutes(1));
 
-    protected int scrollSize = 1000;
+    protected int scrollSize = DEFAULT_SCROLL_SIZE;
 
-    protected int maxPreferenceSize = 10000;
+    protected int maxPreferenceSize = DEFAULT_MAX_PREFERENCE_SIZE;
 
     protected volatile long[] userIDs;
 

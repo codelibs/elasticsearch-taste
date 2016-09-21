@@ -66,7 +66,7 @@ public abstract class DefaultRequestHandler implements RequestHandler {
     }
 
     protected void sleep(final Throwable t) {
-        final long waitTime = random.nextInt(2500) + 500;
+        final long waitTime = random.nextInt(2500) + 500L;
         if (logger.isDebugEnabled()) {
             logger.debug(
                     "Waiting for {}ms and retrying... The cause is: "

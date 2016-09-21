@@ -84,12 +84,7 @@ public final class PearsonCorrelationSimilarity extends AbstractSimilarity {
         // Note that sum of X and sum of Y don't appear here since they are assumed to be 0;
         // the data is assumed to be centered.
         final double denominator = Math.sqrt(sumX2) * Math.sqrt(sumY2);
-        if (denominator == 0.0) {
-            // One or both parties has -all- the same ratings;
-            // can't really say much similarity under this measure
-            return Double.NaN;
-        }
-        return sumXY / denominator;
+        return denominator != 0.0 ? sumXY / denominator : Double.NaN;
     }
 
 }

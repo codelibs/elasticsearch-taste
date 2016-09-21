@@ -51,7 +51,6 @@ public abstract class BatchItemSimilarities {
      * @param writer  {@link SimilarItemsWriter} used to persist the results
      * @return  the number of similarities precomputed
      * @throws IOException
-     * @throws RuntimeException if the computation takes longer than maxDurationInHours
      */
     public abstract int computeItemSimilarities(int degreeOfParallelism,
             int maxDurationInHours, SimilarItemsWriter writer)

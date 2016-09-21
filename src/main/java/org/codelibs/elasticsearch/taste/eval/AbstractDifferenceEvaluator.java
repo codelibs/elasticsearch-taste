@@ -245,11 +245,12 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
             throw new TasteException(ee.getCause());
         } finally {
             executor.shutdown();
-            try {
-                executor.awaitTermination(10, TimeUnit.SECONDS);
-            } catch (final InterruptedException e) {
-                throw new TasteException(e.getCause());
-            }
+        }
+
+        try {
+            executor.awaitTermination(10, TimeUnit.SECONDS);
+        } catch (final InterruptedException e) {
+            throw new TasteException(e.getCause());
         }
 
         final Evaluation evaluation = new Evaluation();
