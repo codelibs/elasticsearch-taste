@@ -129,7 +129,7 @@ public class SimilarUsersHandler extends RecommendationHandler {
                     // @timestamp
                     .startObject(indexInfo.getTimestampField())//
                     .field("type", "date")//
-                    .field("format", "dateOptionalTime")//
+                    .field("format", "date_optional_time")//
                     .endObject()//
 
                     // user_id

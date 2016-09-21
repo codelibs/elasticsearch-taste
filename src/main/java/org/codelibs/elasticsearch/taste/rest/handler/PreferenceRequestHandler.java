@@ -212,7 +212,7 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
                     // @timestamp
                     .startObject(timestampField)//
                     .field("type", "date")//
-                    .field("format", "dateOptionalTime")//
+                    .field("format", "date_optional_time")//
                     .endObject()//
 
                     // user_id

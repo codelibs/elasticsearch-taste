@@ -132,7 +132,7 @@ public class ItemsFromUserHandler extends RecommendationHandler {
                     // @timestamp
                     .startObject(indexInfo.getTimestampField())//
                     .field("type", "date")//
-                    .field("format", "dateOptionalTime")//
+                    .field("format", "date_optional_time")//
                     .endObject()//
 
                     // user_id

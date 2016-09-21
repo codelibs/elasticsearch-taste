@@ -172,7 +172,7 @@ public class EvalItemsFromUserHandler extends RecommendationHandler {
                     // @timestamp
                     .startObject(indexInfo.getTimestampField())//
                     .field("type", "date")//
-                    .field("format", "dateOptionalTime")//
+                    .field("format", "date_optional_time")//
                     .endObject()//
 
                     // result_type
@@ -261,7 +261,7 @@ public class EvalItemsFromUserHandler extends RecommendationHandler {
                     // @timestamp
                     .startObject(indexInfo.getTimestampField())//
                     .field("type", "date")//
-                    .field("format", "dateOptionalTime")//
+                    .field("format", "date_optional_time")//
                     .endObject()//
 
                     // report_type

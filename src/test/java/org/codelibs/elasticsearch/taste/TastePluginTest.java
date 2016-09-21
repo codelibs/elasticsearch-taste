@@ -2,6 +2,9 @@ package org.codelibs.elasticsearch.taste;
 
 import static org.codelibs.elasticsearch.runner.ElasticsearchClusterRunner.newConfigs;
 
+import java.util.List;
+import java.util.Map;
+
 import org.codelibs.elasticsearch.runner.ElasticsearchClusterRunner;
 import org.codelibs.elasticsearch.runner.net.Curl;
 import org.codelibs.elasticsearch.runner.net.CurlResponse;
@@ -53,12 +56,12 @@ public class TastePluginTest extends TestCase {
         int numOfUsers = 100;
         int numOfItems = 100;
         for (int i = 1; i < numOfUsers + 1; i++) {
-            int inc = numOfUsers % 10 + (9 - numOfUsers % 9) + 1;
-            for (int j = inc; j < numOfItems; j += inc + 10) {
-                int value = (i % 5 + j % 5) % 5 + 1;
-                final String source = "{\"user\":{\"id\":" + i + "},\"item\":{\"id\":" + j + "},\"value\":" + value + ",\"timestamp\":"
+            int inc = i % 10 + 1;
+            for (int j = inc; j < numOfItems; j += inc + (i + j * 10) % 20) {
+                int value = 1;// ((i % 5 + j % 5) % 2) * 4 + 1;
+                String source = "{\"user\":{\"id\":" + i + "},\"item\":{\"id\":" + j + "},\"value\":" + value + ",\"timestamp\":"
                         + System.currentTimeMillis() + "}";
-                System.out.println(source);
+                runner.print(source);
                 try (CurlResponse curlResponse = Curl.post(node, "/" + index + "/_taste/event").body(source).execute()) {
                     final String content = curlResponse.getContentAsString();
                     assertEquals("{\"acknowledged\":true}", content);
@@ -67,6 +70,36 @@ public class TastePluginTest extends TestCase {
         }
 
         runner.refresh();
-        assertEquals(605, client.prepareSearch(index).setSize(0).execute().actionGet().getHits().getTotalHits());
+        assertEquals(994, client.prepareSearch(index).setSize(0).execute().actionGet().getHits().getTotalHits());
+
+        String source =
+                "{\"num_of_items\":10,\"data_model\":{\"cache\":{\"weight\":\"100m\"}},\"index_info\":{\"index\":\"" + index + "\"}}";
+        try (CurlResponse curlResponse = Curl.post(node, "/_taste/action/recommended_items_from_user").body(source).execute()) {
+            Map<String, Object> sourceMap = curlResponse.getContentAsMap();
+            assertEquals("true", sourceMap.get("acknowledged").toString());
+            assertNotNull(sourceMap.get("name"));
+        }
+
+        runner.refresh();
+        for (int i = 0; i < 30; i++) {
+            try (CurlResponse curlResponse = Curl.get(node, "/_taste/action").execute()) {
+                Map<String, Object> sourceMap = curlResponse.getContentAsMap();
+                assertEquals("true", sourceMap.get("acknowledged").toString());
+                if (((List<?>) sourceMap.get("names")).isEmpty()) {
+                    break;
+                }
+            }
+            Thread.sleep(1000L);
+        }
+
+        runner.refresh();
+        for (int i = 0; i < 30; i++) {
+            long totalHits =
+                    client.prepareSearch(index).setTypes("recommendation").setSize(0).execute().actionGet().getHits().getTotalHits();
+            if (totalHits == 100) {
+                break;
+            }
+            Thread.sleep(1000L);
+        }
     }
 }

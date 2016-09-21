@@ -100,7 +100,7 @@ public class ElasticsearchDataModelTest {
                 // @timestamp
                 .startObject(TasteConstants.TIMESTAMP_FIELD)//
                 .field("type", "date")//
-                .field("format", "dateOptionalTime")//
+                .field("format", "date_optional_time")//
                 .endObject()//
 
                 // user_id
@@ -134,7 +134,7 @@ public class ElasticsearchDataModelTest {
                 // @timestamp
                 .startObject(TasteConstants.TIMESTAMP_FIELD)//
                 .field("type", "date")//
-                .field("format", "dateOptionalTime")//
+                .field("format", "date_optional_time")//
                 .endObject()//
 
                 // item_id
