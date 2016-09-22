@@ -1,6 +1,5 @@
 package org.codelibs.elasticsearch.taste.rest.handler;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -10,6 +9,9 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.index.Fields;
@@ -20,6 +22,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.UnicodeUtil;
 import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.exception.InvalidParameterException;
+import org.codelibs.elasticsearch.taste.exception.TasteException;
 import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.search.SearchRequestBuilder;
@@ -34,6 +37,7 @@ import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.ToXContent.Params;
+import org.elasticsearch.index.engine.DocumentAlreadyExistsException;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
@@ -98,7 +102,7 @@ public class GenTermValuesHandler extends ActionHandler {
         final Map<String, Object> scrollSettings = SettingsUtils.get(
                 rootSettings, "scroll");
         keepAlive = SettingsUtils.get(scrollSettings, "keep_alive", 600000); //10min
-        final Number size = SettingsUtils.get(scrollSettings, "size", 100);
+        final Number size = SettingsUtils.get(scrollSettings, "size", 10);
 
         requestHandlers = new RequestHandler[] {
                 new UserRequestHandler(settings, client, pool),
@@ -136,6 +140,12 @@ public class GenTermValuesHandler extends ActionHandler {
 
         private volatile MultiTermVectorsListener mTVListener;
 
+        private final ExecutorService executor;
+
+        ScrollSearchListener() {
+            executor = Executors.newFixedThreadPool(numOfThreads);
+        }
+
         @Override
         public void onResponse(final SearchResponse response) {
             if (mTVListener != null) {
@@ -156,6 +166,7 @@ public class GenTermValuesHandler extends ActionHandler {
             final SearchHit[] hits = searchHits.getHits();
             if (hits.length == 0) {
                 scrollSearchGate.countDown();
+                shutdown();
             } else {
                 final Map<String, DocInfo> idMap = new HashMap<>(hits.length);
                 final MultiTermVectorsRequestBuilder requestBuilder = client
@@ -174,7 +185,7 @@ public class GenTermValuesHandler extends ActionHandler {
                     requestBuilder.add(termVectorRequest);
                 }
                 mTVListener = new MultiTermVectorsListener(numOfThreads,
-                        requestHandlers, eventParams, idMap, pool, logger);
+                        requestHandlers, eventParams, idMap, executor, logger);
                 requestBuilder.execute(mTVListener);
 
                 client.prepareSearchScroll(response.getScrollId())
@@ -187,6 +198,16 @@ public class GenTermValuesHandler extends ActionHandler {
         public void onFailure(final Throwable e) {
             scrollSearchGate.countDown();
             logger.error("Failed to parse and write term vectors.", e);
+            shutdown();
+        }
+
+        private void shutdown() {
+            executor.shutdown();
+            try {
+                executor.awaitTermination(1, TimeUnit.MINUTES);
+            } catch (InterruptedException e) {
+                throw new TasteException(e);
+            }
         }
     }
 
@@ -220,37 +241,35 @@ public class GenTermValuesHandler extends ActionHandler {
 
         private final Map<String, DocInfo> idMap;
 
-        private final ThreadPool pool;
+        private final ExecutorService executor;
 
-        private volatile List<CountDownLatch> genTVGateList;
+        private volatile CountDownLatch genTVGate;
 
         private final int numOfThread;
 
         public MultiTermVectorsListener(final int numOfThread,
                 final RequestHandler[] requestHandlers,
                 final Params eventParams, final Map<String, DocInfo> idMap,
-                final ThreadPool pool, final ESLogger logger) {
+                final ExecutorService executor, final ESLogger logger) {
             this.requestHandlers = requestHandlers;
             this.eventParams = eventParams;
             this.idMap = idMap;
-            this.pool = pool;
+            this.executor = executor;
             this.logger = logger;
             this.numOfThread = numOfThread > 1 ? numOfThread : 1;
         }
 
         public void await() throws InterruptedException {
             validateGate();
-            if (genTVGateList != null) {
-                for (final CountDownLatch genTVGate : genTVGateList) {
-                    genTVGate.await();
-                }
+            if (genTVGate != null) {
+                genTVGate.await();
             }
         }
 
         @Override
         public void onResponse(final MultiTermVectorsResponse response) {
             final Date now = new Date();
-            final List<CountDownLatch> gateList = new ArrayList<>();
+            final CountDownLatch gate = new CountDownLatch(numOfThread);
             try {
                 final Map<String, Map<String, Object>> termValueMap = new HashMap<>(
                         1000);
@@ -350,14 +369,11 @@ public class GenTermValuesHandler extends ActionHandler {
                             eventMapQueue.size());
                 }
 
-                final CountDownLatch genTVGate = new CountDownLatch(numOfThread);
                 for (int i = 0; i < numOfThread; i++) {
-                    pool.generic().execute(
-                            () -> processEvent(eventMapQueue, genTVGate));
+                    executor.execute(() -> processEvent(eventMapQueue, gate));
                 }
-                gateList.add(genTVGate);
             } finally {
-                genTVGateList = gateList;
+                genTVGate = gate;
             }
         }
 
@@ -376,7 +392,14 @@ public class GenTermValuesHandler extends ActionHandler {
             handlers[requestHandlers.length] = (params, listener, requestMap,
                     paramMap, chain) -> processEvent(eventMapQueue, genTVGate);
             new RequestHandlerChain(handlers).execute(eventParams, t -> {
-                logger.error("Failed to store: " + eventMap, t);
+                if (t.getCause() instanceof DocumentAlreadyExistsException) {
+                    eventMapQueue.offer(eventMap);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Re-offer {}", t, eventMap);
+                    }
+                } else {
+                    logger.error("Failed to store: " + eventMap, t);
+                }
                 processEvent(eventMapQueue, genTVGate);
             }, eventMap, new HashMap<>());
         }
@@ -385,11 +408,9 @@ public class GenTermValuesHandler extends ActionHandler {
         public void onFailure(final Throwable e) {
             logger.error("Failed to write term vectors.", e);
             validateGate();
-            if (genTVGateList != null) {
-                for (final CountDownLatch genTVGate : genTVGateList) {
-                    for (int i = 0; i < genTVGate.getCount(); i++) {
-                        genTVGate.countDown();
-                    }
+            if (genTVGate != null) {
+                for (int i = 0; i < genTVGate.getCount(); i++) {
+                    genTVGate.countDown();
                 }
             }
         }
@@ -397,16 +418,17 @@ public class GenTermValuesHandler extends ActionHandler {
         private void validateGate() {
             try {
                 while (true) {
-                    if (genTVGateList != null) {
+                    if (genTVGate != null) {
                         break;
                     } else {
-                        Thread.sleep(1000);
+                        Thread.sleep(500);
                     }
                 }
             } catch (final InterruptedException e) {
                 if (logger.isDebugEnabled()) {
                     logger.debug("Interrupted.", e);
                 }
+                Thread.currentThread().interrupt();
             }
         }
     }
@@ -448,10 +470,5 @@ public class GenTermValuesHandler extends ActionHandler {
     @Override
     public void close() {
         interrupted = true;
-    }
-
-    @Override
-    protected int getNumOfThreads() {
-        return SettingsUtils.get(rootSettings, "num_of_threads", 1);
     }
 }
