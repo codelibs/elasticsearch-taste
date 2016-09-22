@@ -76,7 +76,8 @@ public final class GenericRecommendedItem implements RecommendedItem,
             return false;
         }
         final RecommendedItem other = (RecommendedItem) o;
-        return itemID == other.getItemID() && !(value != other.getValue());
+        return itemID == other.getItemID()
+                && !(value < other.getValue() || value > other.getValue());
     }
 
 }

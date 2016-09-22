@@ -60,7 +60,8 @@ public final class UncenteredCosineSimilarity extends AbstractSimilarity {
             return Double.NaN;
         }
         final double denominator = Math.sqrt(sumX2) * Math.sqrt(sumY2);
-        return denominator != 0.0 ? sumXY / denominator : Double.NaN;
+        return denominator < 0.0 || denominator > 0.0 ? sumXY / denominator
+                : Double.NaN;
     }
 
 }
