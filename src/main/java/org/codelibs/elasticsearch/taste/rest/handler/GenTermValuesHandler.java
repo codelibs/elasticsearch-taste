@@ -10,7 +10,6 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ForkJoinPool;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.index.DocsAndPositionsEnum;
@@ -186,7 +185,7 @@ public class GenTermValuesHandler extends ActionHandler {
                     requestBuilder.add(termVectorRequest);
                 }
                 mTVListener = new MultiTermVectorsListener(numOfThreads,
-                        requestHandlers, eventParams, idMap, logger);
+                        requestHandlers, eventParams, idMap, pool, logger);
                 requestBuilder.execute(mTVListener);
 
                 client.prepareSearchScroll(response.getScrollId())
@@ -232,6 +231,8 @@ public class GenTermValuesHandler extends ActionHandler {
 
         private Map<String, DocInfo> idMap;
 
+        private ThreadPool pool;
+
         private volatile List<CountDownLatch> genTVGateList;
 
         private int numOfThread;
@@ -239,10 +240,11 @@ public class GenTermValuesHandler extends ActionHandler {
         public MultiTermVectorsListener(final int numOfThread,
                 final RequestHandler[] requestHandlers,
                 final Params eventParams, final Map<String, DocInfo> idMap,
-                final ESLogger logger) {
+                final ThreadPool pool, final ESLogger logger) {
             this.requestHandlers = requestHandlers;
             this.eventParams = eventParams;
             this.idMap = idMap;
+            this.pool = pool;
             this.logger = logger;
             this.numOfThread = numOfThread > 1 ? numOfThread : 1;
         }
@@ -360,7 +362,7 @@ public class GenTermValuesHandler extends ActionHandler {
 
                 final CountDownLatch genTVGate = new CountDownLatch(numOfThread);
                 for (int i = 0; i < numOfThread; i++) {
-                    ForkJoinPool.commonPool().execute(
+                    pool.generic().execute(
                             () -> processEvent(eventMapQueue, genTVGate));
                 }
                 gateList.add(genTVGate);
