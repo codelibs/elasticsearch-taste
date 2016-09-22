@@ -12,12 +12,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.lucene.index.DocsAndPositionsEnum;
 import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.UnicodeUtil;
 import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.exception.InvalidParameterException;
@@ -25,7 +24,6 @@ import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.action.termvectors.MultiTermVectorsItemResponse;
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequestBuilder;
 import org.elasticsearch.action.termvectors.MultiTermVectorsResponse;
@@ -114,7 +112,7 @@ public class GenTermValuesHandler extends ActionHandler {
         scrollSearchGate = new CountDownLatch(1);
 
         final SearchRequestBuilder builder = client.prepareSearch(sourceIndex)
-                .setTypes(sourceType).setSearchType(SearchType.SCAN)
+                .setTypes(sourceType)
                 .setScroll(new TimeValue(keepAlive.longValue()))
                 .setQuery(QueryBuilders.matchAllQuery())
                 .setSize(size.intValue()).addField(idField);
@@ -135,20 +133,11 @@ public class GenTermValuesHandler extends ActionHandler {
 
     private class ScrollSearchListener implements
             ActionListener<SearchResponse> {
-        private volatile boolean initialized = false;
 
         private volatile MultiTermVectorsListener mTVListener;
 
         @Override
         public void onResponse(final SearchResponse response) {
-            if (!initialized) {
-                initialized = true;
-                client.prepareSearchScroll(response.getScrollId())
-                        .setScroll(new TimeValue(keepAlive.longValue()))
-                        .execute(this);
-                return;
-            }
-
             if (mTVListener != null) {
                 try {
                     mTVListener.await();
@@ -278,7 +267,6 @@ public class GenTermValuesHandler extends ActionHandler {
                             logger.warn("No id of {}.", userId);
                             continue;
                         }
-                        final CharsRef spare = new CharsRef();
                         try {
                             final Fields fields = mTVItemResponse.getResponse()
                                     .getFields();
@@ -291,12 +279,14 @@ public class GenTermValuesHandler extends ActionHandler {
                                         .iterator();
                                 for (int i = 0; i < curTerms.size(); i++) {
                                     final BytesRef term = termIter.next();
-                                    final char[] values=new char[term.length];
-                                    final int length=UnicodeUtil.UTF8toUTF16(term, values);
-                                    final String termValue = new String(values,0,length);
-                                    final DocsAndPositionsEnum posEnum = termIter
-                                            .docsAndPositions(null, null);
-                                    final int termFreq = posEnum.freq();
+                                    final char[] values = new char[term.length];
+                                    final int length = UnicodeUtil
+                                            .UTF8toUTF16(term, values);
+                                    final String termValue = new String(values,
+                                            0, length);
+                                    final PostingsEnum postings = termIter
+                                            .postings(null);
+                                    final int termFreq = postings.freq();
 
                                     final String id = docInfo.getId();
                                     final String key = id + '\n' + termValue;
@@ -458,5 +448,10 @@ public class GenTermValuesHandler extends ActionHandler {
     @Override
     public void close() {
         interrupted = true;
+    }
+
+    @Override
+    protected int getNumOfThreads() {
+        return SettingsUtils.get(rootSettings, "num_of_threads", 1);
     }
 }

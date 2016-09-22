@@ -5,7 +5,6 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
@@ -60,16 +59,19 @@ public abstract class ActionHandler {
 
         int count = 0;
         long[] targetIDs = null;
-        SearchResponse response = client.prepareSearch(index).setTypes(type)
-                .setSearchType(SearchType.SCAN)
-                .setScroll(new TimeValue(keepAlive.longValue()))
-                .setQuery(QueryBuilders.queryStringQuery(userQuery))
-                .addField(fieldName).setSize(size.intValue()).execute()
-                .actionGet();
+        SearchResponse response = null;
         while (true) {
-            response = client.prepareSearchScroll(response.getScrollId())
-                    .setScroll(new TimeValue(keepAlive.longValue())).execute()
-                    .actionGet();
+            if (response == null) {
+                response = client.prepareSearch(index).setTypes(type)
+                        .setScroll(new TimeValue(keepAlive.longValue()))
+                        .setQuery(QueryBuilders.queryStringQuery(userQuery))
+                        .addField(fieldName).setSize(size.intValue()).execute()
+                        .actionGet();
+            } else {
+                response = client.prepareSearchScroll(response.getScrollId())
+                        .setScroll(new TimeValue(keepAlive.longValue()))
+                        .execute().actionGet();
+            }
             final SearchHits hits = response.getHits();
             if (targetIDs == null) {
                 targetIDs = new long[(int) hits.getTotalHits()];
