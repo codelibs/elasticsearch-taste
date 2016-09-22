@@ -36,7 +36,7 @@ public abstract class DefaultRequestHandler implements RequestHandler {
 
     protected Lock indexCreationLock;
 
-    private ThreadPool pool;
+    private final ThreadPool pool;
 
     public DefaultRequestHandler(final Settings settings, final Client client, final ThreadPool pool) {
         this.settings = settings;

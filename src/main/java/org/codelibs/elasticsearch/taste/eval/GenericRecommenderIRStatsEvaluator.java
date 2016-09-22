@@ -129,7 +129,7 @@ public final class GenericRecommenderIRStatsEvaluator implements
                 continue;
             }
 
-            final FastByIDMap<PreferenceArray> trainingUsers = new FastByIDMap<PreferenceArray>(
+            final FastByIDMap<PreferenceArray> trainingUsers = new FastByIDMap<>(
                     dataModel.getNumUsers());
             final LongPrimitiveIterator it2 = dataModel.getUserIDs();
             while (it2.hasNext()) {

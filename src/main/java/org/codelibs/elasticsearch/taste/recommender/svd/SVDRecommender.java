@@ -20,7 +20,6 @@ package org.codelibs.elasticsearch.taste.recommender.svd;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import org.codelibs.elasticsearch.taste.common.FastIDSet;
 import org.codelibs.elasticsearch.taste.common.RefreshHelper;
@@ -115,12 +114,9 @@ public final class SVDRecommender extends AbstractRecommender {
             train();
         }
 
-        refreshHelper = new RefreshHelper(new Callable<Object>() {
-            @Override
-            public Object call() {
-                train();
-                return null;
-            }
+        refreshHelper = new RefreshHelper(() -> {
+            train();
+            return null;
         });
         refreshHelper.addDependency(getDataModel());
         refreshHelper.addDependency(factorizer);

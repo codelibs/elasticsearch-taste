@@ -17,7 +17,6 @@
 
 package org.codelibs.elasticsearch.taste.similarity.precompute;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -59,12 +58,7 @@ public class SimilarItems {
     }
 
     public Iterable<SimilarItem> getSimilarItems() {
-        return new Iterable<SimilarItem>() {
-            @Override
-            public Iterator<SimilarItem> iterator() {
-                return new SimilarItemsIterator();
-            }
-        };
+        return () -> new SimilarItemsIterator();
     }
 
     private class SimilarItemsIterator extends

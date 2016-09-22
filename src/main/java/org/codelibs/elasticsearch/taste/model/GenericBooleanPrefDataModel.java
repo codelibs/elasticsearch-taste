@@ -81,7 +81,7 @@ public final class GenericBooleanPrefDataModel extends AbstractDataModel {
         Preconditions.checkArgument(userData != null, "userData is null");
 
         preferenceFromUsers = userData;
-        preferenceForItems = new FastByIDMap<FastIDSet>();
+        preferenceForItems = new FastByIDMap<>();
         FastIDSet itemIDSet = new FastIDSet();
         for (final Map.Entry<Long, FastIDSet> entry : preferenceFromUsers
                 .entrySet()) {
@@ -122,7 +122,7 @@ public final class GenericBooleanPrefDataModel extends AbstractDataModel {
      *  that user's associated items
      */
     public static FastByIDMap<FastIDSet> toDataMap(final DataModel dataModel) {
-        final FastByIDMap<FastIDSet> data = new FastByIDMap<FastIDSet>(
+        final FastByIDMap<FastIDSet> data = new FastByIDMap<>(
                 dataModel.getNumUsers());
         final LongPrimitiveIterator it = dataModel.getUserIDs();
         while (it.hasNext()) {

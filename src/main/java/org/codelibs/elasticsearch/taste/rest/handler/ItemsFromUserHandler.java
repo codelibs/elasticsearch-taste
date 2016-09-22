@@ -102,7 +102,7 @@ public class ItemsFromUserHandler extends RecommendationHandler {
             if (writer != null) {
                 try {
                     writer.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     // ignore
                 }
             }

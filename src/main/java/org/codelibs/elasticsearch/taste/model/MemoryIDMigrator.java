@@ -28,7 +28,7 @@ public final class MemoryIDMigrator extends AbstractIDMigrator implements
     private final FastByIDMap<String> longToString;
 
     public MemoryIDMigrator() {
-        longToString = new FastByIDMap<String>(100);
+        longToString = new FastByIDMap<>(100);
     }
 
     @Override

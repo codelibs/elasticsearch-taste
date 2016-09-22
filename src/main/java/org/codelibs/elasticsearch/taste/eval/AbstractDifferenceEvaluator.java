@@ -126,9 +126,9 @@ public abstract class AbstractDifferenceEvaluator implements Evaluator {
                 dataModel);
 
         final int numUsers = dataModel.getNumUsers();
-        final FastByIDMap<PreferenceArray> trainingPrefs = new FastByIDMap<PreferenceArray>(
+        final FastByIDMap<PreferenceArray> trainingPrefs = new FastByIDMap<>(
                 1 + (int) (evaluationPercentage * numUsers));
-        final FastByIDMap<PreferenceArray> testPrefs = new FastByIDMap<PreferenceArray>(
+        final FastByIDMap<PreferenceArray> testPrefs = new FastByIDMap<>(
                 1 + (int) (evaluationPercentage * numUsers));
 
         final LongPrimitiveIterator it = dataModel.getUserIDs();

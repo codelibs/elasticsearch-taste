@@ -18,7 +18,6 @@
 package org.codelibs.elasticsearch.taste.recommender.svd;
 
 import java.util.Collection;
-import java.util.concurrent.Callable;
 
 import org.codelibs.elasticsearch.taste.common.FastByIDMap;
 import org.codelibs.elasticsearch.taste.common.LongPrimitiveIterator;
@@ -42,12 +41,9 @@ public abstract class AbstractFactorizer implements Factorizer {
     protected AbstractFactorizer(final DataModel dataModel) {
         this.dataModel = dataModel;
         buildMappings();
-        refreshHelper = new RefreshHelper(new Callable<Object>() {
-            @Override
-            public Object call() {
-                buildMappings();
-                return null;
-            }
+        refreshHelper = new RefreshHelper(() -> {
+            buildMappings();
+            return null;
         });
         refreshHelper.addDependency(dataModel);
     }
@@ -85,7 +81,7 @@ public abstract class AbstractFactorizer implements Factorizer {
 
     private static FastByIDMap<Integer> createIDMapping(final int size,
             final LongPrimitiveIterator idIterator) {
-        final FastByIDMap<Integer> mapping = new FastByIDMap<Integer>(size);
+        final FastByIDMap<Integer> mapping = new FastByIDMap<>(size);
         int index = 0;
         while (idIterator.hasNext()) {
             mapping.put(idIterator.nextLong(), index++);

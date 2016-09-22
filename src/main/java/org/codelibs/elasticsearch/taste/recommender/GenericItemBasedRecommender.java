@@ -20,7 +20,6 @@ package org.codelibs.elasticsearch.taste.recommender;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import org.codelibs.elasticsearch.taste.common.FastIDSet;
 import org.codelibs.elasticsearch.taste.common.FullRunningAverage;
@@ -87,12 +86,9 @@ public class GenericItemBasedRecommender extends AbstractRecommender implements
                 mostSimilarItemsCandidateItemsStrategy != null,
                 "mostSimilarItemsCandidateItemsStrategy is null");
         this.mostSimilarItemsCandidateItemsStrategy = mostSimilarItemsCandidateItemsStrategy;
-        refreshHelper = new RefreshHelper(new Callable<Void>() {
-            @Override
-            public Void call() {
-                capper = buildCapper();
-                return null;
-            }
+        refreshHelper = new RefreshHelper(() -> {
+            capper = buildCapper();
+            return null;
         });
         refreshHelper.addDependency(dataModel);
         refreshHelper.addDependency(similarity);

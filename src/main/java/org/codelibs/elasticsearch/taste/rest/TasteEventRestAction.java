@@ -27,13 +27,13 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 
 public class TasteEventRestAction extends BaseRestHandler {
-    private UserRequestHandler userRequestHandler;
+    private final UserRequestHandler userRequestHandler;
 
-    private ItemRequestHandler itemRequestHandler;
+    private final ItemRequestHandler itemRequestHandler;
 
-    private PreferenceRequestHandler preferenceRequestHandler;
+    private final PreferenceRequestHandler preferenceRequestHandler;
 
-    private ThreadPool pool;
+    private final ThreadPool pool;
 
     @Inject
     public TasteEventRestAction(final Settings settings, final Client client,

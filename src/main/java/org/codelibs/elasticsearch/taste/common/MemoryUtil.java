@@ -69,12 +69,7 @@ public final class MemoryUtil {
                 return t;
             }
         });
-        final Runnable memoryLoogerRunnable = new Runnable() {
-            @Override
-            public void run() {
-                logMemoryStatistics();
-            }
-        };
+        final Runnable memoryLoogerRunnable = () -> logMemoryStatistics();
         scheduler.scheduleAtFixedRate(memoryLoogerRunnable, rateInMillis,
                 rateInMillis, TimeUnit.MILLISECONDS);
     }

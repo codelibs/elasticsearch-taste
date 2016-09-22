@@ -26,12 +26,7 @@ import com.google.common.primitives.Doubles;
  */
 public class SimilarItem {
 
-    public static final Comparator<SimilarItem> COMPARE_BY_SIMILARITY = new Comparator<SimilarItem>() {
-        @Override
-        public int compare(final SimilarItem s1, final SimilarItem s2) {
-            return Doubles.compare(s1.similarity, s2.similarity);
-        }
-    };
+    public static final Comparator<SimilarItem> COMPARE_BY_SIMILARITY = (s1, s2) -> Doubles.compare(s1.similarity, s2.similarity);
 
     private long itemID;
 

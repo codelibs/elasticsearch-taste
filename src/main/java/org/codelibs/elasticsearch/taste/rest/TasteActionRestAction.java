@@ -42,9 +42,9 @@ public class TasteActionRestAction extends BaseRestHandler {
 
     private static final String SIMILAR_USERS = "similar_users";
 
-    private TasteService tasteService;
+    private final TasteService tasteService;
 
-    private ThreadPool pool;
+    private final ThreadPool pool;
 
     @Inject
     public TasteActionRestAction(final Settings settings,
@@ -75,7 +75,7 @@ public class TasteActionRestAction extends BaseRestHandler {
         switch (request.method()) {
         case GET:
             name = request.param("name");
-            params = new LinkedHashMap<String, Object>();
+            params = new LinkedHashMap<>();
             if (name == null) {
                 params.put("names", handlerMap.keySet());
             } else {
@@ -86,7 +86,7 @@ public class TasteActionRestAction extends BaseRestHandler {
             break;
         case DELETE:
             name = request.param("name");
-            params = new LinkedHashMap<String, Object>();
+            params = new LinkedHashMap<>();
             params.put("name", name);
             boolean acknowledged;
             if (handlerMap.containsKey(name)) {
@@ -134,7 +134,7 @@ public class TasteActionRestAction extends BaseRestHandler {
                     throw new TasteException("Unknown action: " + action);
                 }
 
-                params = new LinkedHashMap<String, Object>();
+                params = new LinkedHashMap<>();
                 params.put("name", name);
                 sendResponse(request, channel, params, true);
             } catch (final Exception e) {

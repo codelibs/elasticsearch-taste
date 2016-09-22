@@ -285,12 +285,9 @@ public class ParallelSGDFactorizer extends AbstractFactorizer {
                     final int iEnd = Math.min((t + 1) * subSize,
                             shuffler.size());
 
-                    executor.execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            for (int i = iStart; i < iEnd; i++) {
-                                update(shuffler.get(i), mu);
-                            }
+                    executor.execute(() -> {
+                        for (int i = iStart; i < iEnd; i++) {
+                            update(shuffler.get(i), mu);
                         }
                     });
                 }
@@ -301,7 +298,7 @@ public class ParallelSGDFactorizer extends AbstractFactorizer {
 
             try {
                 final boolean terminated = executor.awaitTermination(
-                        (long) (numEpochs * shuffler.size()),
+                        numEpochs * shuffler.size(),
                         TimeUnit.MICROSECONDS);
                 if (!terminated) {
                     logger.error("subtasks takes forever, return anyway");

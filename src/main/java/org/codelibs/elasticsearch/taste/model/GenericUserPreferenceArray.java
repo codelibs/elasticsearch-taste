@@ -23,7 +23,6 @@ import java.util.List;
 
 import org.codelibs.elasticsearch.taste.common.iterator.CountingIterator;
 
-import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 
 /**
@@ -258,12 +257,7 @@ public final class GenericUserPreferenceArray implements PreferenceArray {
     @Override
     public Iterator<Preference> iterator() {
         return Iterators.transform(new CountingIterator(length()),
-                new Function<Integer, Preference>() {
-                    @Override
-                    public Preference apply(final Integer from) {
-                        return new PreferenceView(from);
-                    }
-                });
+                from -> new PreferenceView(from));
     }
 
     @Override

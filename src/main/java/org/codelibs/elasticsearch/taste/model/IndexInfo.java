@@ -6,49 +6,49 @@ import org.codelibs.elasticsearch.taste.TasteConstants;
 import org.codelibs.elasticsearch.taste.util.SettingsUtils;
 
 public class IndexInfo {
-    private String preferenceIndex;
+    private final String preferenceIndex;
 
-    private String preferenceType;
+    private final String preferenceType;
 
-    private String userIndex;
+    private final String userIndex;
 
-    private String userType;
+    private final String userType;
 
-    private String itemIndex;
+    private final String itemIndex;
 
-    private String itemType;
+    private final String itemType;
 
-    private String recommendationIndex;
+    private final String recommendationIndex;
 
-    private String recommendationType;
+    private final String recommendationType;
 
-    private String itemSimilarityIndex;
+    private final String itemSimilarityIndex;
 
-    private String itemSimilarityType;
+    private final String itemSimilarityType;
 
-    private String userSimilarityIndex;
+    private final String userSimilarityIndex;
 
-    private String userSimilarityType;
+    private final String userSimilarityType;
 
-    private String reportIndex;
+    private final String reportIndex;
 
-    private String reportType;
+    private final String reportType;
 
-    private String resultIndex;
+    private final String resultIndex;
 
-    private String resultType;
+    private final String resultType;
 
-    private String userIdField;
+    private final String userIdField;
 
-    private String itemIdField;
+    private final String itemIdField;
 
-    private String valueField;
+    private final String valueField;
 
-    private String timestampField;
+    private final String timestampField;
 
-    private String itemsField;
+    private final String itemsField;
 
-    private String usersField;
+    private final String usersField;
 
     public IndexInfo(final Map<String, Object> indexInfoSettings) {
         final String defaultIndex = SettingsUtils.get(indexInfoSettings,

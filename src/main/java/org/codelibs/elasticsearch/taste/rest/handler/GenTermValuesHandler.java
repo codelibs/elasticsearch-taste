@@ -214,17 +214,17 @@ public class GenTermValuesHandler extends ActionHandler {
 
         protected final ESLogger logger;
 
-        private RequestHandler[] requestHandlers;
+        private final RequestHandler[] requestHandlers;
 
-        private Params eventParams;
+        private final Params eventParams;
 
-        private Map<String, DocInfo> idMap;
+        private final Map<String, DocInfo> idMap;
 
-        private ThreadPool pool;
+        private final ThreadPool pool;
 
         private volatile List<CountDownLatch> genTVGateList;
 
-        private int numOfThread;
+        private final int numOfThread;
 
         public MultiTermVectorsListener(final int numOfThread,
                 final RequestHandler[] requestHandlers,
@@ -415,7 +415,7 @@ public class GenTermValuesHandler extends ActionHandler {
         Map<String, Object> requestSettings;
 
         EventSettingParams(final Map<String, Object> requestSettings) {
-            this.requestSettings = new ConcurrentHashMap<String, Object>(
+            this.requestSettings = new ConcurrentHashMap<>(
                     requestSettings);
         }
 

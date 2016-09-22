@@ -45,7 +45,7 @@ public final class AveragingPreferenceInferrer implements PreferenceInferrer {
     public AveragingPreferenceInferrer(final DataModel dataModel) {
         this.dataModel = dataModel;
         final Retriever<Long, Float> retriever = new PrefRetriever();
-        averagePreferenceValue = new Cache<Long, Float>(retriever,
+        averagePreferenceValue = new Cache<>(retriever,
                 dataModel.getNumUsers());
         refresh(null);
     }

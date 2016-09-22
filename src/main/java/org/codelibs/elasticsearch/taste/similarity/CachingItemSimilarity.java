@@ -18,7 +18,6 @@
 package org.codelibs.elasticsearch.taste.similarity;
 
 import java.util.Collection;
-import java.util.concurrent.Callable;
 
 import org.codelibs.elasticsearch.taste.common.Cache;
 import org.codelibs.elasticsearch.taste.common.LongPair;
@@ -57,14 +56,11 @@ public final class CachingItemSimilarity implements ItemSimilarity {
             final int maxCacheSize) {
         Preconditions.checkArgument(similarity != null, "similarity is null");
         this.similarity = similarity;
-        similarityCache = new Cache<LongPair, Double>(new SimilarityRetriever(
+        similarityCache = new Cache<>(new SimilarityRetriever(
                 similarity), maxCacheSize);
-        refreshHelper = new RefreshHelper(new Callable<Void>() {
-            @Override
-            public Void call() {
-                similarityCache.clear();
-                return null;
-            }
+        refreshHelper = new RefreshHelper(() -> {
+            similarityCache.clear();
+            return null;
         });
         refreshHelper.addDependency(similarity);
     }

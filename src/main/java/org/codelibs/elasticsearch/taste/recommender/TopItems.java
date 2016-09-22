@@ -49,7 +49,7 @@ public final class TopItems {
                 "possibleItemIDs is null");
         Preconditions.checkArgument(estimator != null, "estimator is null");
 
-        final Queue<RecommendedItem> topItems = new PriorityQueue<RecommendedItem>(
+        final Queue<RecommendedItem> topItems = new PriorityQueue<>(
                 howMany + 1,
                 Collections.reverseOrder(ByValueRecommendedItemComparator
                         .getInstance()));
@@ -95,7 +95,7 @@ public final class TopItems {
     public static List<SimilarUser> getTopUsers(final int howMany,
             final LongPrimitiveIterator allUserIDs, final IDRescorer rescorer,
             final Estimator<Long> estimator) {
-        final Queue<SimilarUser> topUsers = new PriorityQueue<SimilarUser>(
+        final Queue<SimilarUser> topUsers = new PriorityQueue<>(
                 howMany + 1, Collections.reverseOrder());
         boolean full = false;
         double lowestTopValue = Double.NEGATIVE_INFINITY;
@@ -147,7 +147,7 @@ public final class TopItems {
             final int howMany,
             final Iterator<GenericItemSimilarity.ItemItemSimilarity> allSimilarities) {
 
-        final Queue<GenericItemSimilarity.ItemItemSimilarity> topSimilarities = new PriorityQueue<GenericItemSimilarity.ItemItemSimilarity>(
+        final Queue<GenericItemSimilarity.ItemItemSimilarity> topSimilarities = new PriorityQueue<>(
                 howMany + 1, Collections.reverseOrder());
         boolean full = false;
         double lowestTopValue = Double.NEGATIVE_INFINITY;
@@ -181,7 +181,7 @@ public final class TopItems {
             final int howMany,
             final Iterator<GenericUserSimilarity.UserUserSimilarity> allSimilarities) {
 
-        final Queue<GenericUserSimilarity.UserUserSimilarity> topSimilarities = new PriorityQueue<GenericUserSimilarity.UserUserSimilarity>(
+        final Queue<GenericUserSimilarity.UserUserSimilarity> topSimilarities = new PriorityQueue<>(
                 howMany + 1, Collections.reverseOrder());
         boolean full = false;
         double lowestTopValue = Double.NEGATIVE_INFINITY;

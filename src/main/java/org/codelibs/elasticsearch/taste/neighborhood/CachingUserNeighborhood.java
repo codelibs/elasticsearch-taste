@@ -42,7 +42,7 @@ public final class CachingUserNeighborhood implements UserNeighborhood {
                 "neighborhood is null");
         this.neighborhood = neighborhood;
         final int maxCacheSize = dataModel.getNumUsers(); // just a dumb heuristic for sizing
-        neighborhoodCache = new Cache<Long, List<SimilarUser>>(
+        neighborhoodCache = new Cache<>(
                 new NeighborhoodRetriever(neighborhood), maxCacheSize);
     }
 

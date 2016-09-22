@@ -20,7 +20,6 @@ package org.codelibs.elasticsearch.taste.recommender;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import org.codelibs.elasticsearch.taste.common.Cache;
 import org.codelibs.elasticsearch.taste.common.LongPair;
@@ -65,16 +64,13 @@ public final class CachingRecommender implements Recommender {
         // Use "num users" as an upper limit on cache size. Rough guess.
         final int numUsers = recommender.getDataModel().getNumUsers();
         recommendationsRetriever = new RecommendationRetriever();
-        recommendationCache = new Cache<Long, Recommendations>(
+        recommendationCache = new Cache<>(
                 recommendationsRetriever, numUsers);
-        estimatedPrefCache = new Cache<LongPair, Float>(
+        estimatedPrefCache = new Cache<>(
                 new EstimatedPrefRetriever(), numUsers);
-        refreshHelper = new RefreshHelper(new Callable<Object>() {
-            @Override
-            public Object call() {
-                clear();
-                return null;
-            }
+        refreshHelper = new RefreshHelper(() -> {
+            clear();
+            return null;
         });
         refreshHelper.addDependency(recommender);
     }
@@ -172,12 +168,7 @@ public final class CachingRecommender implements Recommender {
         log.debug("Clearing recommendations for user ID '{}'", userID);
         recommendationCache.remove(userID);
         estimatedPrefCache
-                .removeKeysMatching(new Cache.MatchPredicate<LongPair>() {
-                    @Override
-                    public boolean matches(final LongPair userItemPair) {
-                        return userItemPair.getFirst() == userID;
-                    }
-                });
+                .removeKeysMatching(userItemPair -> userItemPair.getFirst() == userID);
     }
 
     /**

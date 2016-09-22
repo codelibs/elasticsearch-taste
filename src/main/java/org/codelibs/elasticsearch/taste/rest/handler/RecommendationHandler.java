@@ -101,7 +101,7 @@ public abstract class RecommendationHandler extends ActionHandler {
             final Object maxPreferenceSize = SettingsUtils
                     .get(modelInfoSettings, "max_preference_size");
             if (maxPreferenceSize instanceof Number) {
-                int size = ((Number) maxPreferenceSize).intValue();
+                final int size = ((Number) maxPreferenceSize).intValue();
                 if (size > 0) {
                     model.setMaxPreferenceSize(size);
                 }

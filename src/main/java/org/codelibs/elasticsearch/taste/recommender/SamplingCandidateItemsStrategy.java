@@ -146,7 +146,7 @@ public class SamplingCandidateItemsStrategy extends
                     .getPreferencesForItem(itemID);
             final int prefsLength = prefs.length();
             if (prefsLength > maxUsersPerItem) {
-                final Iterator<Preference> sampledPrefs = new FixedSizeSamplingIterator<Preference>(
+                final Iterator<Preference> sampledPrefs = new FixedSizeSamplingIterator<>(
                         maxUsersPerItem, prefs.iterator());
                 while (sampledPrefs.hasNext()) {
                     addSomeOf(possibleItemsIDs,

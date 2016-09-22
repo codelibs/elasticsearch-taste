@@ -489,7 +489,7 @@ public class ElasticsearchDataModel implements DataModel {
         createUserID(userID);
         createItemID(itemID);
 
-        final Map<String, Object> source = new HashMap<String, Object>();
+        final Map<String, Object> source = new HashMap<>();
         source.put(userIdField, userID);
         source.put(itemIdField, itemID);
         source.put(valueField, value);
@@ -508,7 +508,7 @@ public class ElasticsearchDataModel implements DataModel {
                 .prepareGet(userIndex, userType, Long.toString(userID))
                 .setRefresh(true).execute().actionGet();
         if (!getResponse.isExists()) {
-            final Map<String, Object> source = new HashMap<String, Object>();
+            final Map<String, Object> source = new HashMap<>();
             source.put("system_id", Long.toString(userID));
             source.put(userIdField, userID);
             source.put(timestampField, new Date());
@@ -526,7 +526,7 @@ public class ElasticsearchDataModel implements DataModel {
                 .prepareGet(itemIndex, itemType, Long.toString(itemID))
                 .setRefresh(true).execute().actionGet();
         if (!getResponse.isExists()) {
-            final Map<String, Object> source = new HashMap<String, Object>();
+            final Map<String, Object> source = new HashMap<>();
             source.put("system_id", Long.toString(itemID));
             source.put(itemIdField, itemID);
             source.put(timestampField, new Date());
@@ -560,7 +560,7 @@ public class ElasticsearchDataModel implements DataModel {
                             .prepareSearchScroll(response.getScrollId())
                             .setScroll(scrollKeepAlive).execute().actionGet();
                 }
-                int size = response.getHits().getHits().length;
+                final int size = response.getHits().getHits().length;
                 if (size == 0) {
                     break;
                 }

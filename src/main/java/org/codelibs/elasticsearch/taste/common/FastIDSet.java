@@ -44,7 +44,7 @@ public final class FastIDSet implements Serializable, Cloneable, Iterable<Long> 
 
     private long[] keys;
 
-    private float loadFactor;
+    private final float loadFactor;
 
     private int numEntries;
 

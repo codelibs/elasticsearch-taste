@@ -18,7 +18,6 @@
 package org.codelibs.elasticsearch.taste.similarity;
 
 import java.util.Collection;
-import java.util.concurrent.Callable;
 
 import org.codelibs.elasticsearch.taste.common.RefreshHelper;
 import org.codelibs.elasticsearch.taste.common.Refreshable;
@@ -56,13 +55,10 @@ abstract class AbstractSimilarity extends AbstractItemSimilarity implements
         this.centerData = centerData;
         cachedNumItems = dataModel.getNumItems();
         cachedNumUsers = dataModel.getNumUsers();
-        refreshHelper = new RefreshHelper(new Callable<Object>() {
-            @Override
-            public Object call() {
-                cachedNumItems = dataModel.getNumItems();
-                cachedNumUsers = dataModel.getNumUsers();
-                return null;
-            }
+        refreshHelper = new RefreshHelper(() -> {
+            cachedNumItems = dataModel.getNumItems();
+            cachedNumUsers = dataModel.getNumUsers();
+            return null;
         });
     }
 

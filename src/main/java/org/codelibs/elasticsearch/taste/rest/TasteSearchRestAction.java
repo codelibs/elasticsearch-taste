@@ -46,7 +46,7 @@ import com.google.common.cache.CacheBuilder;
 
 public class TasteSearchRestAction extends BaseRestHandler {
 
-    private Cache<String, Map<String, Object>> cache;
+    private final Cache<String, Map<String, Object>> cache;
 
     private static final long timeoutMillis = 10 * 1000L;
 
@@ -342,23 +342,23 @@ public class TasteSearchRestAction extends BaseRestHandler {
 
         private static final String USER = "user";
 
-        private String targetIndex;
+        private final String targetIndex;
 
-        private String targetType;
+        private final String targetType;
 
-        private String targetIdField;
+        private final String targetIdField;
 
-        private String userIndex;
+        private final String userIndex;
 
-        private String userType;
+        private final String userType;
 
-        private String userIdField;
+        private final String userIdField;
 
-        private String itemIndex;
+        private final String itemIndex;
 
-        private String itemType;
+        private final String itemType;
 
-        private String itemIdField;
+        private final String itemIdField;
 
         private String idIndex;
 
@@ -366,13 +366,13 @@ public class TasteSearchRestAction extends BaseRestHandler {
 
         private String idField;
 
-        private String timestampField;
+        private final String timestampField;
 
-        private String objectType;
+        private final String objectType;
 
-        private int size;
+        private final int size;
 
-        private int from;
+        private final int from;
 
         Info(final RestRequest request) {
             size = request.paramAsInt("size", 10);

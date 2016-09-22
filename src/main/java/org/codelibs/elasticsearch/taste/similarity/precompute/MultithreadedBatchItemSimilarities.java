@@ -45,7 +45,7 @@ import com.google.common.io.Closeables;
  */
 public class MultithreadedBatchItemSimilarities extends BatchItemSimilarities {
 
-    private int batchSize;
+    private final int batchSize;
 
     private static final int DEFAULT_BATCH_SIZE = 100;
 
@@ -90,7 +90,7 @@ public class MultithreadedBatchItemSimilarities extends BatchItemSimilarities {
 
             final BlockingQueue<long[]> itemsIDsInBatches = queueItemIDsInBatches(
                     dataModel, batchSize);
-            final BlockingQueue<List<SimilarItems>> results = new LinkedBlockingQueue<List<SimilarItems>>();
+            final BlockingQueue<List<SimilarItems>> results = new LinkedBlockingQueue<>();
 
             final AtomicInteger numActiveWorkers = new AtomicInteger(
                     degreeOfParallelism);
@@ -130,7 +130,7 @@ public class MultithreadedBatchItemSimilarities extends BatchItemSimilarities {
         final LongPrimitiveIterator itemIDs = dataModel.getItemIDs();
         final int numItems = dataModel.getNumItems();
 
-        final BlockingQueue<long[]> itemIDBatches = new LinkedBlockingQueue<long[]>(
+        final BlockingQueue<long[]> itemIDBatches = new LinkedBlockingQueue<>(
                 numItems / batchSize + 1);
 
         final long[] batch = new long[batchSize];

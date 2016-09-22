@@ -19,7 +19,6 @@ package org.codelibs.elasticsearch.taste.recommender;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -58,14 +57,11 @@ public final class ItemAverageRecommender extends AbstractRecommender {
 
     public ItemAverageRecommender(final DataModel dataModel) {
         super(dataModel);
-        itemAverages = new FastByIDMap<RunningAverage>();
+        itemAverages = new FastByIDMap<>();
         buildAveragesLock = new ReentrantReadWriteLock();
-        refreshHelper = new RefreshHelper(new Callable<Object>() {
-            @Override
-            public Object call() {
-                buildAverageDiffs();
-                return null;
-            }
+        refreshHelper = new RefreshHelper(() -> {
+            buildAverageDiffs();
+            return null;
         });
         refreshHelper.addDependency(dataModel);
         buildAverageDiffs();

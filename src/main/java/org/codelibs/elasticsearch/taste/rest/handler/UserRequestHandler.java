@@ -35,7 +35,7 @@ import org.elasticsearch.threadpool.ThreadPool;
 
 public class UserRequestHandler extends DefaultRequestHandler {
 
-    public UserRequestHandler(final Settings settings, final Client client, ThreadPool pool) {
+    public UserRequestHandler(final Settings settings, final Client client, final ThreadPool pool) {
         super(settings, client, pool);
     }
 

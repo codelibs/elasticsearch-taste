@@ -1,9 +1,9 @@
 package org.codelibs.elasticsearch.taste.model.cache;
 
 public class DmValue {
-    private Object value;
+    private final Object value;
 
-    private int size;
+    private final int size;
 
     public DmValue(final Object value, final int size) {
         this.value = value;

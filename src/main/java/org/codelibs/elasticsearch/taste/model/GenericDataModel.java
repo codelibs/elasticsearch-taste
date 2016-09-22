@@ -88,7 +88,7 @@ public final class GenericDataModel extends AbstractDataModel {
         Preconditions.checkArgument(userData != null, "userData is null");
 
         preferenceFromUsers = userData;
-        final FastByIDMap<Collection<Preference>> prefsForItems = new FastByIDMap<Collection<Preference>>();
+        final FastByIDMap<Collection<Preference>> prefsForItems = new FastByIDMap<>();
         FastIDSet itemIDSet = new FastIDSet();
         int currentCount = 0;
         float maxPrefValue = Float.NEGATIVE_INFINITY;
@@ -170,7 +170,7 @@ public final class GenericDataModel extends AbstractDataModel {
      */
     public static FastByIDMap<PreferenceArray> toDataMap(
             final DataModel dataModel) {
-        final FastByIDMap<PreferenceArray> data = new FastByIDMap<PreferenceArray>(
+        final FastByIDMap<PreferenceArray> data = new FastByIDMap<>(
                 dataModel.getNumUsers());
         final LongPrimitiveIterator it = dataModel.getUserIDs();
         while (it.hasNext()) {

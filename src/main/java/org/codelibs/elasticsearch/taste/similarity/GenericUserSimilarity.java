@@ -33,7 +33,7 @@ import com.google.common.collect.AbstractIterator;
 
 public final class GenericUserSimilarity implements UserSimilarity {
 
-    private final FastByIDMap<FastByIDMap<Double>> similarityMaps = new FastByIDMap<FastByIDMap<Double>>();
+    private final FastByIDMap<FastByIDMap<Double>> similarityMaps = new FastByIDMap<>();
 
     public GenericUserSimilarity(final Iterable<UserUserSimilarity> similarities) {
         initSimilarityMaps(similarities.iterator());
@@ -101,7 +101,7 @@ public final class GenericUserSimilarity implements UserSimilarity {
                 }
                 FastByIDMap<Double> map = similarityMaps.get(user1);
                 if (map == null) {
-                    map = new FastByIDMap<Double>();
+                    map = new FastByIDMap<>();
                     similarityMaps.put(user1, map);
                 }
                 map.put(user2, uuc.getValue());
