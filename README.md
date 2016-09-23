@@ -14,12 +14,13 @@ This plugin provides the following features of a recommendation engine on Elasti
 
 ## Version
 
-| Taste     | Elasticsearch |
-|:---------:|:-------------:|
-| master    | 1.5.X         |
-| 1.5.0     | 1.5.1         |
-| 0.4.0     | 1.4.0         |
-| 0.3.1     | 1.3.1         |
+| Taste     | Tested on elasticsearch |
+|:---------:|:-----------------------:|
+| master    | 2.4.X                   |
+| 2.3.0     | 2.3.5                   |
+| 1.5.0     | 1.5.1                   |
+| 0.4.0     | 1.4.0                   |
+| 0.3.1     | 1.3.1                   |
 
 Note that this plugin supports Java 8 or the above.
 See [README_river.md](https://github.com/codelibs/elasticsearch-taste/blob/master/README_river.md "README_river.md") under Elasticsearch Taste 0.4.0.
@@ -33,7 +34,7 @@ Please file an [issue](https://github.com/codelibs/elasticsearch-taste/issues "i
 
 ### Install Taste Plugin
 
-    $ $ES_HOME/bin/plugin --install org.codelibs/elasticsearch-taste/1.5.0
+    $ $ES_HOME/bin/plugin install org.codelibs/elasticsearch-taste/2.3.0
 
 ## Getting Started
 
