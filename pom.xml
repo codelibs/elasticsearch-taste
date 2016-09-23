@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.codelibs</groupId>
 	<artifactId>elasticsearch-taste</artifactId>
-	<version>2.3.0</version>
+	<version>2.3.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>Elasticsearch Mahout Taste Plugin</name>
 	<description>Mahout Taste Implementation for Elasticsearch</description>
