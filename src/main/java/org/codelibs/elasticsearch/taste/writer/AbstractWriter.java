@@ -60,9 +60,7 @@ public abstract class AbstractWriter implements Closeable {
     }
 
     @Override
-    public void close() throws IOException {
-        // nothing
-    }
+    public abstract void close() throws IOException;
 
     public void setTimestampField(final String timestampField) {
         this.timestampField = timestampField;

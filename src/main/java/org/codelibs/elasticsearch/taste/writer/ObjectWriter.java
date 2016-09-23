@@ -1,5 +1,6 @@
 package org.codelibs.elasticsearch.taste.writer;
 
+import java.io.IOException;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -50,6 +51,20 @@ public class ObjectWriter extends AbstractWriter {
         } catch (final Throwable t) {
             countDown();
             throw new TasteException(t);
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        for (int i = 0; i < 60; i++) {
+            if (queue.isEmpty()) {
+                break;
+            }
+            try {
+                Thread.sleep(1000L);
+            } catch (InterruptedException e) {
+                break;
+            }
         }
     }
 
