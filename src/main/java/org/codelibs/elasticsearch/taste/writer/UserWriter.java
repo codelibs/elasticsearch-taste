@@ -31,8 +31,8 @@ public class UserWriter extends ObjectWriter {
     protected Cache<Long, Map<String, Object>> cache;
 
     public UserWriter(final Client client, final String index,
-            final String type, final String targetIdField) {
-        super(client, index, type);
+            final String type, final String targetIdField, final int capacity) {
+        super(client, index, type, capacity);
         this.targetIdField = targetIdField;
     }
 

@@ -75,11 +75,11 @@ public class SimilarUsersHandler extends RecommendationHandler {
             final RecommenderBuilder recommenderBuilder,
             final UserWriter writer, final int numOfUsers,
             final int degreeOfParallelism, final int maxDuration) {
-        final ExecutorService executorService = Executors
-                .newFixedThreadPool(degreeOfParallelism);
-
         Recommender recommender = null;
         try {
+            final ExecutorService executorService = Executors
+                    .newFixedThreadPool(degreeOfParallelism);
+
             recommender = recommenderBuilder.buildRecommender(dataModel);
 
             logger.info("Recommender: {}", recommender);
@@ -115,7 +115,8 @@ public class SimilarUsersHandler extends RecommendationHandler {
             final Map<String, Object> rootSettings) {
         final UserWriter writer = new UserWriter(client,
                 indexInfo.getUserSimilarityIndex(),
-                indexInfo.getUserSimilarityType(), indexInfo.getUserIdField());
+                indexInfo.getUserSimilarityType(), indexInfo.getUserIdField(),
+                indexInfo.getMaxNumOfWriters());
         writer.setUserIdField(indexInfo.getUserIdField());
         writer.setUsersField(indexInfo.getUsersField());
         writer.setValueField(indexInfo.getValueField());

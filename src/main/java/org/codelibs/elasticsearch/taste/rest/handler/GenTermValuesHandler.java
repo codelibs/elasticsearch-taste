@@ -202,11 +202,13 @@ public class GenTermValuesHandler extends ActionHandler {
         }
 
         private void shutdown() {
-            executor.shutdown();
-            try {
-                executor.awaitTermination(1, TimeUnit.MINUTES);
-            } catch (InterruptedException e) {
-                throw new TasteException(e);
+            if (!executor.isShutdown()) {
+                executor.shutdown();
+                try {
+                    executor.awaitTermination(1, TimeUnit.MINUTES);
+                } catch (InterruptedException e) {
+                    throw new TasteException(e);
+                }
             }
         }
     }

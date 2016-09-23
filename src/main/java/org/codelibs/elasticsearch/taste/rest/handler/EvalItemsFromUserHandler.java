@@ -250,7 +250,8 @@ public class EvalItemsFromUserHandler extends RecommendationHandler {
 
     protected ObjectWriter createReportWriter(final IndexInfo indexInfo) {
         final ObjectWriter writer = new ObjectWriter(client,
-                indexInfo.getReportIndex(), indexInfo.getReportType());
+                indexInfo.getReportIndex(), indexInfo.getReportType(),
+                indexInfo.getMaxNumOfWriters());
         writer.setTimestampField(indexInfo.getTimestampField());
         try (XContentBuilder jsonBuilder = XContentFactory.jsonBuilder()) {
             final XContentBuilder builder = jsonBuilder//

@@ -75,11 +75,11 @@ public class ItemsFromItemHandler extends RecommendationHandler {
             final RecommenderBuilder recommenderBuilder,
             final ItemWriter writer, final int numOfMostSimilarItems,
             final int degreeOfParallelism, final int maxDuration) {
-        final ExecutorService executorService = Executors
-                .newFixedThreadPool(degreeOfParallelism);
-
         Recommender recommender = null;
         try {
+            final ExecutorService executorService = Executors
+                    .newFixedThreadPool(degreeOfParallelism);
+
             recommender = recommenderBuilder.buildRecommender(dataModel);
 
             logger.info("Recommender: {}", recommender.toString());
@@ -115,7 +115,8 @@ public class ItemsFromItemHandler extends RecommendationHandler {
             final Map<String, Object> rootSettings) {
         final ItemWriter writer = new ItemWriter(client,
                 indexInfo.getItemSimilarityIndex(),
-                indexInfo.getItemSimilarityType(), indexInfo.getItemIdField());
+                indexInfo.getItemSimilarityType(), indexInfo.getItemIdField(),
+                indexInfo.getMaxNumOfWriters());
         writer.setTargetIndex(indexInfo.getItemIndex());
         writer.setTargetType(indexInfo.getItemType());
         writer.setItemIndex(indexInfo.getItemIndex());

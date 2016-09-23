@@ -50,6 +50,8 @@ public class IndexInfo {
 
     private final String usersField;
 
+    private final int maxNumOfWriters;
+
     public IndexInfo(final Map<String, Object> indexInfoSettings) {
         final String defaultIndex = SettingsUtils.get(indexInfoSettings,
                 "index");
@@ -120,6 +122,12 @@ public class IndexInfo {
                 TasteConstants.ITEMS_FILED);
         usersField = SettingsUtils.get(fieldSettings, "users",
                 TasteConstants.USERS_FILED);
+
+        final Map<String, Object> writerSettings = SettingsUtils
+                .get(indexInfoSettings, "writer");
+        maxNumOfWriters = SettingsUtils
+                .get(writerSettings, "max", (Number) Integer.valueOf(10))
+                .intValue();
     }
 
     public String getPreferenceIndex() {
@@ -208,5 +216,9 @@ public class IndexInfo {
 
     public String getUsersField() {
         return usersField;
+    }
+
+    public int getMaxNumOfWriters() {
+        return maxNumOfWriters;
     }
 }
