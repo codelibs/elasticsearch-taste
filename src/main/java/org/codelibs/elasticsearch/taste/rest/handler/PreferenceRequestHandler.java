@@ -86,7 +86,12 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
         final Long userId = (Long) paramMap.get(userIdField);
         final Long itemId = (Long) paramMap.get(itemIdField);
 
-        final Map<String, Object> rootObj = new HashMap<>();
+        final Map<String, Object> rootObj = new HashMap<>(requestMap);
+        rootObj.remove("user");
+        rootObj.remove("item");
+        rootObj.remove("id");
+        rootObj.remove("value");
+        rootObj.remove("timestamp");
         rootObj.put(userIdField, userId);
         rootObj.put(itemIdField, itemId);
         rootObj.put(valueField, value);
