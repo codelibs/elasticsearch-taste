@@ -16,6 +16,7 @@ import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
+import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
@@ -58,6 +59,8 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
         final String timestampField = params.param(
                 TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
                 TasteConstants.TIMESTAMP_FIELD);
+
+        final Object idObj = requestMap.get("value");
 
         final Number value = (Number) requestMap.get("value");
         if (value == null) {
@@ -102,8 +105,13 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
                         chain);
             }
         };
-        client.prepareIndex(index, type).setSource(rootObj)
-                .execute(on(responseListener, failureListener));
+        final IndexRequestBuilder builder;
+        if (idObj == null) {
+            builder = client.prepareIndex(index, type);
+        } else {
+            builder = client.prepareIndex(index, type, idObj.toString());
+        }
+        builder.setSource(rootObj).execute(on(responseListener, failureListener));
     }
 
     private void doPreferenceIndexExists(final Params params,
