@@ -60,7 +60,7 @@ public class PreferenceRequestHandler extends DefaultRequestHandler {
                 TasteConstants.REQUEST_PARAM_TIMESTAMP_FIELD,
                 TasteConstants.TIMESTAMP_FIELD);
 
-        final Object idObj = requestMap.get("value");
+        final Object idObj = requestMap.get("id");
 
         final Number value = (Number) requestMap.get("value");
         if (value == null) {
