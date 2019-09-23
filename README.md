@@ -46,7 +46,7 @@ The preference data set is u.data, it contains user id, item id, rating and time
 Download it and then insert data by [Event API](https://github.com/codelibs/elasticsearch-taste/blob/master/README.md#insert-preference-value "Event API"):
 
     curl -o u.data http://files.grouplens.org/datasets/movielens/ml-100k/u.data
-    cat u.data | awk '{system("curl -XPOST localhost:9200/movielens/_taste/event?pretty -d \"{\\\"user\\\":{\\\"id\\\":" $1 "},\\\"item\\\":{\\\"id\\\":" $2 "},\\\"value\\\":" $3 ",\\\"timestamp\\\":" $4 "000}\"")}'
+    cat u.data | awk '{system("curl -XPOST localhost:9200/movielens/taste/event?pretty -d \"{\\\"user\\\":{\\\"id\\\":" $1 "},\\\"item\\\":{\\\"id\\\":" $2 "},\\\"value\\\":" $3 ",\\\"timestamp\\\":" $4 "000}\"")}'
 
 
 By the above request, the preference values are stored in "movielens" index.
@@ -58,7 +58,7 @@ After inserting data, check them in the index:
 
 To compute recommended items from users, execute the following request:
 
-    curl -XPOST localhost:9200/_taste/action/recommended_items_from_user -d '{
+    curl -XPOST localhost:9200/taste/action/recommended_items_from_user -d '{
       "num_of_items": 10,
       "data_model": {
         "cache": {
@@ -74,7 +74,7 @@ The result is stored in movielens/recommendation.
 The response of the above request has a action name at the "name" property.
 To check if your request is finished, send a GET request:
 
-    curl -XGET "localhost:9200/_taste/action?pretty"
+    curl -XGET "localhost:9200/taste/action?pretty"
 
 If the response contains the action name, your request is not completed yet.
 
@@ -88,13 +88,13 @@ A "value" property is a value of similarity.
 The computation might take a long time...
 If you want to stop it, execute below:
 
-    curl -XDELETE localhost:9200/_taste/action/{action_name}
+    curl -XDELETE localhost:9200/taste/action/{action_name}
 
 ### Evaluate Result
 
 You can evaluate parameters, such as similarity and neighborhood, with the following "evaluate\_items\_from\_user" action.
 
-    curl -XPOST localhost:9200/_taste/action/evaluate_items_from_user -d '{
+    curl -XPOST localhost:9200/taste/action/evaluate_items_from_user -d '{
       "evaluation_percentage": 1.0,
       "training_percentage": 0.9,
       "margin_for_error": 1.0,
@@ -159,7 +159,7 @@ The result is stored in report type:
 
 Calcurating similar users, run the following request:
 
-    curl -XPOST localhost:9200/_taste/action/similar_users -d '{
+    curl -XPOST localhost:9200/taste/action/similar_users -d '{
       "num_of_users": 10,
       "data_model": {
         "cache": {
@@ -180,11 +180,11 @@ If you check similar users for User ID 1, type the below:
 This plugin has own ID, such as user\_id or item\_id.
 If you want to access your system ID, use the following search API:
 
-    curl -XGET "localhost:9200/{index}/{type}/_taste/{user|item}/{your_user_or_item_id}?pretty"
+    curl -XGET "localhost:9200/{index}/{type}/taste/{user|item}/{your_user_or_item_id}?pretty"
 
 For example, if you get similar users from ID=115:
 
-    curl -XGET localhost:9200/movielens/recommendation/_taste/user/1
+    curl -XGET localhost:9200/movielens/recommendation/taste/user/1
 
 ### Create Vectors from Text
 
@@ -217,7 +217,7 @@ For the following example, text data are stored into "description" field in "ap"
 
 To generate the term vector, run the following river:
 
-    curl -XPOST localhost:9200/_taste/action/generate_term_values?pretty -d '{
+    curl -XPOST localhost:9200/taste/action/generate_term_values?pretty -d '{
       "source": {
         "index": "ap",
         "type": "article",
@@ -282,16 +282,16 @@ You can create/update/delete the above index and document with Elasticsearch man
 #### Insert Preference Value
 
 Taste plugin provides an useful API to register a preference value.
-If you send it to http://.../{index}/\_taste/event, user\_id and item\_id are generated and then the preference value is inserted.
+If you send it to http://.../{index}/\taste/event, user\_id and item\_id are generated and then the preference value is inserted.
 You can send multiple data with one request by using carriage return.
 
 For example, if User ID is "U0001", Item ID is "I1000" and the preference(rating) value is 10.0, the request is below:
 
-    curl -XPOST localhost:9200/sample/_taste/event -d '{ user: { id: "U0001" }, item: { id: "I1000" }, value: 10.0 }'
+    curl -XPOST localhost:9200/sample/taste/event -d '{ user: { id: "U0001" }, item: { id: "I1000" }, value: 10.0 }'
 
 If you send multiple data, the request is below:
 
-    curl -XPOST localhost:9200/sample/_taste/event -d \
+    curl -XPOST localhost:9200/sample/taste/event -d \
       '{ user: { id: "U0001" }, item: { id: "I1000" }, value: 10.0 }
       { user: { id: "U0002" }, item: { id: "I1001" }, value: 15.0 }'
 
@@ -307,7 +307,7 @@ Recommended items for an user are computed from similar users.
 The computing process is started by creating a river configuration.
 If 10 recommended items are generated from similar users, the river configuration is:
 
-    curl -XPOST localhost:9200/_taste/action/recommended_items_from_user -d '{
+    curl -XPOST localhost:9200/taste/action/recommended_items_from_user -d '{
       "num_of_items": 10,
       "max_duration": 120,
       "data_model": {
@@ -379,7 +379,7 @@ The value of "items" property is recommended items.
 
 To evaluate parameters for generating recommended items, you can use the following "evaluate\_items\_from\_user" action.
 
-    curl -XPOST localhost:9200/_taste/action/evaluate_items_from_user -d '{
+    curl -XPOST localhost:9200/taste/action/evaluate_items_from_user -d '{
       "evaluation_percentage": 0.5,
       "training_percentage": 0.9,
       "data_model": {
@@ -439,7 +439,7 @@ Recommended items for an item are computed from similar items.
 The computing process is started by creating a river configuration.
 If 10 recommended items are generated from similar items, the river configuration is:
 
-    curl -XPOST localhost:9200/_taste/action/recommended_items_from_item -d '{
+    curl -XPOST localhost:9200/taste/action/recommended_items_from_item -d '{
       "num_of_items": 10,
       "max_duration": 120,
       "data_model": {

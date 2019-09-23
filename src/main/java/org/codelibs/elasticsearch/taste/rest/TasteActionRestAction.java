@@ -55,13 +55,13 @@ public class TasteActionRestAction extends BaseRestHandler {
         this.tasteService = tasteService;
 
         restController.registerHandler(RestRequest.Method.GET,
-                "/_taste/action", this);
+                "/taste/action", this);
         restController.registerHandler(RestRequest.Method.GET,
-                "/_taste/action/{name}", this);
+                "/taste/action/{name}", this);
         restController.registerHandler(RestRequest.Method.POST,
-                "/_taste/action/{action}", this);
+                "/taste/action/{action}", this);
         restController.registerHandler(RestRequest.Method.DELETE,
-                "/_taste/action/{name}", this);
+                "/taste/action/{name}", this);
 
     }
 

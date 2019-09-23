@@ -65,9 +65,9 @@ public class TasteSearchRestAction extends BaseRestHandler {
                 .maximumSize(Long.parseLong(size)).build();
 
         restController.registerHandler(RestRequest.Method.GET,
-                "/{index}/_taste/{objectType}/{systemId}", this);
+                "/{index}/taste/{objectType}/{systemId}", this);
         restController.registerHandler(RestRequest.Method.GET,
-                "/{index}/{type}/_taste/{objectType}/{systemId}", this);
+                "/{index}/{type}/taste/{objectType}/{systemId}", this);
 
     }
 
