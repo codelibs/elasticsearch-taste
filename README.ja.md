@@ -45,7 +45,7 @@ MovieLensの詳細については[MovieLens](http://grouplens.org/datasets/movie
 それをダウンロードし、[Event API](https://github.com/codelibs/elasticsearch-taste/blob/master/README.md#insert-preference-value "Event API")によってデータを挿入して下さい。
 
     curl -o u.data http://files.grouplens.org/datasets/movielens/ml-100k/u.data
-    cat u.data | awk '{system("curl -XPOST localhost:9200/movielens/_taste/event?pretty -d \"{\\\"user\\\":{\\\"id\\\":" $1 "},\\\"item\\\":{\\\"id\\\":" $2 "},\\\"value\\\":" $3 ",\\\"timestamp\\\":" $4 "000}\"")}'
+    cat u.data | awk '{system("curl -XPOST localhost:9200/movielens/taste/event?pretty -d \"{\\\"user\\\":{\\\"id\\\":" $1 "},\\\"item\\\":{\\\"id\\\":" $2 "},\\\"value\\\":" $3 ",\\\"timestamp\\\":" $4 "000}\"")}'
 
 
 上記の要求により、優先度の値は"movielens"インデックスに格納されます。
@@ -57,7 +57,7 @@ MovieLensの詳細については[MovieLens](http://grouplens.org/datasets/movie
 
 利用者からのレコメンドされた商品を計算するには、次のリクエストを実行します。
 
-    curl -XPOST localhost:9200/_taste/action/recommended_items_from_user -d '{
+    curl -XPOST localhost:9200/taste/action/recommended_items_from_user -d '{
       "num_of_items": 10,
       "data_model": {
         "cache": {
@@ -73,7 +73,7 @@ MovieLensの詳細については[MovieLens](http://grouplens.org/datasets/movie
 上記リクエストのレスポンスの"name"プロパティにaction名が含まれます。
 計算が終わったかどうかを確認するには、GETリクエストを送信します。
 
-    curl -XGET "localhost:9200/_taste/action?pretty"
+    curl -XGET "localhost:9200/taste/action?pretty"
 
 応答にアクション名が含まれている場合は、リクエストがまだ完了していません。
 
@@ -87,13 +87,13 @@ MovieLensの詳細については[MovieLens](http://grouplens.org/datasets/movie
 計算は長い時間がかかるかもしれません…
 もし停止したいなら、以下を実行してください。
 
-    curl -XDELETE localhost:9200/_taste/action/{action_name}
+    curl -XDELETE localhost:9200/taste/action/{action_name}
 
 ### 結果の評価
 
 次の"evaluate\_items\_from\_user"アクションでは、類似性やneighborhoodのようなパラメータを評価することが出来ます。
 
-    curl -XPOST localhost:9200/_taste/action/evaluate_items_from_user -d '{
+    curl -XPOST localhost:9200/taste/action/evaluate_items_from_user -d '{
       "evaluation_percentage": 1.0,
       "training_percentage": 0.9,
       "margin_for_error": 1.0,
@@ -158,7 +158,7 @@ MovieLensの詳細については[MovieLens](http://grouplens.org/datasets/movie
 
 類似利用者をを割り当てるには、下のリクエストを実行します。
 
-    curl -XPOST localhost:9200/_taste/action/similar_users -d '{
+    curl -XPOST localhost:9200/taste/action/similar_users -d '{
       "num_of_users": 10,
       "data_model": {
         "cache": {
@@ -179,11 +179,11 @@ MovieLensの詳細については[MovieLens](http://grouplens.org/datasets/movie
 このプラグインは、user_idやitem_idのようなIDを所有しています。
 自分のシステムIDにアクセスする場合は、次の検索APIを使用します。
 
-    curl -XGET "localhost:9200/{index}/{type}/_taste/{user|item}/{your_user_or_item_id}?pretty"
+    curl -XGET "localhost:9200/{index}/{type}/taste/{user|item}/{your_user_or_item_id}?pretty"
 
 たとえば、IDが115の類似利用者を取得したい場合は以下のようにします。
 
-    curl -XGET localhost:9200/movielens/recommendation/_taste/user/1
+    curl -XGET localhost:9200/movielens/recommendation/taste/user/1
 
 ### テキストからベクトルを作成
 
@@ -216,7 +216,7 @@ MovieLensの詳細については[MovieLens](http://grouplens.org/datasets/movie
 
 用語ベクターを作成するには、下記を実行します。
 
-    curl -XPOST localhost:9200/_taste/action/generate_term_values?pretty -d '{
+    curl -XPOST localhost:9200/taste/action/generate_term_values?pretty -d '{
       "source": {
         "index": "ap",
         "type": "article",
@@ -281,16 +281,16 @@ Elasticsearchの作法を使用し、上記のインデックスおよびドキ�
 #### Preference値の挿入
 
 Tasteプラグインは、preference値を登録するための有用なAPIを提供します。
-それを http://.../{index}/\_taste/event に送信する場合、user\_idとitem\_idは生成され、preference値は挿入されます。
+それを http://.../{index}/\taste/event に送信する場合、user\_idとitem\_idは生成され、preference値は挿入されます。
 途中に改行を挟むことで、一度のリクエストで複数個の値を登録することができます。
 
 例えば、利用者IDが"U0001"、商品IDが"I1000"、preference値が10.0のデータを登録する場合、要求は以下の通りです。
 
-    curl -XPOST localhost:9200/sample/_taste/event -d '{ user: { id: "U0001" }, item: { id: "I1000" }, value: 10.0 }'
+    curl -XPOST localhost:9200/sample/taste/event -d '{ user: { id: "U0001" }, item: { id: "I1000" }, value: 10.0 }'
 
 複数個の値を登録する場合、次のように要求します。
 
-    curl -XPOST localhost:9200/sample/_taste/event -d \
+    curl -XPOST localhost:9200/sample/taste/event -d \
       '{ user: { id: "U0001" }, item: { id: "I1000" }, value: 10.0 }
       { user: { id: "U0002" }, item: { id: "I1001" }, value: 15.0 }'
 
@@ -306,7 +306,7 @@ user\_id、item\_id、@timestampは自動的に生成されます。
 演算処理は、riverの設定することにより開始されます。
 10個のレコメンドされた商品が類似利用者から生成される場合は、riverの構成は次のとおりです。
 
-    curl -XPOST localhost:9200/_taste/action/recommended_items_from_user -d '{
+    curl -XPOST localhost:9200/taste/action/recommended_items_from_user -d '{
       "num_of_items": 10,
       "max_duration": 120,
       "data_model": {
@@ -378,7 +378,7 @@ user\_id、item\_id、@timestampは自動的に生成されます。
 
 レコメンドされた商品を生成するためのパラメータを評価するには、以下の "evaluate\_items\_from\_user" を使用することができます。.
 
-    curl -XPOST localhost:9200/_taste/action/evaluate_items_from_user -d '{
+    curl -XPOST localhost:9200/taste/action/evaluate_items_from_user -d '{
       "evaluation_percentage": 0.5,
       "training_percentage": 0.9,
       "data_model": {
@@ -438,7 +438,7 @@ user\_id、item\_id、@timestampは自動的に生成されます。
 その演算処理は、riverの設定をすることにより開始されます。
 10個のレコメンドされた商品が類似商品から生成される場合は、riverの構成は以下のとおりです。
 
-    curl -XPOST localhost:9200/_taste/action/recommended_items_from_item -d '{
+    curl -XPOST localhost:9200/taste/action/recommended_items_from_item -d '{
       "num_of_items": 10,
       "max_duration": 120,
       "data_model": {
